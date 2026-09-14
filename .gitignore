@@ -28,6 +28,12 @@ presentation/
 # not project content. settings.json (shared) would be tracked; this is not.
 .claude/settings.local.json
 
+# The submission archive, rebuilt on demand from the tracked files by
+# scripts/make_submission_zip.py. Committing it would duplicate ~10 MB of
+# content that is already in the tree, and it would go stale silently.
+*.zip
+*.rar
+
 # Editor / OS
 desktop.ini
 .DS_Store
