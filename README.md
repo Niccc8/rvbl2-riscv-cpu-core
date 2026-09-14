@@ -37,10 +37,7 @@ this repository**; the rest of it is the evidence behind them.
 | GL netlist (`.v`), in `results/final/verilog/gl` | **[`top.v`](chipinventor/openlane/runs/platform_20260904/results/final/verilog/gl/top.v)** (powered) and **[`top.nl.v`](chipinventor/openlane/runs/platform_20260904/results/final/verilog/gl/top.nl.v)** (non-powered) — [folder](chipinventor/openlane/runs/platform_20260904/results/final/verilog/gl) |
 | `config.json` used by the OpenLane synthesis | **[`config.json`](chipinventor/openlane/config.json)** |
 | All developed code, including testbenches | **[`rtl/`](rtl/)** (16 modules) · **[`tb/`](tb/)** (16 testbenches) · **[`chipinventor/`](chipinventor/)** (the canvas implementation) |
-| YouTube URL, included in the report | On the report's title page and in §6 |
-
-> **Note:** the demonstration video URL is still a placeholder in the report.
-> It is set before submission.
+| YouTube URL, included in the report | **[youtu.be/CcPI3QoY-no](https://youtu.be/CcPI3QoY-no)** — also on the report's title page and in §6 |
 
 ---
 
