@@ -25,6 +25,25 @@ provably the design that was verified**, by mechanical check rather than asserti
 
 ---
 
+## Competition submission — Guide §9
+
+Everything Submission Guide §9 asks for, linked directly. **All six items are in
+this repository**; the rest of it is the evidence behind them.
+
+| Guide §9 requires | Where it is |
+|---|---|
+| Report | **[`RVBL2_ChampionCHIP_Report.pdf`](report/RVBL2_ChampionCHIP_Report.pdf)** — 20 pages, 4.9 MB |
+| GDSII from the OpenLane synthesis | **[`top.gds`](chipinventor/openlane/runs/platform_20260904/results/final/gds/top.gds)** — 48.7 MB |
+| GL netlist (`.v`), in `results/final/verilog/gl` | **[`top.v`](chipinventor/openlane/runs/platform_20260904/results/final/verilog/gl/top.v)** (powered) and **[`top.nl.v`](chipinventor/openlane/runs/platform_20260904/results/final/verilog/gl/top.nl.v)** (non-powered) — [folder](chipinventor/openlane/runs/platform_20260904/results/final/verilog/gl) |
+| `config.json` used by the OpenLane synthesis | **[`config.json`](chipinventor/openlane/config.json)** |
+| All developed code, including testbenches | **[`rtl/`](rtl/)** (16 modules) · **[`tb/`](tb/)** (16 testbenches) · **[`chipinventor/`](chipinventor/)** (the canvas implementation) |
+| YouTube URL, included in the report | On the report's title page and in §6 |
+
+> **Note:** the demonstration video URL is still a placeholder in the report.
+> It is set before submission.
+
+---
+
 ## The design
 
 [![RVBL-2 datapath and control unit](report/figures/soc-architecture.png)](report/figures/soc-architecture.png)
@@ -135,21 +154,6 @@ Three results from that work are worth reading:
   evidence that the RTL changed.
 - **Run-to-run slack varies by 1.6 ns** on identical inputs. Treat a single run's slack as a
   sample, not a property.
-
-## Competition submission
-
-The Phase 2 submission is four files, not this repository:
-
-| Guide §9 requires | File |
-|---|---|
-| Report (≤ 20 pages, ≤ 10 MB) | `report/RVBL2_ChampionCHIP_Report.pdf` |
-| GDSII from OpenLane | `…/results/final/gds/top.gds` |
-| GL netlist, powered | `…/results/final/verilog/gl/top.v` |
-| GL netlist, non-powered | `…/results/final/verilog/gl/top.nl.v` |
-
-All four are committed: the report in `report/`, the rest under
-`chipinventor/openlane/runs/platform_20260904/results/final/`. Everything else in this
-repository is the evidence behind them.
 
 ## Honest limitations
 
