@@ -1,0 +1,297 @@
+{
+  "num_tests": 58,
+  "sig_base_offset": 256,
+  "image_words": 471,
+  "tests": [
+    {
+      "idx": 0,
+      "name": "ADD",
+      "category": "Arith/Logic(Reg)"
+    },
+    {
+      "idx": 1,
+      "name": "SUB",
+      "category": "Arith/Logic(Reg)"
+    },
+    {
+      "idx": 2,
+      "name": "SLL",
+      "category": "Arith/Logic(Reg)"
+    },
+    {
+      "idx": 3,
+      "name": "SLT",
+      "category": "Arith/Logic(Reg)"
+    },
+    {
+      "idx": 4,
+      "name": "SLTU",
+      "category": "Arith/Logic(Reg)"
+    },
+    {
+      "idx": 5,
+      "name": "XOR",
+      "category": "Arith/Logic(Reg)"
+    },
+    {
+      "idx": 6,
+      "name": "SRL",
+      "category": "Arith/Logic(Reg)"
+    },
+    {
+      "idx": 7,
+      "name": "SRA",
+      "category": "Arith/Logic(Reg)"
+    },
+    {
+      "idx": 8,
+      "name": "OR",
+      "category": "Arith/Logic(Reg)"
+    },
+    {
+      "idx": 9,
+      "name": "AND",
+      "category": "Arith/Logic(Reg)"
+    },
+    {
+      "idx": 10,
+      "name": "ADDI",
+      "category": "Arith/Logic(Imm)"
+    },
+    {
+      "idx": 11,
+      "name": "SLTI",
+      "category": "Arith/Logic(Imm)"
+    },
+    {
+      "idx": 12,
+      "name": "SLTIU",
+      "category": "Arith/Logic(Imm)"
+    },
+    {
+      "idx": 13,
+      "name": "XORI",
+      "category": "Arith/Logic(Imm)"
+    },
+    {
+      "idx": 14,
+      "name": "ORI",
+      "category": "Arith/Logic(Imm)"
+    },
+    {
+      "idx": 15,
+      "name": "ANDI",
+      "category": "Arith/Logic(Imm)"
+    },
+    {
+      "idx": 16,
+      "name": "SLLI",
+      "category": "Arith/Logic(Imm)"
+    },
+    {
+      "idx": 17,
+      "name": "SRLI",
+      "category": "Arith/Logic(Imm)"
+    },
+    {
+      "idx": 18,
+      "name": "SRAI",
+      "category": "Arith/Logic(Imm)"
+    },
+    {
+      "idx": 19,
+      "name": "LW",
+      "category": "Load"
+    },
+    {
+      "idx": 20,
+      "name": "LH",
+      "category": "Load"
+    },
+    {
+      "idx": 21,
+      "name": "LHU",
+      "category": "Load"
+    },
+    {
+      "idx": 22,
+      "name": "LB",
+      "category": "Load"
+    },
+    {
+      "idx": 23,
+      "name": "LBU",
+      "category": "Load"
+    },
+    {
+      "idx": 24,
+      "name": "LB_lane1",
+      "category": "Load"
+    },
+    {
+      "idx": 25,
+      "name": "LB_lane2",
+      "category": "Load"
+    },
+    {
+      "idx": 26,
+      "name": "LB_lane3",
+      "category": "Load"
+    },
+    {
+      "idx": 27,
+      "name": "LBU_lane1",
+      "category": "Load"
+    },
+    {
+      "idx": 28,
+      "name": "LBU_lane3",
+      "category": "Load"
+    },
+    {
+      "idx": 29,
+      "name": "LH_lane2",
+      "category": "Load"
+    },
+    {
+      "idx": 30,
+      "name": "LHU_lane2",
+      "category": "Load"
+    },
+    {
+      "idx": 31,
+      "name": "SW",
+      "category": "Store"
+    },
+    {
+      "idx": 32,
+      "name": "SH",
+      "category": "Store"
+    },
+    {
+      "idx": 33,
+      "name": "SB",
+      "category": "Store"
+    },
+    {
+      "idx": 34,
+      "name": "SB_lane1",
+      "category": "Store"
+    },
+    {
+      "idx": 35,
+      "name": "SB_lane2",
+      "category": "Store"
+    },
+    {
+      "idx": 36,
+      "name": "SB_lane3",
+      "category": "Store"
+    },
+    {
+      "idx": 37,
+      "name": "SH_lane2",
+      "category": "Store"
+    },
+    {
+      "idx": 38,
+      "name": "BEQ",
+      "category": "Branch"
+    },
+    {
+      "idx": 39,
+      "name": "BEQ_NT",
+      "category": "Branch"
+    },
+    {
+      "idx": 40,
+      "name": "BNE",
+      "category": "Branch"
+    },
+    {
+      "idx": 41,
+      "name": "BNE_NT",
+      "category": "Branch"
+    },
+    {
+      "idx": 42,
+      "name": "BLT",
+      "category": "Branch"
+    },
+    {
+      "idx": 43,
+      "name": "BLT_NT",
+      "category": "Branch"
+    },
+    {
+      "idx": 44,
+      "name": "BGE",
+      "category": "Branch"
+    },
+    {
+      "idx": 45,
+      "name": "BGE_NT",
+      "category": "Branch"
+    },
+    {
+      "idx": 46,
+      "name": "BLTU",
+      "category": "Branch"
+    },
+    {
+      "idx": 47,
+      "name": "BLTU_NT",
+      "category": "Branch"
+    },
+    {
+      "idx": 48,
+      "name": "BGEU",
+      "category": "Branch"
+    },
+    {
+      "idx": 49,
+      "name": "BGEU_NT",
+      "category": "Branch"
+    },
+    {
+      "idx": 50,
+      "name": "LUI",
+      "category": "Upper Immediate"
+    },
+    {
+      "idx": 51,
+      "name": "MUL",
+      "category": "Multiplication"
+    },
+    {
+      "idx": 52,
+      "name": "MULH",
+      "category": "Multiplication"
+    },
+    {
+      "idx": 53,
+      "name": "MULHSU",
+      "category": "Multiplication"
+    },
+    {
+      "idx": 54,
+      "name": "MULHU",
+      "category": "Multiplication"
+    },
+    {
+      "idx": 55,
+      "name": "CRCB",
+      "category": "CRC"
+    },
+    {
+      "idx": 56,
+      "name": "CRCH",
+      "category": "CRC"
+    },
+    {
+      "idx": 57,
+      "name": "CRCW",
+      "category": "CRC"
+    }
+  ]
+}

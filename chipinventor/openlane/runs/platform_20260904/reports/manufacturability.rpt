@@ -1,0 +1,19 @@
+Design Name: top
+Run Directory: /chipinventor/OpenLane/designs/spm/runs/RUN_2026.09.04_06.40.41
+----------------------------------------
+
+Magic DRC Summary:
+Source: /chipinventor/OpenLane/designs/spm/runs/RUN_2026.09.04_06.40.41/reports/signoff/drc.rpt
+Total Magic DRC violations is 0
+----------------------------------------
+
+LVS Summary:
+Source: /chipinventor/OpenLane/designs/spm/runs/RUN_2026.09.04_06.40.41/logs/signoff/41-top.lef.lvs.log
+Number of nets: 19302                      |Number of nets: 19302                      
+Design is LVS clean.
+----------------------------------------
+
+Antenna Summary:
+Source: /chipinventor/OpenLane/designs/spm/runs/RUN_2026.09.04_06.40.41/logs/signoff/44-arc.log
+Pin violations: 86
+Net violations: 60

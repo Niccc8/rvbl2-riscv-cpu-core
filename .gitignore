@@ -1,0 +1,53 @@
+# --- generated, always regenerable -------------------------------------------
+build/
+chipinventor/build/
+synth/*.v
+synth/*_full.log
+synth/sky130_*report.log
+
+__pycache__/
+*.pyc
+
+*.vcd
+*.vvp
+
+# LaTeX build artifacts. The PDF itself IS committed.
+report/*.aux
+report/*.log
+report/*.out
+report/*.atfi
+report/*.toc
+report/*.fls
+report/*.fdb_latexmk
+
+# Working material for the video, not part of the submission or the
+# showcase. Scripts and slide briefs live here.
+presentation/
+
+# Local Claude Code overrides: a machine-specific permission allowlist,
+# not project content. settings.json (shared) would be tracked; this is not.
+.claude/settings.local.json
+
+# Editor / OS
+desktop.ini
+.DS_Store
+Thumbs.db
+
+# Downloaded OpenLane run directories from the ChipInventor platform (~2 GB).
+# Only the curated subset under chipinventor/openlane/runs/ is kept; it was
+# byte-verified against the full run before the full run was discarded.
+riscv_core_championchip-*-openlanesky130/
+
+# --- OPTIONAL: keep the repository small -------------------------------------
+# The three binaries below total ~58 MB and never change again. Git stores them
+# forever, so every clone pays for them. GitHub accepts them as-is (its hard
+# limit is 100 MB per file and top.gds is 48.7 MB), but the tidier pattern is to
+# uncomment these three lines and attach the files to a tagged Release instead
+# — Releases allow up to 2 GB per file and do not enter git history.
+#
+# Uncommenting drops the repository from ~82 MB to ~24 MB. If you do it, say so
+# in the README's "Competition submission" table so a reader knows where to look.
+#
+# chipinventor/openlane/runs/platform_20260904/results/final/gds/top.gds
+# chipinventor/openlane/runs/platform_20260904/results/final/verilog/gl/top.v
+# chipinventor/openlane/runs/platform_20260904/results/final/verilog/gl/top.nl.v

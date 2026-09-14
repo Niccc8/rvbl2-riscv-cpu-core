@@ -1,0 +1,566 @@
+﻿
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.68+136 (git sha1 c30457480-dirty, Release, GNU /usr/bin/x86_64-w64-mingw32-g++ 15.2.1)
+
+-- Executing script file `build\_elab.ys' --
+
+1. Executing Verilog-2005 frontend: rtl/alu.v
+Parsing SystemVerilog input from `rtl/alu.v' to AST representation.
+Generating RTLIL representation for module `\alu'.
+Successfully finished Verilog frontend.
+
+2. Executing Verilog-2005 frontend: rtl/branch_comparator.v
+Parsing SystemVerilog input from `rtl/branch_comparator.v' to AST representation.
+Generating RTLIL representation for module `\branch_comparator'.
+Successfully finished Verilog frontend.
+
+3. Executing Verilog-2005 frontend: rtl/immediate_generator.v
+Parsing SystemVerilog input from `rtl/immediate_generator.v' to AST representation.
+Generating RTLIL representation for module `\immediate_generator'.
+Successfully finished Verilog frontend.
+
+4. Executing Verilog-2005 frontend: rtl/register_file.v
+Parsing SystemVerilog input from `rtl/register_file.v' to AST representation.
+Generating RTLIL representation for module `\register_file'.
+Successfully finished Verilog frontend.
+
+5. Executing Verilog-2005 frontend: rtl/pc_reg.v
+Parsing SystemVerilog input from `rtl/pc_reg.v' to AST representation.
+Generating RTLIL representation for module `\pc_reg'.
+Successfully finished Verilog frontend.
+
+6. Executing Verilog-2005 frontend: rtl/ir_reg.v
+Parsing SystemVerilog input from `rtl/ir_reg.v' to AST representation.
+Generating RTLIL representation for module `\ir_reg'.
+Successfully finished Verilog frontend.
+
+7. Executing Verilog-2005 frontend: rtl/pc_incrementer.v
+Parsing SystemVerilog input from `rtl/pc_incrementer.v' to AST representation.
+Generating RTLIL representation for module `\pc_incrementer'.
+Successfully finished Verilog frontend.
+
+8. Executing Verilog-2005 frontend: rtl/multiplier.v
+Parsing SystemVerilog input from `rtl/multiplier.v' to AST representation.
+Generating RTLIL representation for module `\multiplier'.
+Successfully finished Verilog frontend.
+
+9. Executing Verilog-2005 frontend: rtl/crc_unit.v
+Parsing SystemVerilog input from `rtl/crc_unit.v' to AST representation.
+Generating RTLIL representation for module `\crc_unit'.
+Successfully finished Verilog frontend.
+
+10. Executing Verilog-2005 frontend: rtl/lsu.v
+Parsing SystemVerilog input from `rtl/lsu.v' to AST representation.
+Generating RTLIL representation for module `\lsu'.
+Successfully finished Verilog frontend.
+
+11. Executing Verilog-2005 frontend: rtl/imem.v
+Parsing SystemVerilog input from `rtl/imem.v' to AST representation.
+Generating RTLIL representation for module `\imem'.
+Successfully finished Verilog frontend.
+
+12. Executing Verilog-2005 frontend: rtl/dmem.v
+Parsing SystemVerilog input from `rtl/dmem.v' to AST representation.
+Generating RTLIL representation for module `\dmem'.
+Successfully finished Verilog frontend.
+
+13. Executing Verilog-2005 frontend: rtl/address_decoder.v
+Parsing SystemVerilog input from `rtl/address_decoder.v' to AST representation.
+Generating RTLIL representation for module `\address_decoder'.
+Successfully finished Verilog frontend.
+
+14. Executing Verilog-2005 frontend: rtl/control_unit.v
+Parsing SystemVerilog input from `rtl/control_unit.v' to AST representation.
+Generating RTLIL representation for module `\control_unit'.
+Successfully finished Verilog frontend.
+
+15. Executing Verilog-2005 frontend: rtl/riscv_core.v
+Parsing SystemVerilog input from `rtl/riscv_core.v' to AST representation.
+Generating RTLIL representation for module `\riscv_core'.
+Successfully finished Verilog frontend.
+
+16. Executing Verilog-2005 frontend: rtl/top.v
+Parsing SystemVerilog input from `rtl/top.v' to AST representation.
+Generating RTLIL representation for module `\top'.
+Successfully finished Verilog frontend.
+Parameter \IMEM_WORDS = 471
+
+17. Executing AST frontend in derive mode using pre-parsed AST for module `\top'.
+Parameter \IMEM_WORDS = 471
+Generating RTLIL representation for module `$paramod\top\IMEM_WORDS=s32'00000000000000000000000111010111'.
+Parameter \DMEM_WORDS = 2048
+
+18. Executing AST frontend in derive mode using pre-parsed AST for module `\top'.
+Parameter \DMEM_WORDS = 2048
+Generating RTLIL representation for module `$paramod\top\DMEM_WORDS=s32'00000000000000000000100000000000'.
+Parameter \IMEM_INIT_FILE = 256'0111010001100101011100110111010001110011001011110111000001110010011011110110011101110011001011110111010001100010010111110110011001101001011100100110110101110111011000010111001001100101010111110111000001110010011011110110011100101110011010000110010101111000
+
+19. Executing AST frontend in derive mode using pre-parsed AST for module `\top'.
+Parameter \IMEM_INIT_FILE = 256'0111010001100101011100110111010001110011001011110111000001110010011011110110011101110011001011110111010001100010010111110110011001101001011100100110110101110111011000010111001001100101010111110111000001110010011011110110011100101110011010000110010101111000
+Generating RTLIL representation for module `$paramod$5364a23b0c38bfd59fec6bc7fb677eb68c6a0665\top'.
+
+20. Executing HIERARCHY pass (managing design hierarchy).
+
+20.1. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \riscv_core
+Used module:         \lsu
+Used module:         \crc_unit
+Used module:         \multiplier
+Used module:         \branch_comparator
+Used module:         \alu
+Used module:         \immediate_generator
+Used module:         \register_file
+Used module:         \ir_reg
+Used module:         \pc_incrementer
+Used module:         \pc_reg
+Used module:         \control_unit
+Used module:     \address_decoder
+Used module:     \imem
+Used module:     \dmem
+Parameter \IMEM_WORDS = 471
+Parameter \INIT_FILE = 256'0111010001100101011100110111010001110011001011110111000001110010011011110110011101110011001011110111010001100010010111110110011001101001011100100110110101110111011000010111001001100101010111110111000001110010011011110110011100101110011010000110010101111000
+
+20.2. Executing AST frontend in derive mode using pre-parsed AST for module `\imem'.
+Parameter \IMEM_WORDS = 471
+Parameter \INIT_FILE = 256'0111010001100101011100110111010001110011001011110111000001110010011011110110011101110011001011110111010001100010010111110110011001101001011100100110110101110111011000010111001001100101010111110111000001110010011011110110011100101110011010000110010101111000
+Generating RTLIL representation for module `$paramod$0026a9eace19d1729ea2065fd60de662c508934f\imem'.
+Parameter \DMEM_WORDS = 2048
+
+20.3. Executing AST frontend in derive mode using pre-parsed AST for module `\dmem'.
+Parameter \DMEM_WORDS = 2048
+Generating RTLIL representation for module `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000'.
+
+20.4. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \riscv_core
+Used module:         \lsu
+Used module:         \crc_unit
+Used module:         \multiplier
+Used module:         \branch_comparator
+Used module:         \alu
+Used module:         \immediate_generator
+Used module:         \register_file
+Used module:         \ir_reg
+Used module:         \pc_incrementer
+Used module:         \pc_reg
+Used module:         \control_unit
+Used module:     \address_decoder
+Used module:     $paramod$0026a9eace19d1729ea2065fd60de662c508934f\imem
+Used module:     $paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000
+
+20.5. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \riscv_core
+Used module:         \lsu
+Used module:         \crc_unit
+Used module:         \multiplier
+Used module:         \branch_comparator
+Used module:         \alu
+Used module:         \immediate_generator
+Used module:         \register_file
+Used module:         \ir_reg
+Used module:         \pc_incrementer
+Used module:         \pc_reg
+Used module:         \control_unit
+Used module:     \address_decoder
+Used module:     $paramod$0026a9eace19d1729ea2065fd60de662c508934f\imem
+Used module:     $paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000
+Removing unused module `\dmem'.
+Removing unused module `\imem'.
+Removed 2 unused modules.
+
+21. Executing PROC pass (convert processes to netlists).
+
+21.1. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Removing empty process `$paramod$0026a9eace19d1729ea2065fd60de662c508934f\imem.$proc$rtl/imem.v:38$864'.
+Cleaned up 0 empty switches.
+
+21.2. Executing PROC_RMDEAD pass (remove dead branches from decision trees).
+Marked 1 switch rules as full_case in process $proc$rtl/riscv_core.v:85$857 in module riscv_core.
+Marked 4 switch rules as full_case in process $proc$rtl/control_unit.v:166$815 in module control_unit.
+Marked 1 switch rules as full_case in process $proc$rtl/control_unit.v:160$814 in module control_unit.
+Marked 4 switch rules as full_case in process $proc$rtl/control_unit.v:149$809 in module control_unit.
+Removed 2 dead cases from process $proc$rtl/control_unit.v:109$792 in module control_unit.
+Marked 5 switch rules as full_case in process $proc$rtl/control_unit.v:109$792 in module control_unit.
+Marked 5 switch rules as full_case in process $proc$rtl/dmem.v:52$870 in module $paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.
+Removed 1 dead cases from process $proc$rtl/lsu.v:58$631 in module lsu.
+Marked 3 switch rules as full_case in process $proc$rtl/lsu.v:58$631 in module lsu.
+Removed 1 dead cases from process $proc$rtl/lsu.v:28$629 in module lsu.
+Marked 5 switch rules as full_case in process $proc$rtl/lsu.v:28$629 in module lsu.
+Marked 1 switch rules as full_case in process $proc$rtl/crc_unit.v:85$215 in module crc_unit.
+Marked 1 switch rules as full_case in process $proc$rtl/ir_reg.v:16$139 in module ir_reg.
+Marked 1 switch rules as full_case in process $proc$rtl/pc_reg.v:17$138 in module pc_reg.
+Marked 2 switch rules as full_case in process $proc$rtl/register_file.v:25$62 in module register_file.
+Marked 1 switch rules as full_case in process $proc$rtl/immediate_generator.v:21$21 in module immediate_generator.
+Marked 1 switch rules as full_case in process $proc$rtl/branch_comparator.v:11$14 in module branch_comparator.
+Marked 1 switch rules as full_case in process $proc$rtl/alu.v:26$1 in module alu.
+Removed a total of 4 dead cases.
+
+21.3. Executing PROC_PRUNE pass (remove redundant assignments in processes).
+Removed 1 redundant assignment.
+Promoted 303 assignments to connections.
+
+21.4. Executing PROC_INIT pass (extract init attributes).
+
+21.5. Executing PROC_ARST pass (detect async resets in processes).
+
+21.6. Executing PROC_ROM pass (convert switches to ROMs).
+Converted 0 switches.
+<suppressed ~39 debug messages>
+
+21.7. Executing PROC_MUX pass (convert decision trees to multiplexers).
+Creating decoders for process `\riscv_core.$proc$rtl/riscv_core.v:85$857'.
+     1/1: $1\wb_data[31:0]
+Creating decoders for process `\control_unit.$proc$rtl/control_unit.v:166$815'.
+     1/4: $4\next_state[2:0]
+     2/4: $3\next_state[2:0]
+     3/4: $2\next_state[2:0]
+     4/4: $1\next_state[2:0]
+Creating decoders for process `\control_unit.$proc$rtl/control_unit.v:160$814'.
+     1/1: $0\state[2:0]
+Creating decoders for process `\control_unit.$proc$rtl/control_unit.v:149$809'.
+     1/4: $4\wb_src_sel[2:0]
+     2/4: $3\wb_src_sel[2:0]
+     3/4: $2\wb_src_sel[2:0]
+     4/4: $1\wb_src_sel[2:0]
+Creating decoders for process `\control_unit.$proc$rtl/control_unit.v:109$792'.
+     1/5: $5\alu_op[3:0]
+     2/5: $4\alu_op[3:0]
+     3/5: $3\alu_op[3:0]
+     4/5: $2\alu_op[3:0]
+     5/5: $1\alu_op[3:0]
+Creating decoders for process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+     1/25: $2$memwr$\mem$rtl/dmem.v:57$868_EN[31:0]$907
+     2/25: $2$memwr$\mem$rtl/dmem.v:57$868_DATA[31:0]$906
+     3/25: $2$memwr$\mem$rtl/dmem.v:57$868_ADDR[10:0]$905
+     4/25: $2$memwr$\mem$rtl/dmem.v:56$867_EN[31:0]$904
+     5/25: $2$memwr$\mem$rtl/dmem.v:56$867_DATA[31:0]$903
+     6/25: $2$memwr$\mem$rtl/dmem.v:56$867_ADDR[10:0]$902
+     7/25: $2$memwr$\mem$rtl/dmem.v:55$866_EN[31:0]$901
+     8/25: $2$memwr$\mem$rtl/dmem.v:55$866_DATA[31:0]$900
+     9/25: $2$memwr$\mem$rtl/dmem.v:55$866_ADDR[10:0]$899
+    10/25: $2$memwr$\mem$rtl/dmem.v:54$865_EN[31:0]$898
+    11/25: $2$memwr$\mem$rtl/dmem.v:54$865_DATA[31:0]$897
+    12/25: $2$memwr$\mem$rtl/dmem.v:54$865_ADDR[10:0]$896
+    13/25: $1$memwr$\mem$rtl/dmem.v:57$868_EN[31:0]$895
+    14/25: $1$memwr$\mem$rtl/dmem.v:57$868_DATA[31:0]$894
+    15/25: $1$memwr$\mem$rtl/dmem.v:57$868_ADDR[10:0]$893
+    16/25: $1$memwr$\mem$rtl/dmem.v:56$867_EN[31:0]$892
+    17/25: $1$memwr$\mem$rtl/dmem.v:56$867_DATA[31:0]$891
+    18/25: $1$memwr$\mem$rtl/dmem.v:56$867_ADDR[10:0]$890
+    19/25: $1$memwr$\mem$rtl/dmem.v:55$866_EN[31:0]$889
+    20/25: $1$memwr$\mem$rtl/dmem.v:55$866_DATA[31:0]$888
+    21/25: $1$memwr$\mem$rtl/dmem.v:55$866_ADDR[10:0]$887
+    22/25: $1$memwr$\mem$rtl/dmem.v:54$865_EN[31:0]$886
+    23/25: $1$memwr$\mem$rtl/dmem.v:54$865_DATA[31:0]$885
+    24/25: $1$memwr$\mem$rtl/dmem.v:54$865_ADDR[10:0]$884
+    25/25: $0\data_o[31:0]
+Creating decoders for process `$paramod$0026a9eace19d1729ea2065fd60de662c508934f\imem.$proc$rtl/imem.v:55$859'.
+Creating decoders for process `\lsu.$proc$rtl/lsu.v:58$631'.
+     1/3: $3\core_data_i[31:0]
+     2/3: $2\core_data_i[31:0]
+     3/3: $1\core_data_i[31:0]
+Creating decoders for process `\lsu.$proc$rtl/lsu.v:28$629'.
+     1/10: $5\store_data_o[31:0]
+     2/10: $5\byte_write_o[3:0]
+     3/10: $4\store_data_o[31:0]
+     4/10: $4\byte_write_o[3:0]
+     5/10: $3\store_data_o[31:0]
+     6/10: $3\byte_write_o[3:0]
+     7/10: $2\store_data_o[31:0]
+     8/10: $2\byte_write_o[3:0]
+     9/10: $1\store_data_o[31:0]
+    10/10: $1\byte_write_o[3:0]
+Creating decoders for process `\crc_unit.$proc$rtl/crc_unit.v:82$398'.
+Creating decoders for process `\crc_unit.$proc$rtl/crc_unit.v:81$279'.
+Creating decoders for process `\crc_unit.$proc$rtl/crc_unit.v:80$216'.
+Creating decoders for process `\crc_unit.$proc$rtl/crc_unit.v:85$215'.
+     1/1: $1\result[31:0]
+Creating decoders for process `\multiplier.$proc$rtl/multiplier.v:37$148'.
+Creating decoders for process `\ir_reg.$proc$rtl/ir_reg.v:16$139'.
+     1/1: $0\ir[31:0]
+Creating decoders for process `\pc_reg.$proc$rtl/pc_reg.v:17$138'.
+     1/1: $0\pc[31:0]
+Creating decoders for process `\register_file.$proc$rtl/register_file.v:25$62'.
+     1/39: $2$memwr$\regs$rtl/register_file.v:29$55_EN[31:0]$137
+     2/39: $2$memwr$\regs$rtl/register_file.v:29$55_DATA[31:0]$136
+     3/39: $2$memwr$\regs$rtl/register_file.v:29$55_ADDR[4:0]$135
+     4/39: $1\i[31:0]
+     5/39: $1$memwr$\regs$rtl/register_file.v:27$54_EN[31:0]$129
+     6/39: $1$memwr$\regs$rtl/register_file.v:27$53_EN[31:0]$128
+     7/39: $1$memwr$\regs$rtl/register_file.v:27$52_EN[31:0]$127
+     8/39: $1$memwr$\regs$rtl/register_file.v:27$51_EN[31:0]$126
+     9/39: $1$memwr$\regs$rtl/register_file.v:27$50_EN[31:0]$125
+    10/39: $1$memwr$\regs$rtl/register_file.v:27$49_EN[31:0]$124
+    11/39: $1$memwr$\regs$rtl/register_file.v:27$48_EN[31:0]$123
+    12/39: $1$memwr$\regs$rtl/register_file.v:27$47_EN[31:0]$122
+    13/39: $1$memwr$\regs$rtl/register_file.v:27$46_EN[31:0]$121
+    14/39: $1$memwr$\regs$rtl/register_file.v:27$45_EN[31:0]$120
+    15/39: $1$memwr$\regs$rtl/register_file.v:27$44_EN[31:0]$119
+    16/39: $1$memwr$\regs$rtl/register_file.v:27$43_EN[31:0]$118
+    17/39: $1$memwr$\regs$rtl/register_file.v:27$42_EN[31:0]$117
+    18/39: $1$memwr$\regs$rtl/register_file.v:27$41_EN[31:0]$116
+    19/39: $1$memwr$\regs$rtl/register_file.v:27$40_EN[31:0]$115
+    20/39: $1$memwr$\regs$rtl/register_file.v:27$39_EN[31:0]$114
+    21/39: $1$memwr$\regs$rtl/register_file.v:27$38_EN[31:0]$113
+    22/39: $1$memwr$\regs$rtl/register_file.v:27$37_EN[31:0]$112
+    23/39: $1$memwr$\regs$rtl/register_file.v:27$36_EN[31:0]$111
+    24/39: $1$memwr$\regs$rtl/register_file.v:27$35_EN[31:0]$110
+    25/39: $1$memwr$\regs$rtl/register_file.v:27$34_EN[31:0]$109
+    26/39: $1$memwr$\regs$rtl/register_file.v:27$33_EN[31:0]$108
+    27/39: $1$memwr$\regs$rtl/register_file.v:27$32_EN[31:0]$107
+    28/39: $1$memwr$\regs$rtl/register_file.v:27$31_EN[31:0]$106
+    29/39: $1$memwr$\regs$rtl/register_file.v:27$30_EN[31:0]$105
+    30/39: $1$memwr$\regs$rtl/register_file.v:27$29_EN[31:0]$104
+    31/39: $1$memwr$\regs$rtl/register_file.v:27$28_EN[31:0]$103
+    32/39: $1$memwr$\regs$rtl/register_file.v:27$27_EN[31:0]$102
+    33/39: $1$memwr$\regs$rtl/register_file.v:27$26_EN[31:0]$101
+    34/39: $1$memwr$\regs$rtl/register_file.v:27$25_EN[31:0]$100
+    35/39: $1$memwr$\regs$rtl/register_file.v:27$24_EN[31:0]$99
+    36/39: $1$memwr$\regs$rtl/register_file.v:27$23_EN[31:0]$98
+    37/39: $1$memwr$\regs$rtl/register_file.v:29$55_EN[31:0]$132
+    38/39: $1$memwr$\regs$rtl/register_file.v:29$55_DATA[31:0]$131
+    39/39: $1$memwr$\regs$rtl/register_file.v:29$55_ADDR[4:0]$130
+Creating decoders for process `\immediate_generator.$proc$rtl/immediate_generator.v:21$21'.
+     1/1: $1\imm[31:0]
+Creating decoders for process `\branch_comparator.$proc$rtl/branch_comparator.v:11$14'.
+     1/1: $1\branch_taken[0:0]
+Creating decoders for process `\alu.$proc$rtl/alu.v:26$1'.
+     1/1: $1\result[31:0]
+
+21.8. Executing PROC_DLATCH pass (convert process syncs to latches).
+No latch inferred for signal `\riscv_core.\wb_data' from process `\riscv_core.$proc$rtl/riscv_core.v:85$857'.
+No latch inferred for signal `\control_unit.\next_state' from process `\control_unit.$proc$rtl/control_unit.v:166$815'.
+No latch inferred for signal `\control_unit.\wb_src_sel' from process `\control_unit.$proc$rtl/control_unit.v:149$809'.
+No latch inferred for signal `\control_unit.\alu_op' from process `\control_unit.$proc$rtl/control_unit.v:109$792'.
+No latch inferred for signal `$paramod$0026a9eace19d1729ea2065fd60de662c508934f\imem.\data_o' from process `$paramod$0026a9eace19d1729ea2065fd60de662c508934f\imem.$proc$rtl/imem.v:55$859'.
+No latch inferred for signal `\lsu.\core_data_i' from process `\lsu.$proc$rtl/lsu.v:58$631'.
+No latch inferred for signal `\lsu.\byte_write_o' from process `\lsu.$proc$rtl/lsu.v:28$629'.
+No latch inferred for signal `\lsu.\store_data_o' from process `\lsu.$proc$rtl/lsu.v:28$629'.
+No latch inferred for signal `\crc_unit.\crc16_w$func$rtl/crc_unit.v:82$155.$result' from process `\crc_unit.$proc$rtl/crc_unit.v:82$398'.
+No latch inferred for signal `\crc_unit.\crc16_h$func$rtl/crc_unit.v:81$154.$result' from process `\crc_unit.$proc$rtl/crc_unit.v:81$279'.
+No latch inferred for signal `\crc_unit.\crc16_b$func$rtl/crc_unit.v:80$153.$result' from process `\crc_unit.$proc$rtl/crc_unit.v:80$216'.
+No latch inferred for signal `\crc_unit.\result' from process `\crc_unit.$proc$rtl/crc_unit.v:85$215'.
+No latch inferred for signal `\multiplier.\result' from process `\multiplier.$proc$rtl/multiplier.v:37$148'.
+No latch inferred for signal `\immediate_generator.\imm' from process `\immediate_generator.$proc$rtl/immediate_generator.v:21$21'.
+No latch inferred for signal `\branch_comparator.\branch_taken' from process `\branch_comparator.$proc$rtl/branch_comparator.v:11$14'.
+No latch inferred for signal `\alu.\result' from process `\alu.$proc$rtl/alu.v:26$1'.
+
+21.9. Executing PROC_DFF pass (convert process syncs to FFs).
+Creating register for signal `\control_unit.\state' using process `\control_unit.$proc$rtl/control_unit.v:160$814'.
+  created $dff cell `$procdff$1420' with positive edge clock.
+Creating register for signal `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.\data_o' using process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+  created $dff cell `$procdff$1421' with positive edge clock.
+Creating register for signal `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$memwr$\mem$rtl/dmem.v:54$865_ADDR' using process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+  created $dff cell `$procdff$1422' with positive edge clock.
+Creating register for signal `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$memwr$\mem$rtl/dmem.v:54$865_DATA' using process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+  created $dff cell `$procdff$1423' with positive edge clock.
+Creating register for signal `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$memwr$\mem$rtl/dmem.v:54$865_EN' using process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+  created $dff cell `$procdff$1424' with positive edge clock.
+Creating register for signal `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$memwr$\mem$rtl/dmem.v:55$866_ADDR' using process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+  created $dff cell `$procdff$1425' with positive edge clock.
+Creating register for signal `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$memwr$\mem$rtl/dmem.v:55$866_DATA' using process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+  created $dff cell `$procdff$1426' with positive edge clock.
+Creating register for signal `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$memwr$\mem$rtl/dmem.v:55$866_EN' using process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+  created $dff cell `$procdff$1427' with positive edge clock.
+Creating register for signal `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$memwr$\mem$rtl/dmem.v:56$867_ADDR' using process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+  created $dff cell `$procdff$1428' with positive edge clock.
+Creating register for signal `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$memwr$\mem$rtl/dmem.v:56$867_DATA' using process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+  created $dff cell `$procdff$1429' with positive edge clock.
+Creating register for signal `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$memwr$\mem$rtl/dmem.v:56$867_EN' using process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+  created $dff cell `$procdff$1430' with positive edge clock.
+Creating register for signal `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$memwr$\mem$rtl/dmem.v:57$868_ADDR' using process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+  created $dff cell `$procdff$1431' with positive edge clock.
+Creating register for signal `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$memwr$\mem$rtl/dmem.v:57$868_DATA' using process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+  created $dff cell `$procdff$1432' with positive edge clock.
+Creating register for signal `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$memwr$\mem$rtl/dmem.v:57$868_EN' using process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+  created $dff cell `$procdff$1433' with positive edge clock.
+Creating register for signal `\ir_reg.\ir' using process `\ir_reg.$proc$rtl/ir_reg.v:16$139'.
+  created $dff cell `$procdff$1434' with positive edge clock.
+Creating register for signal `\pc_reg.\pc' using process `\pc_reg.$proc$rtl/pc_reg.v:17$138'.
+  created $dff cell `$procdff$1435' with positive edge clock.
+Creating register for signal `\register_file.\i' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1436' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$23_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1437' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$24_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1438' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$25_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1439' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$26_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1440' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$27_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1441' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$28_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1442' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$29_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1443' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$30_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1444' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$31_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1445' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$32_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1446' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$33_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1447' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$34_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1448' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$35_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1449' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$36_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1450' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$37_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1451' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$38_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1452' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$39_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1453' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$40_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1454' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$41_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1455' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$42_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1456' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$43_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1457' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$44_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1458' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$45_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1459' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$46_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1460' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$47_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1461' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$48_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1462' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$49_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1463' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$50_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1464' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$51_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1465' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$52_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1466' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$53_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1467' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:27$54_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1468' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:29$55_ADDR' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1469' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:29$55_DATA' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1470' with positive edge clock.
+Creating register for signal `\register_file.$memwr$\regs$rtl/register_file.v:29$55_EN' using process `\register_file.$proc$rtl/register_file.v:25$62'.
+  created $dff cell `$procdff$1471' with positive edge clock.
+
+21.10. Executing PROC_MEMWR pass (convert process memory writes to cells).
+
+21.11. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Found and cleaned up 1 empty switch in `\riscv_core.$proc$rtl/riscv_core.v:85$857'.
+Removing empty process `riscv_core.$proc$rtl/riscv_core.v:85$857'.
+Found and cleaned up 4 empty switches in `\control_unit.$proc$rtl/control_unit.v:166$815'.
+Removing empty process `control_unit.$proc$rtl/control_unit.v:166$815'.
+Found and cleaned up 1 empty switch in `\control_unit.$proc$rtl/control_unit.v:160$814'.
+Removing empty process `control_unit.$proc$rtl/control_unit.v:160$814'.
+Found and cleaned up 4 empty switches in `\control_unit.$proc$rtl/control_unit.v:149$809'.
+Removing empty process `control_unit.$proc$rtl/control_unit.v:149$809'.
+Found and cleaned up 5 empty switches in `\control_unit.$proc$rtl/control_unit.v:109$792'.
+Removing empty process `control_unit.$proc$rtl/control_unit.v:109$792'.
+Found and cleaned up 6 empty switches in `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+Removing empty process `$paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.$proc$rtl/dmem.v:52$870'.
+Removing empty process `$paramod$0026a9eace19d1729ea2065fd60de662c508934f\imem.$proc$rtl/imem.v:55$859'.
+Found and cleaned up 3 empty switches in `\lsu.$proc$rtl/lsu.v:58$631'.
+Removing empty process `lsu.$proc$rtl/lsu.v:58$631'.
+Found and cleaned up 5 empty switches in `\lsu.$proc$rtl/lsu.v:28$629'.
+Removing empty process `lsu.$proc$rtl/lsu.v:28$629'.
+Removing empty process `crc_unit.$proc$rtl/crc_unit.v:82$398'.
+Removing empty process `crc_unit.$proc$rtl/crc_unit.v:81$279'.
+Removing empty process `crc_unit.$proc$rtl/crc_unit.v:80$216'.
+Found and cleaned up 1 empty switch in `\crc_unit.$proc$rtl/crc_unit.v:85$215'.
+Removing empty process `crc_unit.$proc$rtl/crc_unit.v:85$215'.
+Removing empty process `multiplier.$proc$rtl/multiplier.v:37$148'.
+Found and cleaned up 2 empty switches in `\ir_reg.$proc$rtl/ir_reg.v:16$139'.
+Removing empty process `ir_reg.$proc$rtl/ir_reg.v:16$139'.
+Found and cleaned up 2 empty switches in `\pc_reg.$proc$rtl/pc_reg.v:17$138'.
+Removing empty process `pc_reg.$proc$rtl/pc_reg.v:17$138'.
+Found and cleaned up 2 empty switches in `\register_file.$proc$rtl/register_file.v:25$62'.
+Removing empty process `register_file.$proc$rtl/register_file.v:25$62'.
+Found and cleaned up 1 empty switch in `\immediate_generator.$proc$rtl/immediate_generator.v:21$21'.
+Removing empty process `immediate_generator.$proc$rtl/immediate_generator.v:21$21'.
+Found and cleaned up 1 empty switch in `\branch_comparator.$proc$rtl/branch_comparator.v:11$14'.
+Removing empty process `branch_comparator.$proc$rtl/branch_comparator.v:11$14'.
+Found and cleaned up 1 empty switch in `\alu.$proc$rtl/alu.v:26$1'.
+Removing empty process `alu.$proc$rtl/alu.v:26$1'.
+Cleaned up 39 empty switches.
+
+21.12. Executing OPT_EXPR pass (perform const folding).
+Optimizing module top.
+Optimizing module riscv_core.
+Optimizing module control_unit.
+<suppressed ~11 debug messages>
+Optimizing module address_decoder.
+Optimizing module $paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000.
+Optimizing module $paramod$0026a9eace19d1729ea2065fd60de662c508934f\imem.
+Optimizing module lsu.
+<suppressed ~14 debug messages>
+Optimizing module crc_unit.
+<suppressed ~1 debug messages>
+Optimizing module multiplier.
+<suppressed ~2 debug messages>
+Optimizing module pc_incrementer.
+Optimizing module ir_reg.
+Optimizing module pc_reg.
+Optimizing module register_file.
+<suppressed ~3 debug messages>
+Optimizing module immediate_generator.
+Optimizing module branch_comparator.
+<suppressed ~1 debug messages>
+Optimizing module alu.
+<suppressed ~1 debug messages>
+
+22. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \top..
+Finding unused cells or wires in module \riscv_core..
+Finding unused cells or wires in module \control_unit..
+Finding unused cells or wires in module \address_decoder..
+Finding unused cells or wires in module $paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000..
+Finding unused cells or wires in module $paramod$0026a9eace19d1729ea2065fd60de662c508934f\imem..
+Finding unused cells or wires in module \lsu..
+Finding unused cells or wires in module \crc_unit..
+Finding unused cells or wires in module \multiplier..
+Finding unused cells or wires in module \pc_incrementer..
+Finding unused cells or wires in module \ir_reg..
+Finding unused cells or wires in module \pc_reg..
+Finding unused cells or wires in module \register_file..
+Finding unused cells or wires in module \immediate_generator..
+Finding unused cells or wires in module \branch_comparator..
+Finding unused cells or wires in module \alu..
+Removed 51 unused cells and 703 unused wires.
+<suppressed ~69 debug messages>
+
+23. Executing CHECK pass (checking for obvious problems).
+Checking module top...
+Checking module riscv_core...
+Checking module control_unit...
+Checking module address_decoder...
+Checking module $paramod\dmem\DMEM_WORDS=s32'00000000000000000000100000000000...
+Checking module $paramod$0026a9eace19d1729ea2065fd60de662c508934f\imem...
+Checking module lsu...
+Checking module crc_unit...
+Checking module multiplier...
+Checking module pc_incrementer...
+Checking module ir_reg...
+Checking module pc_reg...
+Checking module register_file...
+Checking module immediate_generator...
+Checking module branch_comparator...
+Checking module alu...
+Found and reported 0 problems.
+
+End of script. Logfile hash: 6bdeb409cf
+Yosys 0.68+136 (git sha1 c30457480-dirty, Release, GNU /usr/bin/x86_64-w64-mingw32-g++ 15.2.1)
+Time spent: 5% 17x read_verilog (0 sec), 5% 3x chparam (0 sec), ...

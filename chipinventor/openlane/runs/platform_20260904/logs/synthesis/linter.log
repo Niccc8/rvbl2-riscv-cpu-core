@@ -1,0 +1,48 @@
+%Warning-PINMISSING: /chipinventor/OpenLane/designs/spm/src/hdl.v:1109:14: Cell has missing pin: 'state_o'
+ 1109 | control_unit blk3658_25 (
+      |              ^~~~~~~~~~
+                     ... For warning description see https://verilator.org/warn/PINMISSING?v=5.018
+                     ... Use "/* verilator lint_off PINMISSING */" and lint_on around source to disable this message.
+%Warning-PINMISSING: /chipinventor/OpenLane/designs/spm/src/hdl.v:1109:14: Cell has missing pin: 'sys_event_o'
+ 1109 | control_unit blk3658_25 (
+      |              ^~~~~~~~~~
+%Warning-UNUSEDSIGNAL: /chipinventor/OpenLane/designs/spm/src/hdl.v:354:24: Bits of signal are not used: 'rs2_data'[31:16]
+                                                                          : ... note: In instance 'top.blk3659_17'
+  354 |     input  wire [31:0] rs2_data,  
+      |                        ^~~~~~~~
+%Warning-UNUSEDSIGNAL: /chipinventor/OpenLane/designs/spm/src/hdl.v:355:24: Bits of signal are not used: 'funct3'[2]
+                                                                          : ... note: In instance 'top.blk3659_17'
+  355 |     input  wire [2:0]  funct3,    
+      |                        ^~~~~~
+%Warning-UNUSEDSIGNAL: /chipinventor/OpenLane/designs/spm/src/hdl.v:519:24: Bits of signal are not used: 'address_i'[31:22,1:0]
+                                                                          : ... note: In instance 'top.blk3661_26'
+  519 |     input  wire [31:0] address_i,     
+      |                        ^~~~~~~~~
+%Warning-UNUSEDSIGNAL: /chipinventor/OpenLane/designs/spm/src/hdl.v:594:24: Bits of signal are not used: 'ir'[31:25,14:12,6:0]
+                                                                          : ... note: In instance 'top.blk3663_9'
+  594 |     input  wire [31:0] ir,
+      |                        ^~
+%Warning-UNUSEDSIGNAL: /chipinventor/OpenLane/designs/spm/src/hdl.v:646:24: Bits of signal are not used: 'alu_result'[31:2]
+                                                                          : ... note: In instance 'top.blk3665_18'
+  646 |     input  wire [31:0] alu_result,      
+      |                        ^~~~~~~~~~
+%Warning-UNUSEDSIGNAL: /chipinventor/OpenLane/designs/spm/src/hdl.v:735:24: Bits of signal are not used: 'funct3'[2]
+                                                                          : ... note: In instance 'top.blk3666_16'
+  735 |     input  wire [2:0]  funct3,
+      |                        ^~~~~~
+%Warning-UNUSEDSIGNAL: /chipinventor/OpenLane/designs/spm/src/hdl.v:748:18: Bits of signal are not used: 'product_full'[127:64]
+                                                                          : ... note: In instance 'top.blk3666_16'
+  748 |     wire [127:0] product_full = a_ext * b_ext;
+      |                  ^~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: /chipinventor/OpenLane/designs/spm/src/hdl.v:812:24: Bits of signal are not used: 'pc_next'[1:0]
+                                                                          : ... note: In instance 'top.blk3671_24'
+  812 |     input  wire [31:0] pc_next,
+      |                        ^~~~~~~
+%Warning-UNUSEDSIGNAL: /chipinventor/OpenLane/designs/spm/src/hdl.v:453:24: Signal is not used: 'rst_i'
+                                                                          : ... note: In instance 'top.blk3660_7'
+  453 |     input  wire        rst_i,
+      |                        ^~~~~
+%Warning-UNUSEDSIGNAL: /chipinventor/OpenLane/designs/spm/src/hdl.v:454:24: Bits of signal are not used: 'address_i'[31:13,1:0]
+                                                                          : ... note: In instance 'top.blk3660_7'
+  454 |     input  wire [31:0] address_i,  
+      |                        ^~~~~~~~~

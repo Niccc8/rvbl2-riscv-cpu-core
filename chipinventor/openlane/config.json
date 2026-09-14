@@ -1,0 +1,19 @@
+{
+    "DESIGN_NAME": "top",
+    "VERILOG_FILES": "dir::src/*.v",
+
+    "CLOCK_PORT": "clk_i",
+    "CLOCK_PERIOD": 33,
+    "RUN_CTS": 1,
+
+    "FP_SIZING": "relative",
+    "FP_CORE_UTIL": 50,
+    "PL_TARGET_DENSITY": 0.60,
+    "PL_RANDOM_GLB_PLACEMENT": 0,
+
+    "FP_PDN_AUTO_ADJUST": 1,
+
+    "GRT_REPAIR_ANTENNAS": 1,
+    "RUN_HEURISTIC_DIODE_INSERTION": 0,
+    "DIODE_ON_PORTS": "none"
+}

@@ -1,0 +1,6 @@
+[WARNING]: PNR_SDC_FILE is not set. It is recommended to write a custom SDC file for the design. Defaulting to BASE_SDC_FILE
+[WARNING]: SIGNOFF_SDC_FILE is not set. It is recommended to write a custom SDC file for the design. Defaulting to BASE_SDC_FILE
+[WARNING]: 12 warnings found by linter
+[WARNING]: VSRC_LOC_FILES was not given a value, which may make the results of IR drop analysis inaccurate. If you are not integrating a top-level chip for manufacture, you may ignore this warning, otherwise, see the documentation for VSRC_LOC_FILES.
+[WARNING]: There are max slew violations in the design at the Typical corner. Please refer to 'OpenLane/designs/spm/runs/RUN_2026.09.04_06.40.41/reports/signoff/33-sta-rcx_nom/multi_corner_sta.checks.rpt'.
+[WARNING]: There are max fanout violations in the design at the Typical corner. Please refer to 'OpenLane/designs/spm/runs/RUN_2026.09.04_06.40.41/reports/signoff/33-sta-rcx_nom/multi_corner_sta.checks.rpt'.
