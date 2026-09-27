@@ -29,8 +29,9 @@ module tb_mock_imem;
 
     always #5 clk = ~clk;
 
-    // `top` is ci_top.v - the flat mirror of what the canvas generates.
-    top dut (.clk_i(clk), .rst_i(rst));
+    // `top` is ci_top.v - the mirror of the chip project the canvas generates.
+    // Pins unconnected except the UART line, which must idle high.
+    top dut (.clk_i(clk), .rst_i(rst), .rx_i(1'b1));
 
     task check(input [31:0] got, input [31:0] exp, input [8*48-1:0] name);
         begin
@@ -52,17 +53,17 @@ module tb_mock_imem;
         // is provably retiring the default NOPs rather than having stalled.
         repeat (200) @(posedge clk);
 
-        check(dut.u_rf.regs[5], 32'd10, "x5 = 10");
-        check(dut.u_rf.regs[6], 32'd5,  "x6 = 5");
-        check(dut.u_rf.regs[7], 32'd15, "x7 = x5 + x6");
+        check(dut.u_soc.u_rf.regs[5], 32'd10, "x5 = 10");
+        check(dut.u_soc.u_rf.regs[6], 32'd5,  "x6 = 5");
+        check(dut.u_soc.u_rf.regs[7], 32'd15, "x7 = x5 + x6");
 
         // The core must still be fetching, not parked or wedged: the PC has to
         // have advanced past the three real instructions into NOP territory.
-        if (dut.u_pc.pc > 32'h0040_0008) pass = pass + 1;
+        if (dut.u_soc.u_pc.pc > 32'h0040_0008) pass = pass + 1;
         else begin
             fail = fail + 1;
             $display("[FAIL] core did not advance past the mock program (pc=%08h)",
-                     dut.u_pc.pc);
+                     dut.u_soc.u_pc.pc);
         end
 
         $display("==== tb_mock_imem: %0d passed, %0d failed ====", pass, fail);

@@ -22,6 +22,20 @@ FW_HEX = os.path.join(ROOT, "firmware", "validation_firmware.hex")
 
 FW_BASE = 0x00400000
 
+# SUITE 4 enters each Stage 3 program at its ROM slot. The slots are defined by
+# gen_ci_stage3.PROGRAMS; the testbench's copies must agree, as must the
+# periph_regress image length and the done marker in its source.
+sys.path.insert(0, HERE)
+from gen_ci_stage3 import PROGRAMS as STAGE3_PROGRAMS  # noqa: E402
+STAGE3_TB_NAMES = {
+    "gpio_listing": "S3_GPIO_LISTING",
+    "gpio_fixed": "S3_GPIO_FIXED",
+    "echo_listing": "S3_ECHO_LISTING",
+    "echo_fixed": "S3_ECHO_FIXED",
+    "periph_regress": "S3_PERIPH_REGRESS",
+}
+STAGE3_DIR = os.path.join(ROOT, "firmware", "stage3")
+
 # Constants the testbench mirrors. IMEM_WORDS_NEEDED is not among them: the
 # testbench derives nothing from it, since the ROM is now inside the imem block.
 CHECKED = ["SUPP_BASE", "NUM_SIG_TESTS", "SIG_BASE_WORDS",
@@ -119,6 +133,24 @@ def main():
                         "the word before FW_PASS_LOOP holds %08x, expected "
                         "00000213 (addi x4, x0, 0)" % image[idx])
 
+    # ---- the Stage 3 program slots and periph_regress's layout --------------
+    for name, base in STAGE3_PROGRAMS:
+        tb_name = STAGE3_TB_NAMES[name]
+        if tb_name not in got:
+            problems.append("%s missing from tb_chipinventor.v" % tb_name)
+        elif norm(got[tb_name]) != base:
+            problems.append("%s: gen_ci_stage3.py places %s at 0x%08X, testbench says %s"
+                            % (tb_name, name, base, got[tb_name]))
+    with open(os.path.join(STAGE3_DIR, "periph_regress.hex")) as fh:
+        n_words = len([l for l in fh if l.strip()])
+    if norm(got.get("S3_PERIPH_WORDS", "")) != n_words:
+        problems.append("S3_PERIPH_WORDS: periph_regress.hex has %d words, testbench says %s"
+                        % (n_words, got.get("S3_PERIPH_WORDS")))
+    with open(os.path.join(STAGE3_DIR, "periph_regress.s")) as fh:
+        m = re.search(r"(?m)^\s*\.equ\s+DONE_MARK\s*,\s*(0x[0-9A-Fa-f]+)", fh.read())
+    if not m or norm(got.get("S3_DONE_MARK", "")) != int(m.group(1), 16):
+        problems.append("S3_DONE_MARK disagrees with periph_regress.s")
+
     if problems:
         for p in problems:
             print("FAIL: %s" % p, file=sys.stderr)
@@ -127,6 +159,8 @@ def main():
     print("OK   testbench constants match firmware/ci_prog_expected.vh (%d values)" % len(CHECKED))
     print("OK   official firmware anchors still point at the right instructions (%d)"
           % (len(FW_ANCHORS) + 1))
+    print("OK   Stage 3 slots, periph_regress length and done marker match (%d values)"
+          % (len(STAGE3_PROGRAMS) + 2))
 
 
 if __name__ == "__main__":

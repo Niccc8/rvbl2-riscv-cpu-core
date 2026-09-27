@@ -23,16 +23,27 @@
 //  SUITE 3  Reset stress - reset injected at forty different points in a
 //           running program, checking in-flight writes are actually aborted,
 //           then requiring both programs to still complete correctly.
+//  SUITE 4  Stage 3 peripherals - gpio, uart and gpio_bits on their own, then
+//           the Block Guide's GPIO and UART listings (verbatim and completed)
+//           and a 24-check register program, run by the core on the chip's
+//           own pins at the real 115200-bps divisor.
 //
-//  THE ROM HOLDS TWO PROGRAMS
-//  --------------------------
-//    word   0..258  official validation firmware   (0x00400000, fixed)
-//    word 259..511  gap, reads back 0
-//    word 512..994  supplementary coverage program (0x00400800)
+//  THE ROM HOLDS SEVEN PROGRAMS
+//  ----------------------------
+//    word    0..258   official validation firmware   (0x00400000, fixed)
+//    word  512..994   supplementary coverage program (0x00400800)
+//    word 1023        guard `j .` - a program that runs off its end parks here
+//    word 1024..1444  the five Stage 3 programs, one slot each (0x00401000..)
+//    everything else  reads back 0
 //
 //  The official firmware cannot be relocated - it derives its .bss base from
-//  the PC - so it owns the reset vector and 2B enters its program by pointing
-//  the PC at SUPP_BASE while the core is still in reset.
+//  the PC - so it owns the reset vector; every other program is entered by
+//  pointing the PC at its base while the core is still in reset.
+//
+//  TWO PROJECTS
+//  ------------
+//  `top` (the chip: pins, imem, gpio_bits) instantiates `rvbl2_soc` (the core,
+//  dmem and the peripherals), so the aliases below reach one level deeper.
 //
 //  DIFFERENCES FROM THE FILE-DRIVEN SUITE
 //  --------------------------------------
@@ -65,18 +76,38 @@
 // Platform instance names change on every export; re-run that script
 // and replace this block whenever the project is regenerated.
 `define DUT   dut
-`define CTRL  `DUT.u_ctrl        // FSM state and the firmware-completion event
-`define PC    `DUT.u_pc          // program counter
-`define IR    `DUT.u_ir          // instruction register
-`define RF    `DUT.u_rf          // the 32 general-purpose registers
-`define DMEM  `DUT.u_dmem        // the data memory array
+`define SOC   `DUT.u_soc          // the rvbl2_soc project, reused as IP
+`define CTRL  `SOC.u_ctrl         // FSM state and the firmware-completion event
+`define PC    `SOC.u_pc           // program counter
+`define IR    `SOC.u_ir           // instruction register
+`define RF    `SOC.u_rf           // the 32 general-purpose registers
+`define DMEM  `SOC.u_dmem         // the data memory array
+`define GPIO  `SOC.u_gpio         // PIN controller registers
+`define UART  `SOC.u_uart         // serial controller registers
 // <<< END GENERATED ALIASES
 
-// Reaching a DMEM word. `top` has no data pins (Block Guide 2.2), so every
-// memory check in this file goes through the array by hierarchical reference.
+// Reaching a DMEM word. The chip has no data-memory pins, so every memory
+// check in this file goes through the array by hierarchical reference.
 `define DMEM_WORD(idx) `DMEM.mem[idx]
 
 module testbench;
+
+// ---------------------------------------------------------------------------
+// PART: 0 runs every suite (as run_ci.sh does). ChipInventor's simulator stops
+// a run after a fixed wall-clock time, which the whole suite exceeds, so on
+// the platform it runs in four parts - set PART to 1, 2, 3, 4 in turn. Each
+// part prints its own verdict; parts 2-4 each end with the three pin and line
+// monitor checks, so the parts sum to the full count plus 6:
+//   1  SUITES 0-3: units, control FSM, official firmware, integration, reset
+//   2  SUITE 4.1-4.3 (gpio, uart, gpio_bits alone), then on the chip the pins,
+//      the GPIO listing and the 24-check register program
+//   3  on the chip: the echo listing verbatim, and completed at 0 % baud error
+//   4  on the chip: the completed echo at +2 % and -2 % baud error
+// ---------------------------------------------------------------------------
+parameter PART = 0;
+localparam N_PARTS = 4;
+localparam [8:0] RUN = PART == 1 ? 9'h01F : PART == 2 ? 9'h060 : PART == 3 ? 9'h080 :
+                       PART == 4 ? 9'h100 : 9'h1FF;
 
 // ---------------------------------------------------------------------------
 // Expected values produced alongside the supplementary firmware image.
@@ -127,12 +158,66 @@ localparam [31:0] FW_DM0 = 32'h12345678,
                   FW_DM5 = 32'h22222222,
                   FW_DM6 = 32'h33333333;
 
+// ---------------------------------------------------------------------------
+// The Stage 3 programs (SUITE 4), one ROM slot each above a guard word.
+// Mirrored from scripts/gen_ci_stage3.py; scripts/check_consistency.py fails
+// the run if they disagree. periph_regress stores (actual XOR expected) for
+// each of its checks from DMEM word 0, then S3_DONE_MARK after the last.
+// ---------------------------------------------------------------------------
+localparam [31:0] S3_GPIO_LISTING   = 32'h00401000;
+localparam [31:0] S3_GPIO_FIXED     = 32'h00401100;
+localparam [31:0] S3_ECHO_LISTING   = 32'h00401200;
+localparam [31:0] S3_ECHO_FIXED     = 32'h00401300;
+localparam [31:0] S3_PERIPH_REGRESS = 32'h00401400;
+localparam        S3_PERIPH_WORDS   = 165;
+localparam        S3_NUM_CHECKS     = 24;
+localparam [31:0] S3_DONE_MARK      = 32'h600DC0DE;
+
 reg clk = 0;
 reg rst = 1;
 
-top dut (.clk_i(clk), .rst_i(rst));
+// The chip's Stage 3 pins. Every GPIO pin has a weak pull to sc_pull[n] (0
+// unless a test says otherwise), so an undriven pin reads a known level, never
+// z. The testbench drives pin n strongly only while sc_tb_oe[n] is set. The
+// UART line idles high, and SUITE 4 can loop tx_o back to rx_i.
+//
+// The pull is switchable because a fixed one hides a C/D swap on an Inout Pin:
+// with a pull-down, "drives 0" and "released" both read 0. Pulling each way in
+// turn is what tells them apart (SUITE 4.4, Figure 1 on every pin).
+wire [7:0] sc_pins;
+reg  [7:0] sc_tb_oe = 8'h00, sc_tb_val = 8'h00, sc_pull = 8'h00;
+reg        sc_rx_drv = 1'b1, sc_loopback = 1'b0;
+wire       sc_tx;
+wire       sc_rx = sc_loopback ? sc_tx : sc_rx_drv;
 
-always #5 clk = ~clk;
+top dut (
+    .clk_i(clk), .rst_i(rst),
+    .pins_io_0(sc_pins[0]), .pins_io_1(sc_pins[1]), .pins_io_2(sc_pins[2]),
+    .pins_io_3(sc_pins[3]), .pins_io_4(sc_pins[4]), .pins_io_5(sc_pins[5]),
+    .pins_io_6(sc_pins[6]), .pins_io_7(sc_pins[7]),
+    .tx_o(sc_tx), .rx_i(sc_rx));
+
+genvar sc_g;
+generate
+    for (sc_g = 0; sc_g < 8; sc_g = sc_g + 1) begin : g_sc_pin
+        assign sc_pins[sc_g] = sc_tb_oe[sc_g] ? sc_tb_val[sc_g] : 1'bz;
+        assign (weak0, weak1) sc_pins[sc_g] = sc_pull[sc_g];
+    end
+endgenerate
+
+// The standalone copies of blocks (U_RF, U_DMEM and U_CTRL for SUITES 0 and
+// 1; U_GPIO, U_UART and U_UART64 for SUITE 4.1-4.2) are clocked only while
+// their suites run: clocked for the whole run they cost nearly half the
+// simulation time, which is what the platform's time window has to spend on
+// the chip. Each clock is set in the same statement sequence as clk, so its
+// edges wake processes in the same instant as clk's - no new race.
+reg u_clk_en = 1'b1, s4_clk_en = 1'b0;
+reg u_clk = 0, s4_clk = 0;
+always #5 begin
+    clk = ~clk;
+    if (u_clk_en)  u_clk  = clk;
+    if (s4_clk_en) s4_clk = clk;
+end
 
 // ---- FSM states (control_unit's own encoding) ------------------------------
 localparam [2:0] S_RESET     = 3'd0,
@@ -367,24 +452,25 @@ lsu U_LSU (
     .mem_data_o(l_memrd), .core_data_i(l_load),
     .byte_write_o(l_bw), .store_data_o(l_sdata));
 
-reg  [31:0] d_addr, d_imemrd, d_dmemrd;
+reg  [31:0] d_addr, d_imemrd, d_dmemrd, d_perrd;
 reg         d_we, d_oe;
 reg  [3:0]  d_bw;
-wire        d_ioe, d_dwe, d_doe;
-wire [3:0]  d_dbw;
-wire [31:0] d_data;
+wire        d_ioe, d_dwe, d_doe, d_pwe;
+wire [3:0]  d_dbw, d_pbw;
+wire [31:0] d_data, d_chain;
 address_decoder U_DEC (
     .address_i(d_addr), .we_i(d_we), .oe_i(d_oe), .bw_i(d_bw),
-    .imem_rdata(d_imemrd), .dmem_rdata(d_dmemrd),
+    .imem_rdata(d_imemrd), .dmem_rdata(d_dmemrd), .periph_rdata_i(d_perrd),
     .imem_oe_o(d_ioe), .dmem_we_o(d_dwe), .dmem_oe_o(d_doe),
-    .dmem_bw_o(d_dbw), .data_o(d_data));
+    .dmem_bw_o(d_dbw), .periph_we_o(d_pwe), .periph_bw_o(d_pbw),
+    .periph_chain_o(d_chain), .data_o(d_data));
 
 reg         r_rst, r_we;
 reg  [4:0]  r_a1, r_a2, r_ad;
 reg  [31:0] r_wd;
 wire [31:0] r_d1, r_d2;
 register_file U_RF (
-    .clk_i(clk), .rst_i(r_rst),
+    .clk_i(u_clk), .rst_i(r_rst),
     .rs1_addr(r_a1), .rs2_addr(r_a2), .rd_addr(r_ad),
     .rd_data(r_wd), .reg_write(r_we), .rs1_data(r_d1), .rs2_data(r_d2));
 
@@ -401,7 +487,7 @@ reg         m_we, m_oe;
 reg  [3:0]  m_bw;
 wire [31:0] m_rd;
 dmem #(.DMEM_WORDS(MWORDS)) U_DMEM (
-    .clk_i(clk), .rst_i(1'b0), .address_i(m_addr), .we_i(m_we), .oe_i(m_oe),
+    .clk_i(u_clk), .rst_i(1'b0), .address_i(m_addr), .we_i(m_we), .oe_i(m_oe),
     .bw_i(m_bw), .data_i(m_wd), .data_o(m_rd));
 
 reg         g_s;
@@ -429,7 +515,7 @@ wire [3:0]  c_aluop;
 wire        c_asel, c_bsel, c_addrsel, c_pcsel;
 wire        c_pcwrite, c_regwrite, c_we, c_oe, c_irwrite, c_sysevent, c_store;
 control_unit U_CTRL (
-    .clk_i(clk), .rst_i(c_rst), .ir(c_ir), .branch_taken(c_bt),
+    .clk_i(u_clk), .rst_i(c_rst), .ir(c_ir), .branch_taken(c_bt),
     .state_o(c_state),
     .alu_src_a_sel(c_asel), .alu_src_b_sel(c_bsel), .alu_op(c_aluop),
     .addr_src_sel(c_addrsel), .wb_src_sel(c_wbsel), .pc_src_sel(c_pcsel),
@@ -842,9 +928,25 @@ task check_dec(input exp_ioe, input exp_dwe, input exp_doe, input [3:0] exp_bw,
     end
 endtask
 
-task suite_dec;
+// Peripheral strobes: routed only inside 0xF0000000-0xFFFFFFFF, and the
+// chain head is a constant zero.
+task check_dec_periph(input exp_pwe, input [3:0] exp_pbw, input [8*72-1:0] name);
     begin
-        d_imemrd = 32'hAAAA_AAAA; d_dmemrd = 32'hBBBB_BBBB;
+        if (d_pwe===exp_pwe && d_pbw===exp_pbw && d_chain===32'b0) pass = pass + 1;
+        else begin
+            note_fail(name);
+            if (fail_budget >= 0)
+                $display("        periph_we=%b(%b) periph_bw=%b(%b) chain=%h(0)",
+                    d_pwe, exp_pwe, d_pbw, exp_pbw, d_chain);
+        end
+    end
+endtask
+
+task suite_dec;
+    integer sweep_bad;
+    reg [31:0] r;
+    begin
+        d_imemrd = 32'hAAAA_AAAA; d_dmemrd = 32'hBBBB_BBBB; d_perrd = 32'hCCCC_CCCC;
 
         d_we=0; d_oe=1; d_bw=4'b0000;
         d_addr = IMEM_BASE;     #1; check_dec(1,0,0,4'b0000, 32'hAAAA_AAAA, "IMEM base");
@@ -859,6 +961,7 @@ task suite_dec;
 
         d_we=1; d_oe=0; d_bw=4'b1111;
         d_addr = 32'h1001_0010; #1; check_dec(0,1,0,4'b1111, 32'hBBBB_BBBB, "DMEM write in range");
+        check_dec_periph(0, 4'b0000, "DMEM write does not strobe the peripherals");
 
         // An out-of-range store must assert exactly zero write strobes. A
         // decoder missing the explicit dmem_sel qualifier would still raise
@@ -866,13 +969,41 @@ task suite_dec;
         // decode landed on.
         d_addr = 32'hDEAD_0000; #1;
         check_dec(0,0,0,4'b0000, 32'b0, "out-of-range store asserts no dmem_we/bw");
+        check_dec_periph(0, 4'b0000, "out-of-range store asserts no periph_we/bw");
         d_addr = 32'h0000_0000; #1;
         check_dec(0,0,0,4'b0000, 32'b0, "store at address 0 asserts no dmem_we/bw");
 
+        // (Phase 2 used 0xFFFFFFFF here; that is now the peripheral region.)
         d_we=0; d_oe=1; d_bw=4'b0000;
-        d_addr = 32'hFFFF_FFFF; #1;
+        d_addr = 32'hE000_0000; #1;
         check_dec(0,0,0,4'b0000, 32'b0, "out-of-range read -> 0, no oe asserted");
-        $display("  [S0.6] Address decoder: window boundaries, WE gating, aliasing prevention");
+
+        // ---- Stage 3: the peripheral region 0xF0000000-0xFFFFFFFF ----------
+        d_addr = 32'hEFFF_FFFF; #1; check_dec(0,0,0,4'b0000, 32'b0, "just below peripheral region -> unmapped");
+        d_addr = 32'hF000_0000; #1; check_dec(0,0,0,4'b0000, 32'hCCCC_CCCC, "GPIO base -> peripheral chain data");
+        d_addr = 32'hF100_0008; #1; check_dec(0,0,0,4'b0000, 32'hCCCC_CCCC, "UART CONTROL -> peripheral chain data");
+        d_addr = 32'hFFFF_FFFF; #1; check_dec(0,0,0,4'b0000, 32'hCCCC_CCCC, "region top -> peripheral chain data");
+        d_we=1; d_oe=0; d_bw=4'b0001;
+        d_addr = 32'hF100_0008; #1;
+        check_dec(0,0,0,4'b0000, 32'hCCCC_CCCC, "peripheral store does not strobe DMEM");
+        check_dec_periph(1, 4'b0001, "peripheral store: we/bw routed through");
+        d_addr = 32'hEFFF_FFFC; d_bw=4'b1111; #1;
+        check_dec_periph(0, 4'b0000, "store just below the region: no peripheral strobe");
+
+        // Outside 0xF..., the peripheral strobes never fire and peripheral
+        // data never leaks onto data_o.
+        d_we=1; d_oe=1; d_bw=4'b1111; sweep_bad = 0;
+        for (i = 0; i < 500; i = i + 1) begin
+            r = $random;
+            d_addr = (r[31:28] == 4'hF) ? {4'hE, r[27:0]} : r;
+            #1;
+            if (d_pwe !== 1'b0 || d_pbw !== 4'b0000 || d_data === 32'hCCCC_CCCC)
+                sweep_bad = sweep_bad + 1;
+        end
+        if (sweep_bad == 0) pass = pass + 1;
+        else note_fail("peripheral strobe or data outside the region (500-address sweep)");
+        d_we=0; d_oe=0;
+        $display("  [S0.6] Address decoder: window boundaries, WE gating, aliasing prevention, peripheral region");
     end
 endtask
 
@@ -1122,14 +1253,25 @@ task suite_imem;
         // oe_i low must read a defined 0, not x.
         p_oe = 0; p_addr = IMEM_BASE; #1; check_imem(32'b0, "oe=0 reads defined 0");
 
-        // Past the end of both images but still inside the 4MB architectural
-        // window: must read 0, never alias back into a real word.
         p_oe = 1;
-        p_addr = SUPP_BASE + 483*4;       #1; check_imem(32'b0, "one word past the ROM -> 0, no aliasing");
-        p_addr = SUPP_BASE + 483*4 + 128; #1; check_imem(32'b0, "further past the ROM -> 0");
+        p_addr = SUPP_BASE + 483*4; #1; check_imem(32'b0, "one word past the supplementary image -> 0");
+
+        // ---- the guard and the Stage 3 programs ----------------------------
+        p_addr = S3_GPIO_LISTING - 4; #1; check_imem(32'h0000006f, "guard below the Stage 3 programs: j .");
+        p_addr = S3_GPIO_LISTING;     #1; check_imem(32'hf0000437, "gpio_listing word 0 (lui s0,0xF0000)");
+        p_addr = S3_GPIO_FIXED;       #1; check_imem(32'hf0000437, "gpio_fixed word 0 (lui s0,0xF0000)");
+        p_addr = S3_ECHO_LISTING;     #1; check_imem(32'hf1000437, "echo_listing word 0 (lui s0,0xF1000)");
+        p_addr = S3_ECHO_FIXED;       #1; check_imem(32'hf1000437, "echo_fixed word 0 (lui s0,0xF1000)");
+        p_addr = S3_PERIPH_REGRESS + (S3_PERIPH_WORDS-1)*4; #1;
+        check_imem(32'h0000006f, "periph_regress last word: j . (done)");
+
+        // Past the end of every image but still inside the 4MB architectural
+        // window: must read 0, never alias back into a real word.
+        p_addr = S3_PERIPH_REGRESS + S3_PERIPH_WORDS*4;       #1; check_imem(32'b0, "one word past the ROM -> 0, no aliasing");
+        p_addr = S3_PERIPH_REGRESS + S3_PERIPH_WORDS*4 + 128; #1; check_imem(32'b0, "further past the ROM -> 0");
         p_addr = IMEM_BASE + 32'h003F_FFFC;  #1; check_imem(32'b0, "top of 4MB window -> 0");
         p_oe = 0;
-        $display("  [S0.9] IMEM: both images placed, gap reads 0, oe gating, out-of-image reads");
+        $display("  [S0.9] IMEM: all seven images placed, guard, gaps read 0, oe gating, out-of-image reads");
     end
 endtask
 
@@ -2041,6 +2183,752 @@ task suite_reset_recovery;
 endtask
 
 // ===========================================================================
+//  SUITE 4 - Stage 3 peripherals
+//
+//   4.1  gpio on its own, exactly as placed on the canvas (8 pins, slot 0):
+//        reset values, read-back, reserved bits, full decode, read chain,
+//        byte lanes, direction, the 2-cycle synchroniser, DATAIN gating
+//   4.2  uart on its own at 16 clocks/bit: frames bit-exact, receive at
+//        0..+-3 % baud error, +-3.5 % at 64 clocks/bit, back-to-back, full
+//        duplex, overrun, framing error, break, glitches, rx_i low from
+//        reset, TRANSMIT while busy, the RXDONE rules including a same-cycle
+//        set and clear, reset mid-frame
+//   4.3  gpio_bits: every C, D and pad bit lands on its own pin
+//   4.4  the chip itself, at the real divisor (30303030 Hz / 115200 = 263):
+//        the Block Guide GPIO listing verbatim (P1 stays low) and completed
+//        (P1 follows P0); the echo listing verbatim (receives, never
+//        transmits) and completed (a true echo, back-to-back at 0 and +-2 %);
+//        and periph_regress's 24 register checks with tx_o looped to rx_i
+//
+//  Three monitors watch the chip's pins for the whole run, every suite
+//  included: the testbench and the chip never drive the same pin, every pin
+//  shows exactly its enabled driver (Figure 1), and every frame on tx_o has a
+//  valid stop bit.
+// ===========================================================================
+localparam real CLK_NS = 10.0;
+
+localparam integer S3_NB            = 263;   // chip UART: clocks per bit
+
+localparam [31:0] GP_DATAOUT = 32'hF000_0000, GP_DATAIN = 32'hF000_0004,
+                  GP_DATADIR = 32'hF000_0008;
+localparam [31:0] UA_TXDATA  = 32'hF100_0000, UA_RXDATA = 32'hF100_0004,
+                  UA_CONTROL = 32'hF100_0008;
+localparam [31:0] UA_TRANSMIT = 32'h1, UA_RXDONE = 32'h2, UA_TXDONE = 32'h4;
+
+reg [31:0] s4_v, s4_v2;
+
+task chk(input [31:0] got, input [31:0] exp, input [8*96-1:0] name);
+    begin
+        if (got === exp) pass = pass + 1;
+        else begin
+            note_fail(name);
+            if (fail_budget >= 0) $display("        got=%h exp=%h", got, exp);
+        end
+    end
+endtask
+
+// ---------------------------------------------------------------------------
+//  4.1  gpio
+// ---------------------------------------------------------------------------
+reg  [31:0] gp_addr = 0, gp_wdata = 0, gp_chain = 0;
+reg  [3:0]  gp_bw = 0;
+reg         gp_we = 0, gp_rst = 1;
+reg  [7:0]  gp_pins = 0;
+wire [31:0] gp_rd;
+wire [7:0]  gp_o, gp_oe;
+gpio U_GPIO (   // block defaults, as on the canvas: SLOT 0, 8 pins
+    .clk_i(s4_clk), .rst_i(gp_rst), .bus_addr_i(gp_addr), .bus_wdata_i(gp_wdata),
+    .bus_we_i(gp_we), .bus_bw_i(gp_bw), .bus_rdata_i(gp_chain), .bus_rdata_o(gp_rd),
+    .gpio_o(gp_o), .gpio_oe(gp_oe), .gpio_i(gp_pins));
+
+// One-cycle write strobe, as the core's we_o gives; reads are combinational.
+task gp_wr(input [31:0] a, input [31:0] d, input [3:0] b);
+    begin
+        @(negedge clk); gp_addr = a; gp_wdata = d; gp_bw = b; gp_we = 1;
+        @(negedge clk); gp_we = 0; gp_bw = 0;
+    end
+endtask
+task gp_read(input [31:0] a, output [31:0] d);
+    begin gp_addr = a; #1; d = gp_rd; end
+endtask
+
+task suite_gpio;
+    begin
+        gp_rst = 1; repeat (3) @(posedge clk); #1 gp_rst = 0;
+
+        // reset values and read-back
+        gp_read(GP_DATAOUT, s4_v); chk(s4_v, 0, "GPIO DATAOUT resets to 0");
+        gp_read(GP_DATADIR, s4_v); chk(s4_v, 0, "GPIO DATADIR resets to 0 (all inputs)");
+        chk({16'b0, gp_o, gp_oe}, 0, "GPIO no pin driven out of reset");
+        gp_wr(GP_DATAOUT, 32'hFFFF_FFA5, 4'b1111);
+        gp_read(GP_DATAOUT, s4_v); chk(s4_v, 32'hA5, "GPIO DATAOUT read-back, reserved bits read 0");
+        gp_wr(GP_DATADIR, 32'h1234_563C, 4'b1111);
+        gp_read(GP_DATADIR, s4_v); chk(s4_v, 32'h3C, "GPIO DATADIR read-back, reserved bits read 0");
+        gp_wr(GP_DATAIN, 32'hFFFF_FFFF, 4'b1111);
+        gp_read(GP_DATAOUT, s4_v); chk(s4_v, 32'hA5, "GPIO write to read-only DATAIN leaves DATAOUT");
+        gp_read(GP_DATADIR, s4_v); chk(s4_v, 32'h3C, "GPIO write to read-only DATAIN leaves DATADIR");
+        gp_read(32'hF000_000C, s4_v); chk(s4_v, 0, "GPIO offset 0xC reads 0");
+
+        // full decode: none of these may reach a register
+        gp_wr(32'hF000_000C, 32'hFF, 4'b1111);
+        gp_wr(32'hF000_0010, 32'hFF, 4'b1111);   // addr[23:4] != 0
+        gp_wr(32'hF010_0000, 32'hFF, 4'b1111);   // deep inside the slot
+        gp_wr(32'hF100_0000, 32'hFF, 4'b1111);   // UART's slot
+        gp_wr(32'hE000_0000, 32'hFF, 4'b1111);   // outside the region
+        gp_read(GP_DATAOUT, s4_v); chk(s4_v, 32'hA5, "GPIO no aliasing: foreign addresses never write");
+        gp_read(32'hF000_0010, s4_v); chk(s4_v, 0, "GPIO no aliasing: 0xF0000010 reads 0");
+
+        // read chain: pass through when not addressed, OR in when addressed
+        gp_chain = 32'h1234_0000;
+        gp_read(32'hF100_0004, s4_v); chk(s4_v, 32'h1234_0000, "GPIO chain passes through when not addressed");
+        gp_read(GP_DATAOUT, s4_v);    chk(s4_v, 32'h1234_00A5, "GPIO chain ORs the register in when addressed");
+        gp_chain = 0;
+
+        // byte lanes: every field is in lane 0
+        gp_wr(GP_DATAOUT, 32'h0000_5A00, 4'b0010); gp_read(GP_DATAOUT, s4_v); chk(s4_v, 32'hA5, "GPIO sb to +1 writes nothing");
+        gp_wr(GP_DATAOUT, 32'h5A5A_0000, 4'b1100); gp_read(GP_DATAOUT, s4_v); chk(s4_v, 32'hA5, "GPIO sh to +2 writes nothing");
+        gp_wr(GP_DATAOUT, 32'hFFFF_FFFF, 4'b0000); gp_read(GP_DATAOUT, s4_v); chk(s4_v, 32'hA5, "GPIO misaligned store (bw=0000) writes nothing");
+        gp_wr(GP_DATAOUT, 32'h0000_005A, 4'b0001); gp_read(GP_DATAOUT, s4_v); chk(s4_v, 32'h5A, "GPIO sb to +0 writes");
+        gp_wr(GP_DATAOUT, 32'h0000_00C3, 4'b0011); gp_read(GP_DATAOUT, s4_v); chk(s4_v, 32'hC3, "GPIO sh to +0 writes");
+
+        // direction: exactly the written pin is enabled, from the write edge
+        gp_wr(GP_DATADIR, 0, 4'b1111); gp_wr(GP_DATAOUT, 32'hFF, 4'b1111);
+        chk({24'b0, gp_oe}, 0, "GPIO DATAOUT=0xFF with DATADIR=0: no pin enabled");
+        for (n = 0; n < 8; n = n + 1) begin
+            gp_wr(GP_DATADIR, 32'h1 << n, 4'b0001);
+            chk({24'b0, gp_oe}, 32'h1 << n, "GPIO exactly the written pin is enabled");
+        end
+        @(negedge clk); gp_addr = GP_DATADIR; gp_wdata = 0; gp_bw = 4'b0001; gp_we = 1;
+        #1 chk({24'b0, gp_oe}, 32'h80, "GPIO enable unchanged before the write edge");
+        @(posedge clk); #1 chk({24'b0, gp_oe}, 0, "GPIO enable released on the write edge");
+        @(negedge clk); gp_we = 0; gp_bw = 0;
+
+        // DATAIN: 2-cycle synchroniser, output pins read 0
+        gp_wr(GP_DATADIR, 32'h0F, 4'b1111);
+        @(negedge clk); gp_pins = 8'hFF;
+        gp_read(GP_DATAIN, s4_v); chk(s4_v, 0, "GPIO new input level not visible at once");
+        @(posedge clk); #1 gp_read(GP_DATAIN, s4_v); chk(s4_v, 0, "GPIO still not visible after 1 clock");
+        @(posedge clk); #1 gp_read(GP_DATAIN, s4_v); chk(s4_v, 32'hF0, "GPIO visible after 2 clocks; output pins read 0");
+        @(negedge clk); gp_pins = 8'h5A; repeat (2) @(posedge clk); #1
+        gp_read(GP_DATAIN, s4_v); chk(s4_v, 32'h50, "GPIO inputs follow the pins, outputs stay 0");
+        gp_wr(GP_DATADIR, 0, 4'b1111); repeat (2) @(posedge clk); #1
+        gp_read(GP_DATAIN, s4_v); chk(s4_v, 32'h5A, "GPIO all pins readable once all are inputs");
+
+        // reset mid-operation
+        gp_wr(GP_DATADIR, 32'hFF, 4'b1111);
+        @(negedge clk) gp_rst = 1; @(negedge clk) gp_rst = 0;
+        gp_read(GP_DATADIR, s4_v); chk(s4_v, 0, "GPIO reset clears DATADIR");
+        gp_read(GP_DATAOUT, s4_v); chk(s4_v, 0, "GPIO reset clears DATAOUT");
+        chk({24'b0, gp_oe}, 0, "GPIO reset releases every pin");
+        $display("  [S4.1] gpio: reset, read-back, full decode, read chain, byte lanes, direction, synchroniser");
+    end
+endtask
+
+// ---------------------------------------------------------------------------
+//  4.2  uart
+//
+//  Two standalone instances share one bus with their own write strobes:
+//  U_UART at 16 clocks/bit for speed, U_UART64 at 64 for the tolerance point.
+//  The far-end transmitter's bit time is set in real nanoseconds, so it can
+//  run at any baud error; the decoder samples tx_o cycle by cycle.
+// ---------------------------------------------------------------------------
+reg  [31:0] ua_addr = 0, ua_wdata = 0;
+reg  [3:0]  ua_bw = 0;
+reg  [1:0]  ua_we = 0;
+reg         ua_rst = 1, ua_rx16 = 1, ua_rx64 = 1;
+wire        ua_tx16, ua_tx64;
+wire [31:0] ua_rd16, ua_rd64;
+uart #(.CLK_FREQ_HZ(1600000), .BAUD_RATE(100000)) U_UART (
+    .clk_i(s4_clk), .rst_i(ua_rst), .bus_addr_i(ua_addr), .bus_wdata_i(ua_wdata),
+    .bus_we_i(ua_we[0]), .bus_bw_i(ua_bw), .bus_rdata_i(32'b0), .bus_rdata_o(ua_rd16),
+    .tx_o(ua_tx16), .rx_i(ua_rx16));
+uart #(.CLK_FREQ_HZ(6400000), .BAUD_RATE(100000)) U_UART64 (
+    .clk_i(s4_clk), .rst_i(ua_rst), .bus_addr_i(ua_addr), .bus_wdata_i(ua_wdata),
+    .bus_we_i(ua_we[1]), .bus_bw_i(ua_bw), .bus_rdata_i(32'b0), .bus_rdata_o(ua_rd64),
+    .tx_o(ua_tx64), .rx_i(ua_rx64));
+
+task ua_wr(input integer inst, input [31:0] a, input [31:0] d, input [3:0] b);
+    begin
+        @(negedge clk); ua_addr = a; ua_wdata = d; ua_bw = b; ua_we = 2'b01 << inst;
+        @(negedge clk); ua_we = 0; ua_bw = 0;
+    end
+endtask
+task ua_read(input integer inst, input [31:0] a, output [31:0] d);
+    begin ua_addr = a; #1; d = (inst == 0) ? ua_rd16 : ua_rd64; end
+endtask
+
+// One frame on rx_i: start, D0..D7 LSB first, stop (stop_level 0 = framing error).
+task ua_send(input integer inst, input [7:0] data, input real bit_ns, input stop_level);
+    integer j;
+    begin
+        if (inst == 0) ua_rx16 = 0; else ua_rx64 = 0;
+        #(bit_ns);
+        for (j = 0; j < 8; j = j + 1) begin
+            if (inst == 0) ua_rx16 = data[j]; else ua_rx64 = data[j];
+            #(bit_ns);
+        end
+        if (inst == 0) ua_rx16 = stop_level; else ua_rx64 = stop_level;
+        #(bit_ns);
+        if (inst == 0) ua_rx16 = 1; else ua_rx64 = 1;
+    end
+endtask
+
+// Wait (bounded) for RXDONE, check RXDATA, clear RXDONE by writing 0.
+task ua_expect_rx(input integer inst, input [7:0] exp, input integer max_clks,
+                  input [8*96-1:0] name);
+    integer t;
+    reg [31:0] c;
+    begin
+        t = 0; c = 0;
+        while (!(c & UA_RXDONE) && t < max_clks) begin
+            @(negedge clk); ua_read(inst, UA_CONTROL, c); t = t + 1;
+        end
+        if (!(c & UA_RXDONE)) note_fail(name);
+        else begin
+            ua_read(inst, UA_RXDATA, c); chk(c, {24'b0, exp}, name);
+            ua_wr(inst, UA_CONTROL, 0, 4'b1111);
+        end
+    end
+endtask
+
+// RXDONE must stay clear for a while.
+task ua_expect_quiet(input integer clks, input [8*96-1:0] name);
+    integer t;
+    reg seen;
+    reg [31:0] c;
+    begin
+        seen = 0;
+        for (t = 0; t < clks; t = t + 1) begin
+            @(negedge clk); ua_read(0, UA_CONTROL, c); if (c & UA_RXDONE) seen = 1;
+        end
+        chk({31'b0, seen}, 0, name);
+    end
+endtask
+
+// After TRANSMIT: tx_o falls, holds each of the 10 bits for exactly 16 clocks,
+// and TXDONE is low for exactly 160 clocks.
+task ua_check_tx(input [7:0] data, input [8*96-1:0] name);
+    integer c, bad, lowdone;
+    reg [9:0] frame;
+    reg [31:0] r;
+    begin
+        frame = {1'b1, data, 1'b0};
+        bad = 0; lowdone = 0; c = 0;
+        while (ua_tx16 !== 1'b0 && c < 8) begin @(posedge clk); #1; c = c + 1; end
+        if (ua_tx16 !== 1'b0) note_fail("UART no start bit after TRANSMIT");
+        else begin
+            for (c = 0; c < 160; c = c + 1) begin
+                if (ua_tx16 !== frame[c / 16]) bad = bad + 1;
+                ua_read(0, UA_CONTROL, r); if (!(r & UA_TXDONE)) lowdone = lowdone + 1;
+                @(posedge clk); #1;
+            end
+            chk(bad, 0, name);
+            chk(lowdone, 160, "UART TXDONE low for exactly 10 bit-times");
+            ua_read(0, UA_CONTROL, r);
+            chk(r & UA_TXDONE, UA_TXDONE, "UART TXDONE set once the stop bit is sent");
+            chk({31'b0, ua_tx16}, 1, "UART line idles high after the frame");
+        end
+    end
+endtask
+
+task suite_uart;
+    integer got_n, ok;
+    real err;
+    reg [7:0] b;
+    reg [7:0] bytes [0:15];
+    begin
+        ua_rst = 1; repeat (3) @(posedge clk); #1 ua_rst = 0;
+
+        // reset state, register rules, full decode
+        ua_read(0, UA_CONTROL, s4_v); chk(s4_v, UA_TXDONE, "UART reset: CONTROL = TXDONE only");
+        ua_read(0, UA_TXDATA, s4_v);  chk(s4_v, 0, "UART reset: TXDATA = 0");
+        ua_read(0, UA_RXDATA, s4_v);  chk(s4_v, 0, "UART reset: RXDATA = 0");
+        chk({31'b0, ua_tx16}, 1, "UART reset: tx_o idles high");
+        ua_wr(0, UA_TXDATA, 32'hFFFF_FF3C, 4'b1111);
+        ua_read(0, UA_TXDATA, s4_v); chk(s4_v, 32'h3C, "UART TXDATA read-back, reserved bits 0");
+        ua_wr(0, UA_RXDATA, 32'hFF, 4'b1111);
+        ua_read(0, UA_RXDATA, s4_v); chk(s4_v, 0, "UART RXDATA is read-only");
+        ua_wr(0, UA_CONTROL, 32'hFFFF_FFFA, 4'b1111);   // TRANSMIT=0, RXDONE=1, TXDONE=0
+        ua_read(0, UA_CONTROL, s4_v); chk(s4_v, UA_TXDONE, "UART writing TXDONE=0 or RXDONE=1 changes nothing");
+        ua_read(0, 32'hF100_000C, s4_v); chk(s4_v, 0, "UART offset 0xC reads 0");
+        ua_wr(0, 32'hF100_000C, 32'h1, 4'b1111);
+        ua_wr(0, 32'hF100_0018, 32'h1, 4'b1111);        // addr[23:4] != 0
+        ua_wr(0, 32'hF000_0008, 32'h1, 4'b1111);        // GPIO's slot
+        ua_read(0, UA_CONTROL, s4_v); chk(s4_v, UA_TXDONE, "UART no aliasing: foreign addresses never start a frame");
+        ua_wr(0, UA_TXDATA, 32'h0000_5500, 4'b0010);
+        ua_read(0, UA_TXDATA, s4_v); chk(s4_v, 32'h3C, "UART sb to TXDATA+1 changes nothing");
+        ua_wr(0, UA_CONTROL, 32'hFFFF_FFFF, 4'b0000);
+        ua_read(0, UA_CONTROL, s4_v); chk(s4_v, UA_TXDONE, "UART misaligned store (bw=0000) cannot start a frame");
+
+        // transmit frames, bit-exact
+        ua_wr(0, UA_TXDATA, 32'hA5, 4'b1111);
+        ua_wr(0, UA_CONTROL, UA_TRANSMIT, 4'b0001);
+        fork
+            ua_check_tx(8'hA5, "UART frame 0xA5 bit-exact");
+            begin repeat (2) @(posedge clk); #2 ua_read(0, UA_CONTROL, s4_v2);
+                  chk(s4_v2, 0, "UART TRANSMIT reads 0, TXDONE low once the frame starts"); end
+        join
+        ua_wr(0, UA_TXDATA, 32'h00, 4'b1111); ua_wr(0, UA_CONTROL, UA_TRANSMIT, 4'b1111);
+        ua_check_tx(8'h00, "UART frame 0x00 bit-exact");
+        ua_wr(0, UA_TXDATA, 32'hFF, 4'b1111); ua_wr(0, UA_CONTROL, UA_TRANSMIT, 4'b1111);
+        ua_check_tx(8'hFF, "UART frame 0xFF bit-exact");
+
+        // receive at 0, +-1, +-2, +-3 % baud error
+        for (k = -3; k <= 3; k = k + 1) begin
+            err = k / 100.0;
+            for (n = 0; n < 12; n = n + 1) begin
+                b = $random;
+                fork
+                    ua_send(0, b, 16 * CLK_NS * (1.0 + err), 1);
+                    ua_expect_rx(0, b, 400, "UART RX byte at baud error -3..+3 %");
+                join
+                #(2 * 16 * CLK_NS);
+            end
+        end
+
+        // +-3.5 % at 64 clocks/bit (the design tolerance is +-5.2 %)
+        for (k = -1; k <= 1; k = k + 2) begin
+            err = k * 0.035; ok = 1;
+            for (n = 0; n < 12; n = n + 1) begin
+                b = $random;
+                ua_send(1, b, 64 * CLK_NS * (1.0 + err), 1);
+                #(64 * CLK_NS);
+                ua_read(1, UA_CONTROL, s4_v);
+                if (!(s4_v & UA_RXDONE)) ok = 0;
+                else begin ua_read(1, UA_RXDATA, s4_v); if (s4_v[7:0] !== b) ok = 0; end
+                ua_wr(1, UA_CONTROL, 0, 4'b1111);
+            end
+            chk(ok, 1, "UART receives at +-3.5 % baud error (64 clocks/bit)");
+        end
+
+        // back-to-back frames, far end 3 % fast and 3 % slow
+        for (k = 0; k < 2; k = k + 1) begin
+            err = (k == 0) ? 0.03 : -0.03;
+            for (n = 0; n < 16; n = n + 1) bytes[n] = $random;
+            got_n = 0; ok = 1;
+            fork
+                for (n = 0; n < 16; n = n + 1) ua_send(0, bytes[n], 16 * CLK_NS * (1.0 + err), 1);
+                begin : ua_consumer
+                    integer t;
+                    for (t = 0; t < 16 * 170 && got_n < 16; t = t + 1) begin
+                        @(negedge clk); ua_read(0, UA_CONTROL, s4_v2);
+                        if (s4_v2 & UA_RXDONE) begin
+                            ua_read(0, UA_RXDATA, s4_v2);
+                            if (s4_v2[7:0] !== bytes[got_n]) ok = 0;
+                            got_n = got_n + 1;
+                            ua_wr(0, UA_CONTROL, 0, 4'b1111);
+                        end
+                    end
+                end
+            join
+            chk(got_n, 16, "UART back-to-back: all 16 frames received");
+            chk(ok, 1, "UART back-to-back: every byte correct");
+            #(3 * 16 * CLK_NS);
+        end
+
+        // full duplex
+        ua_wr(0, UA_TXDATA, 32'h3E, 4'b1111); ua_wr(0, UA_CONTROL, UA_TRANSMIT, 4'b1111);
+        fork
+            ua_check_tx(8'h3E, "UART full duplex: TX frame exact while receiving");
+            ua_send(0, 8'hD1, 16 * CLK_NS, 1);
+        join
+        ua_expect_rx(0, 8'hD1, 200, "UART full duplex: RX byte correct while transmitting");
+
+        // overrun: newest byte kept, RXDONE stays set
+        ua_send(0, 8'h11, 16 * CLK_NS, 1); #(16 * CLK_NS);
+        ua_send(0, 8'h22, 16 * CLK_NS, 1); #(16 * CLK_NS);
+        ua_read(0, UA_CONTROL, s4_v); chk(s4_v & UA_RXDONE, UA_RXDONE, "UART overrun: RXDONE still set");
+        ua_read(0, UA_RXDATA, s4_v);  chk(s4_v, 32'h22, "UART overrun: RXDATA holds the newest byte");
+        ua_wr(0, UA_CONTROL, 0, 4'b1111);
+
+        // framing error and break: dropped, receiver re-arms after idle
+        fork
+            ua_send(0, 8'h5A, 16 * CLK_NS, 0);
+            ua_expect_quiet(200, "UART framing error: byte dropped");
+        join
+        ua_read(0, UA_RXDATA, s4_v); chk(s4_v, 32'h22, "UART framing error: RXDATA unchanged");
+        ua_rx16 = 0; #(3 * 10 * 16 * CLK_NS);          // break: three frames low
+        fork
+            begin ua_rx16 = 1; #(40 * CLK_NS); end
+            ua_expect_quiet(400, "UART break: no byte delivered");
+        join
+        fork
+            ua_send(0, 8'h96, 16 * CLK_NS, 1);
+            ua_expect_rx(0, 8'h96, 200, "UART receiver re-armed after a break");
+        join
+
+        // start-bit glitches of 1, N/4 and N/2-2 clocks
+        fork
+            begin
+                ua_rx16 = 0; #(1 * CLK_NS); ua_rx16 = 1; #(40 * CLK_NS);
+                ua_rx16 = 0; #(4 * CLK_NS); ua_rx16 = 1; #(40 * CLK_NS);
+                ua_rx16 = 0; #(6 * CLK_NS); ua_rx16 = 1; #(40 * CLK_NS);
+            end
+            ua_expect_quiet(300, "UART start-bit glitches rejected");
+        join
+        fork
+            ua_send(0, 8'h3C, 16 * CLK_NS, 1);
+            ua_expect_rx(0, 8'h3C, 200, "UART real frame received after glitches");
+        join
+
+        // rx_i low from reset: no phantom byte
+        ua_rst = 1; ua_rx16 = 0; repeat (3) @(posedge clk); #1 ua_rst = 0;
+        #(2 * 10 * 16 * CLK_NS + 37 * CLK_NS);
+        fork
+            begin ua_rx16 = 1; #(40 * CLK_NS); end
+            ua_expect_quiet(400, "UART rx_i low from reset: no phantom byte");
+        join
+        fork
+            ua_send(0, 8'hE7, 16 * CLK_NS, 1);
+            ua_expect_rx(0, 8'hE7, 200, "UART first real frame after the line recovers");
+        join
+
+        // TRANSMIT while busy is ignored; TXDATA written mid-frame is safe
+        ua_wr(0, UA_TXDATA, 32'h81, 4'b1111); ua_wr(0, UA_CONTROL, UA_TRANSMIT, 4'b1111);
+        fork
+            ua_check_tx(8'h81, "UART frame in flight unchanged by writes");
+            begin
+                repeat (40) @(posedge clk);
+                ua_wr(0, UA_TXDATA, 32'h7E, 4'b1111);
+                ua_wr(0, UA_CONTROL, UA_TRANSMIT, 4'b1111);
+            end
+        join
+        repeat (20) @(posedge clk);
+        chk({31'b0, ua_tx16}, 1, "UART TRANSMIT written while busy started nothing");
+        ua_wr(0, UA_CONTROL, UA_TRANSMIT, 4'b1111);
+        ua_check_tx(8'h7E, "UART next TRANSMIT sends the new TXDATA");
+
+        // RXDONE: write 1 has no effect, lane 1 cannot clear, 0x3 keeps it
+        ua_send(0, 8'h01, 16 * CLK_NS, 1); #(16 * CLK_NS);
+        ua_wr(0, UA_CONTROL, UA_RXDONE, 4'b1111);
+        ua_read(0, UA_CONTROL, s4_v); chk(s4_v & UA_RXDONE, UA_RXDONE, "UART writing 1 leaves RXDONE set");
+        ua_wr(0, UA_CONTROL, 0, 4'b0010);
+        ua_read(0, UA_CONTROL, s4_v); chk(s4_v & UA_RXDONE, UA_RXDONE, "UART sb zero to CONTROL+1 leaves RXDONE set");
+        ua_wr(0, UA_TXDATA, 32'h42, 4'b1111);
+        ua_wr(0, UA_CONTROL, UA_TRANSMIT | UA_RXDONE, 4'b1111);
+        fork
+            ua_check_tx(8'h42, "UART frame started by writing 0x3");
+            begin repeat (2) @(posedge clk); #2 ua_read(0, UA_CONTROL, s4_v2);
+                  chk(s4_v2, UA_RXDONE, "UART 0x3 starts a frame and keeps RXDONE"); end
+        join
+        ua_wr(0, UA_CONTROL, 0, 4'b0001);
+        ua_read(0, UA_CONTROL, s4_v); chk(s4_v, UA_TXDONE, "UART sb zero to CONTROL clears RXDONE");
+
+        // Same-cycle collision: RXDONE set, a new byte completes on the very
+        // edge a software clear is written. The set must win.
+        ua_send(0, 8'hAA, 16 * CLK_NS, 1); #(16 * CLK_NS);
+        fork
+            ua_send(0, 8'hBB, 16 * CLK_NS, 1);
+            begin
+                @(negedge clk);
+                while (!(U_UART.rx_state == 2'd3 && U_UART.rx_cnt == 0)) @(negedge clk);
+                ua_addr = UA_CONTROL; ua_wdata = 0; ua_bw = 4'b1111; ua_we = 2'b01;
+                #1 chk({31'b0, U_UART.rx_done}, 1, "UART collision lands on the rx_done cycle");
+                @(negedge clk); ua_we = 0; ua_bw = 0;
+            end
+        join
+        ua_read(0, UA_CONTROL, s4_v); chk(s4_v & UA_RXDONE, UA_RXDONE, "UART same-cycle set and clear: set wins");
+        ua_read(0, UA_RXDATA, s4_v);  chk(s4_v, 32'hBB, "UART same-cycle: RXDATA is the new byte");
+        ua_wr(0, UA_CONTROL, 0, 4'b1111);
+
+        // reset mid-frame, both directions
+        ua_wr(0, UA_TXDATA, 32'h0F, 4'b1111); ua_wr(0, UA_CONTROL, UA_TRANSMIT, 4'b1111);
+        repeat (50) @(posedge clk);
+        @(negedge clk) ua_rst = 1; @(posedge clk); #1;
+        chk({31'b0, ua_tx16}, 1, "UART reset mid-TX: line high at the next edge");
+        @(negedge clk) ua_rst = 0;
+        ua_read(0, UA_CONTROL, s4_v); chk(s4_v, UA_TXDONE, "UART reset mid-TX: TXDONE = 1, nothing pending");
+        fork
+            begin ua_rx16 = 0; #(16 * CLK_NS); ua_rx16 = 1; #(3 * 16 * CLK_NS); end
+            begin #(20 * CLK_NS); @(negedge clk) ua_rst = 1; @(negedge clk) ua_rst = 0; end
+        join
+        ua_expect_quiet(300, "UART reset mid-RX: no byte");
+        fork
+            ua_send(0, 8'h5C, 16 * CLK_NS, 1);
+            ua_expect_rx(0, 8'h5C, 200, "UART first frame after reset received");
+        join
+        $display("  [S4.2] uart: frames bit-exact, RX at 0..+-3.5 %%, back-to-back, duplex, overrun, errors, RXDONE rules, reset");
+    end
+endtask
+
+// ---------------------------------------------------------------------------
+//  4.3  gpio_bits
+// ---------------------------------------------------------------------------
+reg  [7:0] gb_o = 0, gb_oe = 0, gb_p = 0;
+wire [7:0] gb_i, gb_c, gb_d;
+gpio_bits U_BITS (
+    .gpio_o(gb_o), .gpio_oe(gb_oe), .gpio_i(gb_i),
+    .p0_i(gb_p[0]), .p1_i(gb_p[1]), .p2_i(gb_p[2]), .p3_i(gb_p[3]),
+    .p4_i(gb_p[4]), .p5_i(gb_p[5]), .p6_i(gb_p[6]), .p7_i(gb_p[7]),
+    .c0_o(gb_c[0]), .d0_o(gb_d[0]), .c1_o(gb_c[1]), .d1_o(gb_d[1]),
+    .c2_o(gb_c[2]), .d2_o(gb_d[2]), .c3_o(gb_c[3]), .d3_o(gb_d[3]),
+    .c4_o(gb_c[4]), .d4_o(gb_d[4]), .c5_o(gb_c[5]), .d5_o(gb_d[5]),
+    .c6_o(gb_c[6]), .d6_o(gb_d[6]), .c7_o(gb_c[7]), .d7_o(gb_d[7]));
+
+task suite_gpio_bits;
+    integer bad;
+    begin
+        // Three walking ones at different positions per step, so a C/D swap,
+        // a crossed pin or a crossed pad input each shows up as a mismatch.
+        bad = 0;
+        for (n = 0; n < 8; n = n + 1) begin
+            gb_o = 8'h1 << n; gb_oe = 8'h1 << ((n + 3) % 8); gb_p = 8'h1 << ((n + 5) % 8);
+            #1 if (gb_c !== gb_o || gb_d !== gb_oe || gb_i !== gb_p) bad = bad + 1;
+        end
+        for (n = 0; n < 64; n = n + 1) begin
+            gb_o = $random; gb_oe = $random; gb_p = $random;
+            #1 if (gb_c !== gb_o || gb_d !== gb_oe || gb_i !== gb_p) bad = bad + 1;
+        end
+        chk(bad, 0, "gpio_bits: cN = gpio_o[N], dN = gpio_oe[N], gpio_i[N] = pN for every N");
+        $display("  [S4.3] gpio_bits: every C, D and pad bit on its own pin");
+    end
+endtask
+
+// ---------------------------------------------------------------------------
+//  4.4  the chip
+// ---------------------------------------------------------------------------
+integer sc_contention = 0, sc_misdrive = 0, sc_frame_errs = 0, sc_overruns = 0;
+
+// Pin monitor: never two drivers on one pin, and every pin the testbench is
+// not driving shows exactly what Figure 1 says - DATAOUT when DATADIR = 1,
+// released (so at the pull level) when DATADIR = 0.
+// sc_pin_bad[p] is the same test as the loop's, kept by continuous
+// assignment so it is re-evaluated only when a pin or its drivers change;
+// the loop below then runs only on a cycle where some pin is wrong (it used
+// to run on every cycle, a fifth of the simulation time). Counts are the same.
+wire [7:0] sc_pin_bad;
+generate
+    for (sc_g = 0; sc_g < 8; sc_g = sc_g + 1) begin : g_sc_mon
+        assign sc_pin_bad[sc_g] = (`SOC.gpio_oe[sc_g] === 1'b1 && sc_tb_oe[sc_g]) ||
+            (!sc_tb_oe[sc_g] && sc_pins[sc_g] !== (`SOC.gpio_oe[sc_g] ? `SOC.gpio_o[sc_g] : sc_pull[sc_g]));
+    end
+endgenerate
+always @(posedge clk) if (rst === 1'b0 && sc_pin_bad !== 8'h00) begin : sc_pin_monitor
+    integer p;
+    for (p = 0; p < 8; p = p + 1) begin
+        if (`SOC.gpio_oe[p] === 1'b1 && sc_tb_oe[p]) sc_contention = sc_contention + 1;
+        if (!sc_tb_oe[p] && sc_pins[p] !== (`SOC.gpio_oe[p] ? `SOC.gpio_o[p] : sc_pull[p]))
+            sc_misdrive = sc_misdrive + 1;
+    end
+end
+
+// Far-end decoder on tx_o: records every frame and flags a bad stop bit.
+reg [7:0] sc_cap [0:31];
+integer   sc_ncap = 0;
+always begin : sc_tx_decoder
+    integer j;
+    reg [7:0] d;
+    @(negedge sc_tx);
+    if (rst === 1'b0) begin
+        #(S3_NB * CLK_NS * 1.5);
+        for (j = 0; j < 8; j = j + 1) begin d[j] = sc_tx; #(S3_NB * CLK_NS); end
+        if (sc_tx !== 1'b1) sc_frame_errs = sc_frame_errs + 1;
+        if (sc_ncap < 32) sc_cap[sc_ncap] = d;
+        sc_ncap = sc_ncap + 1;
+    end
+end
+
+// A byte completing while RXDONE is still set means software fell behind.
+always @(posedge clk) if (rst === 1'b0 && `UART.rx_done && `UART.rxdone) sc_overruns = sc_overruns + 1;
+
+// Enter a program the way SUITE 2B does: PC written while the core is still
+// in reset. The pins and the UART line are set before reset is released.
+task sc_enter(input [31:0] base, input loopback, input [7:0] tb_oe, input [7:0] tb_val);
+    begin
+        rst = 1;
+        sc_loopback = loopback; sc_rx_drv = 1; sc_tb_oe = tb_oe; sc_tb_val = tb_val; sc_pull = 0;
+        for (i = 0; i < 2048; i = i + 1) `DMEM_WORD(i) = 32'b0;
+        repeat (3) @(posedge clk); #1;
+        `PC.pc = base;
+        sc_ncap = 0; sc_overruns = 0;
+        rst = 0;
+        chk(`PC.pc, base, "Stage 3 program entry point took");
+    end
+endtask
+
+// One frame into rx_i from the far end.
+task sc_send(input [7:0] data, input real bit_ns);
+    integer j;
+    begin
+        sc_rx_drv = 0; #(bit_ns);
+        for (j = 0; j < 8; j = j + 1) begin sc_rx_drv = data[j]; #(bit_ns); end
+        sc_rx_drv = 1; #(bit_ns);
+    end
+endtask
+
+localparam integer SC_MSG_LEN = 14;
+reg [8*SC_MSG_LEN-1:0] sc_msg = "Hello, RVBL-2!";
+function [7:0] sc_ch(input integer idx);
+    begin sc_ch = sc_msg[(SC_MSG_LEN - 1 - idx) * 8 +: 8]; end
+endfunction
+
+// Figure 1 on every chip pin, directly: the core idles in the ROM's guard
+// loop (it touches nothing), DATAOUT and DATADIR are set by hand, and each pin
+// must read DATAOUT when enabled and the pull level when not, with the pull
+// both ways. A C/D swap, a crossed pin or a missing tri-state fails here. Then
+// each pad, driven by the testbench, must reach gpio_i on its own bit.
+task suite_soc_pins;
+    integer bad, oe, o, pl;
+    reg exp;
+    begin
+        sc_enter(S3_GPIO_LISTING - 4, 0, 8'h00, 8'h00);
+        repeat (10) @(posedge clk); #1;
+        bad = 0;
+        for (n = 0; n < 8; n = n + 1)
+            for (oe = 0; oe < 2; oe = oe + 1)
+                for (o = 0; o < 2; o = o + 1)
+                    for (pl = 0; pl < 2; pl = pl + 1) begin
+                        @(negedge clk);
+                        `GPIO.datadir = oe[0] ? (8'h1 << n) : 8'h00;
+                        `GPIO.dataout = o[0]  ? (8'h1 << n) : 8'h00;
+                        sc_pull = pl[0] ? 8'hFF : 8'h00;
+                        #1 exp = oe[0] ? o[0] : pl[0];
+                        if (sc_pins[n] !== exp) begin
+                            bad = bad + 1;
+                            if (fail_budget > 0)
+                                $display("        pin %0d: DATADIR=%0d DATAOUT=%0d pull=%0d reads %b, expected %b",
+                                         n, oe, o, pl, sc_pins[n], exp);
+                        end
+                        // and no other pin moves off its pull
+                        if ((sc_pins & ~(8'h1 << n)) !== (sc_pull & ~(8'h1 << n))) bad = bad + 1;
+                    end
+        chk(bad, 0, "Figure 1 on every pin: DATAOUT when DATADIR=1, released when 0");
+        `GPIO.datadir = 0; `GPIO.dataout = 0; sc_pull = 0;
+
+        bad = 0;
+        sc_tb_oe = 8'hFF;
+        for (n = 0; n < 8; n = n + 1) begin
+            sc_tb_val = 8'h1 << n;       #1 if (`SOC.gpio_i !== sc_tb_val) bad = bad + 1;
+            sc_tb_val = ~(8'h1 << n);    #1 if (`SOC.gpio_i !== sc_tb_val) bad = bad + 1;
+        end
+        sc_tb_oe = 0; sc_tb_val = 0;
+        chk(bad, 0, "every pad reaches gpio_i on its own bit");
+        $display("  [S4.4] chip: Figure 1 tri-state and pad input on all 8 pins, pulled both ways");
+    end
+endtask
+
+task suite_soc_gpio;
+    integer bad, lat;
+    begin
+        // S1: the listing verbatim. It writes P0's level to DATAOUT bit 0, so
+        // P1 - the only output - never changes (Block Guide listing, as given).
+        sc_enter(S3_GPIO_LISTING, 0, 8'h01, 8'h00);
+        repeat (200) @(posedge clk); #1;
+        chk({24'b0, `GPIO.datadir}, 32'h02, "S1 GPIO listing: DATADIR = 0x02 (P0 in, P1 out)");
+        bad = 0;
+        for (n = 0; n < 20; n = n + 1) begin
+            sc_tb_val[0] = n[0];
+            for (k = 0; k < 150; k = k + 1) begin @(posedge clk); #1 if (sc_pins[1] !== 1'b0) bad = bad + 1; end
+            if (`GPIO.dataout[0] !== sc_tb_val[0]) bad = bad + 1000;   // the loop really runs
+        end
+        chk(bad, 0, "S1 GPIO listing verbatim: P1 stays low while P0 toggles");
+        chk({24'b0, `SOC.gpio_oe}, 32'h02, "S1 GPIO listing: only P1 is ever driven");
+
+        // S2: completed with `slli t0, t0, 1`, P1 follows P0.
+        sc_enter(S3_GPIO_FIXED, 0, 8'h01, 8'h00);
+        repeat (200) @(posedge clk); #1;
+        bad = 0;
+        for (n = 0; n < 20; n = n + 1) begin
+            sc_tb_val[0] = ~sc_tb_val[0];
+            lat = 0;
+            while (sc_pins[1] !== sc_tb_val[0] && lat < 100) begin @(posedge clk); #1 lat = lat + 1; end
+            if (lat > 45) bad = bad + 1;
+            for (k = 0; k < 100; k = k + 1) begin @(posedge clk); #1 if (sc_pins[1] !== sc_tb_val[0]) bad = bad + 1; end
+        end
+        chk(bad, 0, "S2 GPIO listing completed: P1 follows P0 within 45 clocks and holds");
+        $display("  [S4.4] chip: GPIO listing verbatim and completed");
+    end
+endtask
+
+// Echo the message back-to-back and compare what comes back on tx_o.
+task sc_echo_run(input real err, input [8*72-1:0] name);
+    integer t, ok, m;
+    begin
+        sc_enter(S3_ECHO_FIXED, 0, 8'h00, 8'h00);
+        repeat (20) @(posedge clk);
+        for (m = 0; m < SC_MSG_LEN; m = m + 1) sc_send(sc_ch(m), S3_NB * CLK_NS * (1.0 + err));
+        t = 0;
+        while (sc_ncap < SC_MSG_LEN && t < 3 * 10 * S3_NB) begin @(posedge clk); t = t + 1; end
+        repeat (2 * 10 * S3_NB) @(posedge clk);          // anything extra would show up here
+        ok = (sc_ncap == SC_MSG_LEN);
+        for (m = 0; m < SC_MSG_LEN; m = m + 1) if (sc_cap[m] !== sc_ch(m)) ok = 0;
+        chk(ok, 1, name);
+        chk(sc_overruns, 0, "S4 echo: no byte overrun");
+    end
+endtask
+
+task suite_soc_echo;
+    integer bad;
+    begin
+        // S3: the listing verbatim never sets TRANSMIT, so it receives and
+        // consumes every byte but transmits nothing.
+        sc_enter(S3_ECHO_LISTING, 0, 8'h00, 8'h00);
+        repeat (20) @(posedge clk);
+        bad = 0;
+        fork
+            for (n = 0; n < SC_MSG_LEN; n = n + 1) begin
+                sc_send(sc_ch(n), S3_NB * CLK_NS); #(2 * S3_NB * CLK_NS);
+            end
+            for (k = 0; k < SC_MSG_LEN * 12 * S3_NB; k = k + 1) begin
+                @(posedge clk); if (sc_tx !== 1'b1) bad = bad + 1;
+            end
+        join
+        repeat (200) @(posedge clk);
+        chk(bad, 0, "S3 echo listing verbatim: tx_o never leaves idle");
+        chk({24'b0, `UART.txdata}, {24'b0, sc_ch(SC_MSG_LEN - 1)}, "S3 echo listing: TXDATA holds the last byte");
+        chk({31'b0, `UART.rxdone}, 0, "S3 echo listing: software consumed every byte");
+        chk(sc_overruns, 0, "S3 echo listing: no byte overrun");
+
+        // S4: completed with a TRANSMIT write, it really echoes.
+        sc_echo_run( 0.00, "S4 echo completed: exact, back-to-back, 0 % baud error");
+        $display("  [S4.4] chip: echo listing verbatim (never transmits) and completed (%0d-byte echo at 115200 bps)",
+                 SC_MSG_LEN);
+    end
+endtask
+
+// The completed echo again with the far end's clock off by 2 % each way.
+task suite_soc_echo_err;
+    begin
+        sc_echo_run( 0.02, "S4 echo completed: exact, back-to-back, far end 2 % slow");
+        sc_echo_run(-0.02, "S4 echo completed: exact, back-to-back, far end 2 % fast");
+        $display("  [S4.4] chip: completed echo exact with the far end 2 %% slow and 2 %% fast");
+    end
+endtask
+
+task suite_soc_regress;
+    integer t, bad;
+    begin
+        // S5: tx_o looped back to rx_i; pins 7:4 driven with 1010 by the
+        // testbench, pins 3:0 are the program's outputs.
+        sc_enter(S3_PERIPH_REGRESS, 1, 8'hF0, 8'hA0);
+        t = 0;
+        while (`DMEM_WORD(S3_NUM_CHECKS) !== S3_DONE_MARK && t < 100000) begin
+            @(posedge clk); t = t + 1;
+        end
+        chk(`DMEM_WORD(S3_NUM_CHECKS), S3_DONE_MARK, "S5 periph_regress ran to its end marker");
+        bad = 0;
+        for (n = 0; n < S3_NUM_CHECKS; n = n + 1)
+            if (`DMEM_WORD(n) !== 32'b0) begin
+                bad = bad + 1;
+                $display("        periph_regress check %0d: actual ^ expected = %h", n + 1, `DMEM_WORD(n));
+            end
+        chk(bad, 0, "S5 periph_regress: all 24 register checks pass");
+        sc_loopback = 0; sc_tb_oe = 0;
+        $display("  [S4.4] chip: periph_regress, %0d register checks from software, %0d cycles",
+                 S3_NUM_CHECKS, t);
+    end
+endtask
+
+task suite_soc_monitors;
+    begin
+        chk(sc_contention, 0, "monitor: the chip never drove a pin the testbench drove");
+        chk(sc_misdrive, 0, "monitor: every pin showed exactly its enabled driver");
+        chk(sc_frame_errs, 0, "monitor: every frame on tx_o had a valid stop bit");
+        $display("  [S4.4] chip: pin and line monitors clean over the whole run");
+    end
+endtask
+
+// ===========================================================================
 //  WAVEFORM DUMP
 // ---------------------------------------------------------------------------
 //  $dumpvars records only from the moment it executes, so it has to run at
@@ -2071,7 +2959,7 @@ endtask
 // ===========================================================================
 initial begin
     $dumpfile("testbench.vcd");
-    $dumpvars(2, dut);
+    $dumpvars(3, dut);
     $dumpoff;                // waveform window is opened by MAIN, below
 end
 
@@ -2093,6 +2981,7 @@ initial begin
     $display(" RV32I + Zmmul + Xicrc, 47 instructions");
     $display("============================================================");
 
+    if (RUN[0]) begin
     $display("");
     $display("-- SUITE 0: unit tests (core held in reset) -----------------");
     suite_alu;
@@ -2106,32 +2995,64 @@ initial begin
     suite_glue;
     suite_rf;
     suite_dmem;
+    end
 
+    if (RUN[1]) begin
     $display("");
     $display("-- SUITE 1: control unit ------------------------------------");
     suite_ctrl_sweep;
     suite_ctrl_fsm;
     suite_ctrl_signals;
+    end
     c_rst = 1;   // park the standalone control unit for the rest of the run
+    @(negedge clk) u_clk_en = 0;   // and stop the SUITE 0 and 1 copies' clock
 
+    if (RUN[2]) begin
     $display("");
     $display("-- SUITE 2A: OFFICIAL VALIDATION FIRMWARE --------------------");
     $dumpon;                 // ---- waveform window opens
     suite_official;
     $dumpoff;                // ---- waveform window closes
+    end
 
+    if (RUN[3]) begin
     $display("");
     $display("-- SUITE 2B: integration, supplementary coverage program -----");
     suite_integration;
+    end
 
+    if (RUN[4]) begin
     $display("");
     $display("-- SUITE 3: reset stress ------------------------------------");
     suite_reset;
     suite_reset_official;
     suite_reset_recovery;
+    end
+
+    if (RUN[8:5] != 0) begin
+    $display("");
+    $display("-- SUITE 4: Stage 3 peripherals -----------------------------");
+    rst = 1;                 // core parked while the standalone blocks run
+    end
+    if (RUN[5]) begin
+    @(negedge clk) s4_clk_en = 1;  // the SUITE 4.1-4.2 copies' clock runs
+    suite_gpio;
+    suite_uart;
+    suite_gpio_bits;
+    @(negedge clk) s4_clk_en = 0;
+    end
+    if (RUN[6]) begin
+    suite_soc_pins;
+    suite_soc_gpio;
+    end
+    if (RUN[7]) suite_soc_echo;
+    if (RUN[8]) suite_soc_echo_err;
+    if (RUN[6]) suite_soc_regress;
+    if (RUN[8:6] != 0) suite_soc_monitors;   // over everything this run did
 
     $display("");
     $display("============================================================");
+    if (PART != 0) $display("==== part %0d of %0d done: %0d passed, %0d failed ====", PART, N_PARTS, pass, fail);
     $display("==== testbench: %0d passed, %0d failed ====", pass, fail);
     if (fail == 0) $display("ALL TESTS PASSED");
     else           $display("FAILURES PRESENT");

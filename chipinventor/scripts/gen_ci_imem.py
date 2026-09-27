@@ -11,7 +11,10 @@ The ROM holds two images at fixed word offsets:
 
     word   0..258   official validation firmware  (0x00400000..0x00400408)
     word 259..511   gap, reads back 32'h0, never fetched
-    word 512..      this project's supplementary coverage program (0x00400800)
+    word 512..994   this project's supplementary coverage program (0x00400800)
+    word 1023       guard: `j .`, so a program that runs off its end parks
+    word 1024..     the Stage 3 peripheral programs, one slot each from
+                    0x00401000 (gen_ci_stage3.py)
 
 The official firmware has to sit at exactly 0x00400000 because it is
 position-dependent: it derives its .bss base from the PC (auipc s0, 0xfc10 at
@@ -53,7 +56,9 @@ import os
 import re
 import sys
 
+from check_export import rom_words
 from gen_ci_firmware import IMEM_BASE, SUPP_BASE
+from gen_ci_stage3 import PROGRAMS as STAGE3_PROGRAMS
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -74,6 +79,20 @@ SEGMENTS = [
     ("supplementary coverage program",
      os.path.join(ROOT, "firmware", "ci_prog.hex"),
      (SUPP_BASE - IMEM_BASE) // 4),
+] + [
+    # Guard: a self-loop in the last word below the Stage 3 programs. Neither
+    # Phase 2 program ends in a loop of its own - the supplementary one falls
+    # through its final ecall and slides down the zero gap - so without this
+    # it would run on into gpio_listing and start driving pins. With it, a
+    # program that runs off its end parks here, touching nothing.
+    ("guard: j . (parks a program that runs off its end)",
+     [0x0000006F], (STAGE3_PROGRAMS[0][1] - IMEM_BASE) // 4 - 1),
+] + [
+    # Stage 3 peripheral programs, one fixed slot each (gen_ci_stage3.py).
+    ("Stage 3 program %s" % name,
+     os.path.join(ROOT, "firmware", "stage3", name + ".hex"),
+     (base - IMEM_BASE) // 4)
+    for name, base in STAGE3_PROGRAMS
 ]
 
 HEADER = '''// ============================================================================
@@ -115,10 +134,13 @@ module imem (
     // 20-bit word index), exactly as the file-driven version computed it.
     wire [19:0] word_addr = address_i[21:2];
 
+    // Two-level case: 64-word pages, then the word in the page. The logic is
+    // the same ROM; the split only keeps the simulator from walking one
+    // thousand-arm case on every fetch.
     always @(*) begin
         if (!oe_i) data_o = 32'b0;
         else begin
-            case (word_addr)
+            case (word_addr[19:6])
 '''
 
 FOOTER = '''                default: data_o = 32'b0;
@@ -147,13 +169,13 @@ def read_hex(path):
     return words
 
 
-def load_segments():
+def load_segments(segments=None):
     """Read every image and place it, refusing any overlap."""
     rom = {}
     owner = {}
     placed = []
-    for label, path, offset in SEGMENTS:
-        words = read_hex(path)
+    for label, path, offset in (segments or SEGMENTS):
+        words = path if isinstance(path, list) else read_hex(path)
         if not words:
             sys.exit("%s contains no words - refusing to emit an empty segment" % path)
         for i, word in enumerate(words):
@@ -165,7 +187,8 @@ def load_segments():
                 )
             rom[idx] = word
             owner[idx] = label
-        placed.append((label, os.path.basename(path), offset, len(words)))
+        name = "guard" if isinstance(path, list) else os.path.basename(path)
+        placed.append((label, name, offset, len(words)))
     return rom, placed
 
 
@@ -184,15 +207,13 @@ def map_table(placed):
 
 def render(rom, placed):
     out = [HEADER.format(maptable=map_table(placed))]
-    prev = None
-    for idx in sorted(rom):
-        if prev is not None and idx != prev + 1:
-            out.append(
-                "                // ---- gap: words %d..%d read back 32'h0 ----\n"
-                % (prev + 1, idx - 1)
-            )
-        out.append("                20'd%-6d: data_o = 32'h%08x;\n" % (idx, rom[idx]))
-        prev = idx
+    for page in sorted({idx >> 6 for idx in rom}):
+        out.append("                14'd%-4d: case (word_addr[5:0])   // words %d..%d\n"
+                   % (page, page * 64, page * 64 + 63))
+        for idx in sorted(i for i in rom if i >> 6 == page):
+            out.append("                    6'd%-2d: data_o = 32'h%08x;\n" % (idx & 63, rom[idx]))
+        out.append("                    default: data_o = 32'b0;\n"
+                   "                endcase\n")
     out.append(FOOTER)
     return "".join(out)
 
@@ -217,10 +238,7 @@ def check(block_path, rom):
         return "%s does not exist" % block_path
     with open(block_path) as fh:
         text = fh.read()
-    found = dict(
-        (int(i), int(v, 16))
-        for i, v in re.findall(r"20'd(\d+)\s*:\s*data_o = 32'h([0-9a-fA-F]{8});", text)
-    )
+    found = rom_words(text)
     if len(found) != len(rom):
         return "block has %d ROM entries, images have %d words" % (len(found), len(rom))
     for idx in sorted(rom):
@@ -239,7 +257,29 @@ def main():
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--check", action="store_true",
                     help="verify the existing block against the images instead of writing")
+    ap.add_argument("--image", default=None,
+                    help="build a single-image ROM instead (the application build): this "
+                         "image at word 0, the reset vector")
+    ap.add_argument("--label", default="application firmware")
     args = ap.parse_args()
+
+    if args.image:
+        # Application ROM: one image at the reset vector, nothing else, and no
+        # flat image (that belongs to the validation ROM's equivalence check).
+        rom, placed = load_segments([(args.label, args.image, 0)])
+        if args.check:
+            problem = check(args.out, rom)
+            if problem:
+                sys.exit("FAIL %s: %s" % (os.path.basename(args.out), problem))
+            print("OK   %s: %d words - %s" % (os.path.basename(args.out), len(rom), args.label))
+        else:
+            with open(args.out, "w", newline="\n") as fh:
+                fh.write(render(rom, placed))
+            problem = check(args.out, rom)
+            if problem:
+                sys.exit("FAIL: generated block does not round-trip: %s" % problem)
+            print("wrote %s: %d words - %s" % (args.out, len(rom), args.label))
+        return
 
     rom, placed = load_segments()
     summary = ", ".join("%s @ word %d (%d)" % (n, o, c) for _, n, o, c in placed)

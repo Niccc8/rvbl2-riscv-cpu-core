@@ -25,6 +25,8 @@ import os
 import re
 import sys
 
+import check_export as ce
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
@@ -62,9 +64,9 @@ def main():
     mock_span = module_span(mock, "imem")
     if mock_span is None:
         sys.exit("FAIL %s does not declare a module named `imem`" % args.mock)
-    rom_words = len(re.findall(r"20'd\d+\s*:\s*data_o", text[span[0]:span[1]]))
+    rom_words = len(ce.rom_words(text[span[0]:span[1]]))
     text = text[:span[0]] + mock[mock_span[0]:mock_span[1]] + text[span[1]:]
-    mock_words = len(re.findall(r"20'd\d+\s*:\s*data_o", mock))
+    mock_words = len(ce.rom_words(mock))
 
     # ---- resize DMEM on the instance ----------------------------------
     new, n = re.subn(r"(dmem\s*#\(\s*\.DMEM_WORDS\s*\()\s*\d+\s*(\))",

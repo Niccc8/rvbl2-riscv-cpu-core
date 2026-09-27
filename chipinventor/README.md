@@ -5,10 +5,11 @@ directory. Nothing here reads anything outside this folder, and nothing outside 
 modified — the original file-driven flow in the repository root still works exactly as
 it did and can be picked up unchanged.
 
-**Status: complete through GDSII.** The official validation firmware passes on this core
+**Phase 2 status: complete through GDSII.** The official validation firmware passes on this core
 (`x4 = 0`), the design is entered on the platform, and the platform's own OpenLane flow has
 produced a clean signed-off layout — 630.2 x 640.9 um, 0 DRC, LVS match uniquely, setup
-+2.25 ns at the slow corner. See [openlane/RESULTS.md](openlane/RESULTS.md).
++2.25 ns at the slow corner. See [openlane/RESULTS.md](openlane/RESULTS.md). The Phase 2
+run of the checks, as graded:
 
 ```
 === 1/12  Official validation firmware is intact        OK   259 words, sha256 pinned
@@ -36,19 +37,65 @@ The competition's criterion is step 7: the official firmware settles into its `a
 self-loop after 991 cycles with **`x4 = 0x00000000`**. `VALIDATION.md` records the full
 audit against that firmware, including the one bug it found.
 
+## Stage 3: GPIO and UART
+
+Stage 3 adds a GPIO controller (`0xF0000000`) and a UART (`0xF1000000`, 8-N-1, 115200 bps)
+as two canvas projects. **`rvbl2_soc`** is a copy of the graded Phase 2 project with
+`imem` moved out and `gpio` and `uart` added; it is reused as IP inside **`top`**, the
+chip, which adds `imem`, `gpio_bits` and eight 1-bit Inout Pins. `ci_top.v` mirrors both.
+
+| To do | Where |
+|---|---|
+| The whole guide, with both schematics and tickable wire lists | `build/wiring_map.html` (from `scripts/gen_wiring_map.py`) |
+| The 33 wires to draw on the Phase 2 copy (the address decoder is a new block), then the 34 wires of `top` | `NETLIST.md` |
+| Form fields for `gpio`, `uart`, `gpio_bits` and the changed `address_decoder` | `BLOCK_METADATA.md` |
+| Schematics (amber = new in Stage 3) | `build/schematic*.svg`, `build/schematic_top*.svg` |
+
+Export `top` with the BLOCKS button, save it here as **`export_stage3.v`**, and run
+`bash scripts/run_ci.sh`: steps 14 and 15 audit it wire by wire (both projects, every
+Inout Pin's C/D polarity, the parameters) and run the whole testbench on it. Until the
+export exists, step 13 runs the same tools on a mock export in the platform's own format
+and on ten deliberately broken copies of it. The Phase 2 export `top.v` is kept as it was.
+
+```
+=== 6/16  Mirror equivalence vs the frozen Phase 2 core  OK   470400 passed, 0 failed
+=== 7/16  Combined suite against the local mirror        OK   15517 passed, 0 failed
+=== 8/16  OFFICIAL VALIDATION FIRMWARE VERDICT           OK   x4 = 00000000  PASS
+=== 13/16 Export tooling proven on a mock export         OK   13 passed; dry run 15517 passed
+=== 16/16 Application ROM and its platform testbench     OK   3 runs, on the mirror and the export
+```
+
+**Running on the platform.** ChipInventor stops a simulation after a fixed wall-clock time,
+so the long testbenches run in parts. Paste the file, set the parameter, run, repeat:
+
+| ROM in `imem` | Testbench | Parameter |
+|---|---|---|
+| `blocks/imem.v` (validation) | `build/tb_platform.v` (the export's instance names; written by `run_ci.sh`) | `PART` = 1, 2, 3, 4 |
+| `app/imem_app.v` (application) | `build/tb_app_platform.v` (written by `run_ci.sh`) | `SCEN` = 0, 1, 2 |
+| `../official-firmware-testbench/imem_official.v` | `../official-firmware-testbench/tb_official_firmware.v` | — |
+
+`blocks/crc_unit.v` is the Phase 2 CRC written as byte updates: the same function (proved
+equal on every input by `scripts/gen_crc_xor.py --prove`, step 6), about 2.7 times faster
+to simulate, which is what lets these runs fit.
+
+The repository-root flow adds the two checks this directory cannot make on its own:
+`blocks/` and `firmware/stage3/` still match `rtl/` and `tests/progs/stage3/`, and
+`ci_top.v` runs cycle-identical to `rtl/` on all seven ROM programs (`tb/tb_ci_equiv.v`).
+
 ---
 
 ## What is here
 
 | Path | What it is |
 |---|---|
-| `blocks/` | 18 files, each the exact text to paste into a block's Code field |
+| `blocks/` | 21 files, each the exact text to paste into a block's Code field |
 | `BLOCK_METADATA.md` | The rest of each block's form fields, generated from the source |
-| `NETLIST.md` | Every wire to draw: 45 nets, 72 connections, as a tickable checklist |
+| `NETLIST.md` | Stage 3: the edits to the Phase 2 copy, then every wire of both projects |
 | `VALIDATION.md` | What was checked against the official firmware, and what it proved |
-| `ci_top.v` | Local mirror of the `top` the canvas will generate — **not pasted anywhere** |
+| `ci_top.v` | Local mirror of the two projects the canvas will generate — **not pasted anywhere** |
 | `tb_chipinventor.v` | The one combined testbench, pasted into the platform's testbench field |
 | `firmware/` | The official validation firmware, our supplementary program, and their inputs |
+| `app/` | The application on the canvas: its ROM (`imem_app.v`) and platform testbenches |
 | `rtl_ref/` | Frozen copy of the verified original, used only by the equivalence check |
 | `scripts/` | Generators and the local verification runner |
 
