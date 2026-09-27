@@ -1,0 +1,47 @@
+VCD info: dumpfile testbench.vcd opened for output.
+============================================================
+ Emulator preview: ./emu command lines played on RVBL-2
+ UART 115200 bps, 20000 cycles of silence after each emu access
+============================================================
+
+-- 1. README example as written: -o before the echo reads 0x00, emu stops there
+$ ./emu -d 0xF0 -i 0x02 -o 0x20 -t1 0x30 -r1 0x30
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000002 to INPUT PINS
+[error] OUT read error. Expected 0x00000020. Got 0x00000000
+PASS line 1: emu stops at -o, as expected
+
+-- 2. Same test with -o after the echo: every comparison passes
+$ ./emu -d 0xF0 -i 0x02 -t1 0x30 -r1 0x30 -o 0x20
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000002 to INPUT PINS
+[ok] Written 0x30 to UART RX
+[ok] Read 0x30 from UART TX
+[ok] Read 0x00000020 from OUTPUT PINS
+PASS line 2
+
+-- 3. The README's test values: 0xA on P3-P0, 0x30 through the UART
+$ ./emu -d 0xF0 -i 0x0A -t1 0x30 -r1 0x30 -o 0xA0
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x0000000A to INPUT PINS
+[ok] Written 0x30 to UART RX
+[ok] Read 0x30 from UART TX
+[ok] Read 0x000000A0 from OUTPUT PINS
+PASS line 3
+
+-- 4. Four bytes in one option, echoed one by one, least-significant byte first
+$ ./emu -d 0xF0 -i 0x05 -t4 0x5AA5FF00 -r4 0x5AA5FF00 -o 0x50
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000005 to INPUT PINS
+[ok] Written 0x5AA5FF00 to UART RX
+[ok] Read 0x5AA5FF00 from UART TX
+[ok] Read 0x00000050 from OUTPUT PINS
+PASS line 4
+
+==== tb_emu_preview: 4 passed, 0 failed ====
+EMULATOR PREVIEW: ALL TESTS PASSED
+tb_emu_preview.v:216: $finish called at 10159363500 (1ps)

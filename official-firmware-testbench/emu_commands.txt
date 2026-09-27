@@ -1,0 +1,19 @@
+# ./emu command lines for the official GPIO and UART test firmware.
+# application/emulator-preview/gen_emu_preview.py turns them into
+# tb_emu_preview.v, which plays them on the chip in simulation.
+
+# README example as written: -o before the echo reads 0x00, emu stops there
+# The firmware copies P3-P0 to P7-P4 once, right after reset - before -i has
+# set P1 - and then waits for a UART byte. So -o reads 0x00 until the echo.
+# expect: error at -o
+./emu -d 0xF0 -i 0x02 -o 0x20 -t1 0x30 -r1 0x30
+
+# Same test with -o after the echo: every comparison passes
+# The firmware has looped, read P1 and set P5.
+./emu -d 0xF0 -i 0x02 -t1 0x30 -r1 0x30 -o 0x20
+
+# The README's test values: 0xA on P3-P0, 0x30 through the UART
+./emu -d 0xF0 -i 0x0A -t1 0x30 -r1 0x30 -o 0xA0
+
+# Four bytes in one option, echoed one by one, least-significant byte first
+./emu -d 0xF0 -i 0x05 -t4 0x5AA5FF00 -r4 0x5AA5FF00 -o 0x50

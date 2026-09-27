@@ -1,0 +1,55 @@
+
+build/firmware.elf:     file format elf32-littleriscv
+
+
+Disassembly of section .text:
+
+00400000 <_start>:
+  400000:	f0000437          	lui	s0,0xf0000
+  400004:	f10004b7          	lui	s1,0xf1000
+  400008:	00842283          	lw	t0,8(s0) # f0000008 <GPIO_BASE+0x8>
+  40000c:	0f02e293          	or	t0,t0,240
+  400010:	00542423          	sw	t0,8(s0)
+
+00400014 <_loop>:
+  400014:	00442283          	lw	t0,4(s0)
+  400018:	00429293          	sll	t0,t0,0x4
+  40001c:	00542023          	sw	t0,0(s0)
+
+00400020 <_check_rxdone>:
+  400020:	0084a283          	lw	t0,8(s1) # f1000008 <UART_BASE+0x8>
+  400024:	0022f293          	and	t0,t0,2
+  400028:	fe028ce3          	beqz	t0,400020 <_check_rxdone>
+  40002c:	0004a423          	sw	zero,8(s1)
+  400030:	0044a303          	lw	t1,4(s1)
+
+00400034 <_check_txdone>:
+  400034:	0084a283          	lw	t0,8(s1)
+  400038:	0042f293          	and	t0,t0,4
+  40003c:	fe028ce3          	beqz	t0,400034 <_check_txdone>
+  400040:	0064a023          	sw	t1,0(s1)
+  400044:	0084a303          	lw	t1,8(s1)
+  400048:	00136313          	or	t1,t1,1
+  40004c:	0064a423          	sw	t1,8(s1)
+  400050:	fc5ff06f          	j	400014 <_loop>
+
+Disassembly of section .riscv.attributes:
+
+00000000 <.riscv.attributes>:
+   0:	2241                	.insn	2, 0x2241
+   2:	0000                	.insn	2, 0x
+   4:	7200                	.insn	2, 0x7200
+   6:	7369                	.insn	2, 0x7369
+   8:	01007663          	bgeu	zero,a6,14 <GPIO_DATADIR+0xc>
+   c:	0018                	.insn	2, 0x0018
+   e:	0000                	.insn	2, 0x
+  10:	7205                	.insn	2, 0x7205
+  12:	3376                	.insn	2, 0x3376
+  14:	6932                	.insn	2, 0x6932
+  16:	7032                	.insn	2, 0x7032
+  18:	5f31                	.insn	2, 0x5f31
+  1a:	6d7a                	.insn	2, 0x6d7a
+  1c:	756d                	.insn	2, 0x756d
+  1e:	316c                	.insn	2, 0x316c
+  20:	3070                	.insn	2, 0x3070
+	...

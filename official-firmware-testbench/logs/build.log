@@ -1,0 +1,76 @@
+make: Entering directory 'C:/Users/user/Desktop/A/riscv_championchip/official-firmware-testbench/build/fw'
+mkdir -p build
+riscv-none-elf-as -Wall -march=rv32i_zmmul -mabi=ilp32 src/main.s -o build/main.o
+GAS LISTING src/main.s 			page 1
+
+
+   1              	.equ GPIO_BASE,             0xF0000000
+   2              	.equ GPIO_DATAOUT,          0x0000
+   3              	.equ GPIO_DATAIN,           0x0004
+   4              	.equ GPIO_DATADIR,          0x0008
+   5              	
+   6              	.equ UART_BASE,             0xF1000000
+   7              	.equ UART_TXDATA,           0x0000
+   8              	.equ UART_RXDATA,           0x0004
+   9              	.equ UART_CONTROL,          0x0008
+  10              	
+  11              	.equ UART_CONTROL_TRANSMIT, 0x01
+  12              	.equ UART_CONTROL_RXDONE,   0x02
+  13              	.equ UART_CONTROL_TXDONE,   0x04
+  14              	
+  15              	_start:
+  16 0000 370400F0 	    la s0, GPIO_BASE
+  17 0004 B70400F1 	    la s1, UART_BASE
+  18              	
+  19              	    /* Set P7-4 as output and P3-0 as input */
+  20 0008 83228400 	    lw t0, GPIO_DATADIR(s0)
+  21 000c 93E2020F 	    ori t0, t0, 0xF0
+  22 0010 23245400 	    sw t0, GPIO_DATADIR(s0)
+  23              	    
+  24              	_loop:
+  25              	    /* Read P3-0 */
+  26 0014 83224400 	    lw t0, GPIO_DATAIN(s0)
+  27              	
+  28              	    /* Move P3-0 value to P7-4 */
+  29 0018 93924200 	    slli t0, t0, 4
+  30              	
+  31              	    /* Write to P7-4 */
+  32 001c 23205400 	    sw t0, GPIO_DATAOUT(s0)
+  33              	
+  34              	_check_rxdone:
+  35 0020 83A28400 	    lw t0, UART_CONTROL(s1)
+  36 0024 93F22200 	    andi t0, t0, UART_CONTROL_RXDONE
+  37 0028 E38C02FE 	    beq t0, zero, _check_rxdone
+  38              	
+  39              	    /* Clear flag */
+  40 002c 23A40400 	    sw zero, UART_CONTROL(s1)
+  41              	
+  42              	    /* Receive data */
+  43 0030 03A34400 	    lw t1, UART_RXDATA(s1)
+  44              	
+  45              	_check_txdone:
+  46 0034 83A28400 	    lw t0, UART_CONTROL(s1)
+  47 0038 93F24200 	    andi t0, t0, UART_CONTROL_TXDONE
+  48 003c E38C02FE 	    beq t0, zero, _check_txdone
+  49              	
+  50              	    /* Data to send */
+  51 0040 23A06400 	    sw t1, UART_TXDATA(s1)
+  52              	
+  53              	    # Send data
+  54 0044 03A38400 	    lw t1, UART_CONTROL(s1)
+  55 0048 13631300 	    ori t1, t1, UART_CONTROL_TRANSMIT
+  56 004c 23A46400 	    sw t1, UART_CONTROL(s1)
+  57              	
+GAS LISTING src/main.s 			page 2
+
+
+  58 0050 6FF05FFC 	    j _loop
+riscv-none-elf-gcc -Wall -march=rv32i_zmmul -mabi=ilp32 -nostdlib -T C:/Users/user/Desktop/A/riscv_championchip/official-firmware-testbench/../tools/rvbl-firmware-builder/bsp/custom.ld build/main.o -o build/firmware.elf
+C:/Users/user/tools/xpack-riscv-none-elf-gcc-13.2.0-2/bin/../lib/gcc/riscv-none-elf/13.2.0/../../../../riscv-none-elf/bin/ld.exe: warning: cannot find entry symbol _start; defaulting to 00400000
+riscv-none-elf-size build/firmware.elf
+   text	   data	    bss	    dec	    hex	filename
+     84	      0	    128	    212	     d4	build/firmware.elf
+riscv-none-elf-objcopy -O binary build/firmware.elf build/firmware.bin
+python3 C:/Users/user/Desktop/A/riscv_championchip/official-firmware-testbench/../tools/rvbl-firmware-builder/scripts/bin2rom.py build/firmware.bin > build/firmware.txt
+riscv-none-elf-objdump -D build/firmware.elf > build/firmware.dmp
+make: Leaving directory 'C:/Users/user/Desktop/A/riscv_championchip/official-firmware-testbench/build/fw'

@@ -1,0 +1,8 @@
+VCD info: dumpfile testbench.vcd opened for output.
+[PASS] GPIO: P3-P0 = 0xa, P7-P4 = 0xa
+[PASS] UART: RX = 0x30, TX = 0x30
+[PASS] GPIO: P3-P0 = 0x5, P7-P4 = 0xa
+[PASS] UART: RX = 0x55, TX = 0x55
+[PASS] GPIO: P3-P0 = 0x5, P7-P4 = 0x5
+[PASS] GPIO and UART waveform run completed successfully
+tb_wave_official.v:116: $finish called at 389350500 (1ps)

@@ -1,0 +1,44 @@
+VCD info: dumpfile testbench.vcd opened for output.
+============================================================
+ Official Stage 3 GPIO and UART test firmware on RVBL-2
+ clock 30.303 MHz, UART 115200 bps (263 cycles per bit)
+============================================================
+[PASS] GPIO: P3-P0 = 0xA, P7-P4 = 0xA   (cycle 40)
+[PASS] UART: RX = 0x30, TX = 0x30   (cycle 5097)
+-- all 16 GPIO values, each with a different UART byte --
+[PASS] UART: RX = 0x00, TX = 0x00   (cycle 10144)
+[PASS] GPIO: P3-P0 = 0x0, P7-P4 = 0x0   (cycle 10144)
+[PASS] UART: RX = 0xFF, TX = 0xFF   (cycle 15191)
+[PASS] GPIO: P3-P0 = 0x1, P7-P4 = 0x1   (cycle 15191)
+[PASS] UART: RX = 0x55, TX = 0x55   (cycle 20238)
+[PASS] GPIO: P3-P0 = 0x2, P7-P4 = 0x2   (cycle 20238)
+[PASS] UART: RX = 0xAA, TX = 0xAA   (cycle 25285)
+[PASS] GPIO: P3-P0 = 0x3, P7-P4 = 0x3   (cycle 25285)
+[PASS] UART: RX = 0x01, TX = 0x01   (cycle 30332)
+[PASS] GPIO: P3-P0 = 0x4, P7-P4 = 0x4   (cycle 30332)
+[PASS] UART: RX = 0x80, TX = 0x80   (cycle 35379)
+[PASS] GPIO: P3-P0 = 0x5, P7-P4 = 0x5   (cycle 35379)
+[PASS] UART: RX = 0x7E, TX = 0x7E   (cycle 40426)
+[PASS] GPIO: P3-P0 = 0x6, P7-P4 = 0x6   (cycle 40426)
+[PASS] UART: RX = 0x81, TX = 0x81   (cycle 45473)
+[PASS] GPIO: P3-P0 = 0x7, P7-P4 = 0x7   (cycle 45473)
+[PASS] UART: RX = 0x0F, TX = 0x0F   (cycle 50520)
+[PASS] GPIO: P3-P0 = 0x8, P7-P4 = 0x8   (cycle 50520)
+[PASS] UART: RX = 0xF0, TX = 0xF0   (cycle 55567)
+[PASS] GPIO: P3-P0 = 0x9, P7-P4 = 0x9   (cycle 55567)
+[PASS] UART: RX = 0x3C, TX = 0x3C   (cycle 60614)
+[PASS] GPIO: P3-P0 = 0xA, P7-P4 = 0xA   (cycle 60614)
+[PASS] UART: RX = 0xC3, TX = 0xC3   (cycle 65661)
+[PASS] GPIO: P3-P0 = 0xB, P7-P4 = 0xB   (cycle 65661)
+[PASS] UART: RX = 0x96, TX = 0x96   (cycle 70708)
+[PASS] GPIO: P3-P0 = 0xC, P7-P4 = 0xC   (cycle 70708)
+[PASS] UART: RX = 0x69, TX = 0x69   (cycle 75755)
+[PASS] GPIO: P3-P0 = 0xD, P7-P4 = 0xD   (cycle 75755)
+[PASS] UART: RX = 0x5A, TX = 0x5A   (cycle 80802)
+[PASS] GPIO: P3-P0 = 0xE, P7-P4 = 0xE   (cycle 80802)
+[PASS] UART: RX = 0xA5, TX = 0xA5   (cycle 85849)
+[PASS] GPIO: P3-P0 = 0xF, P7-P4 = 0xF   (cycle 85849)
+============================================================
+==== tb_official_firmware: 34 passed, 0 failed, 85849 cycles ====
+[PASS] GPIO and UART firmware test completed successfully
+tb_official_firmware.v:181: $finish called at 2833000500 (1ps)
