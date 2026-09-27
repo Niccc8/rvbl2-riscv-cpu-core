@@ -29,7 +29,7 @@ module tb_firmware;
     // DMEM at the full architectural 8kB (Block Guide Table 6/13).
     top #(.IMEM_WORDS(IMEM_WORDS_NEEDED), .DMEM_WORDS(2048),
           .IMEM_INIT_FILE("tests/progs/tb_firmware_prog.hex")) dut (
-        .clk_i(clk), .rst_i(rst)
+        .clk_i(clk), .rst_i(rst), .rx_i(1'b1)  // UART line idle; pins_io, tx_o unused
     );
 
     always #5 clk = ~clk;

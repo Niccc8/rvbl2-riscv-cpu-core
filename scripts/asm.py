@@ -32,6 +32,41 @@ def reg(tok):
 
 PCREL_RE = re.compile(r'^%pcrel\((\w+)\)$')
 
+# .equ constants. Visible to every immediate operand, including memory
+# offsets such as "lw t0, GPIO_DATAIN(s0)". Reset at the start of assemble().
+SYMBOLS = {}
+
+def _preprocess(lines):
+    """Strip /* ... */ (may span lines), '#' and '//' comments."""
+    text = re.sub(r'/\*.*?\*/', ' ', '\n'.join(l.rstrip('\n') for l in lines), flags=re.S)
+    return [re.split(r'#|//', l)[0] for l in text.splitlines()]
+
+def _const(tok):
+    tok = tok.strip().rstrip(',')
+    return SYMBOLS[tok] if tok in SYMBOLS else int(tok, 0)
+
+def _load_const(rd, value):
+    """li / la of a constant: one addi if it fits 12 bits, else lui (+ addi).
+
+    The addi immediate is sign-extended by the hardware, so the lui part is
+    rounded up when bit 11 of the low part is set (lo is then negative)."""
+    v = value & 0xFFFFFFFF
+    sv = v - (1 << 32) if v & 0x80000000 else v
+    if -2048 <= sv <= 2047:
+        return [f"addi {rd}, zero, {sv}"]
+    hi = ((v + 0x800) >> 12) & 0xFFFFF
+    lo = (v - (hi << 12)) & 0xFFF
+    lo = lo - 0x1000 if lo & 0x800 else lo
+    return [f"lui {rd}, {hi}"] + ([f"addi {rd}, {rd}, {lo}"] if lo else [])
+
+def _expand(line):
+    """Expand the li / la pseudo-instructions; everything else passes through.
+    la accepts a constant or .equ symbol only (no PC-relative label form)."""
+    parts = line.replace(',', ' ').split()
+    if parts and parts[0].lower() in ("li", "la"):
+        return _load_const(parts[1], _const(parts[2]))
+    return [line]
+
 def imm_val(tok, labels=None, pc=None, pcrel_pc=None):
     """Resolve an immediate operand.
 
@@ -50,6 +85,8 @@ def imm_val(tok, labels=None, pc=None, pcrel_pc=None):
         return labels[m.group(1)] - (pcrel_pc - 4)
     if labels is not None and tok in labels:
         return labels[tok] - (pc if pc is not None else 0)
+    if tok in SYMBOLS:
+        return SYMBOLS[tok]
     return int(tok, 0)
 
 def s12(v):
@@ -113,9 +150,14 @@ def assemble(lines):
     labels = {}
     cleaned = []
     addr = 0
-    for raw in lines:
-        line = raw.split('#')[0].strip()
+    SYMBOLS.clear()
+    for raw in _preprocess(lines):
+        line = raw.strip()
         if not line:
+            continue
+        if line.lower().startswith('.equ'):
+            name, value = [t.strip() for t in line[4:].split(',', 1)]
+            SYMBOLS[name] = _const(value)
             continue
         if line.endswith(':'):
             labels[line[:-1]] = addr
@@ -125,12 +167,13 @@ def assemble(lines):
             # could be "label: instr" on one line
             lbl, rest = m.group(1), m.group(2)
             labels[lbl] = addr
-            if rest:
-                cleaned.append((addr, rest))
+            for ins in (_expand(rest) if rest else []):
+                cleaned.append((addr, ins))
                 addr += 4
             continue
-        cleaned.append((addr, line))
-        addr += 4
+        for ins in _expand(line):
+            cleaned.append((addr, ins))
+            addr += 4
 
     words = []
     for addr, line in cleaned:
