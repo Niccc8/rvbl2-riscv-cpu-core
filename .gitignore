@@ -57,3 +57,13 @@ riscv_core_championchip-*-openlanesky130/
 # chipinventor/openlane/runs/platform_20260904/results/final/gds/top.gds
 # chipinventor/openlane/runs/platform_20260904/results/final/verilog/gl/top.v
 # chipinventor/openlane/runs/platform_20260904/results/final/verilog/gl/top.nl.v
+
+# --- Stage 3 -------------------------------------------------------------------
+# Firmware build intermediates; the delivered firmware in out/<app>/ is committed
+application/firmware/out/**/*.o
+official-firmware-testbench/build/
+report-stage3/*.aux
+report-stage3/*.log
+report-stage3/*.out
+application/firmware/out/selftest/
+application/firmware/out/emu_demo/

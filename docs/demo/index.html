@@ -1,0 +1,1146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{margin:0}</style>
+</head>
+<body>
+<title>LaneX Replay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&family=Overpass+Mono:wght@400;600&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --ground:#F2F4F0; --panel:#FFFFFF; --panel-2:#E8ECE7; --rule:#D3DBD5; --rule-2:#B9C4BC;
+  --ink:#14201A; --ink-2:#3B4842; --muted:#5E6B64;
+  --sign:#0A6B4B; --sign-ink:#FFFFFF; --sign-soft:#DCEEE5;
+  --amber:#A86F00; --amber-soft:#FBEFD3; --red:#C4373B; --red-soft:#F8E0E0;
+  --good:#1F8E5E; --warn:#B17A06; --bad:#C4373B; --quiet:#6B7771; --violet:#6D55C8; --blue:#2563C9;
+  --road:#3B403D; --road-edge:#E9ECE8; --lane-mark:#F2C14A; --verge:#C9D3CB; --car:#DFE5E1; --shadow:0 1px 2px rgba(20,32,26,.06),0 6px 18px rgba(20,32,26,.06);
+  --display:"Overpass","Highway Gothic","Arial Narrow",system-ui,sans-serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"Overpass Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  color-scheme: dark;
+  --ground:#101513; --panel:#18201D; --panel-2:#1F2925; --rule:#26312C; --rule-2:#34423B;
+  --ink:#E6ECE8; --ink-2:#C0CBC5; --muted:#8E9C95;
+  --sign:#0C7A55; --sign-ink:#F4FBF7; --sign-soft:#123527;
+  --amber:#F2A900; --amber-soft:#2E2308; --red:#E5484D; --red-soft:#3A1719;
+  --good:#39C47A; --warn:#F2B134; --bad:#FF5A5F; --quiet:#7C8A83; --violet:#A98BFF; --blue:#6EA8FF;
+  --road:#1B201E; --road-edge:#C9D1CC; --lane-mark:#F2A900; --verge:#141A17; --car:#AEB9B3; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 22px rgba(0,0,0,.28);
+}}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --ground:#101513; --panel:#18201D; --panel-2:#1F2925; --rule:#26312C; --rule-2:#34423B;
+  --ink:#E6ECE8; --ink-2:#C0CBC5; --muted:#8E9C95;
+  --sign:#0C7A55; --sign-ink:#F4FBF7; --sign-soft:#123527;
+  --amber:#F2A900; --amber-soft:#2E2308; --red:#E5484D; --red-soft:#3A1719;
+  --good:#39C47A; --warn:#F2B134; --bad:#FF5A5F; --quiet:#7C8A83; --violet:#A98BFF; --blue:#6EA8FF;
+  --road:#1B201E; --road-edge:#C9D1CC; --lane-mark:#F2A900; --verge:#141A17; --car:#AEB9B3; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 22px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding-inline:20px;padding-block:22px 72px}
+code,.mono{font-family:var(--mono)}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+/* gantry-sign header */
+.sign{background:var(--sign);color:var(--sign-ink);border-radius:6px;padding:16px 22px 14px;border:3px solid color-mix(in srgb,var(--sign-ink) 70%,transparent);
+  box-shadow:inset 0 0 0 2px var(--sign),var(--shadow);display:flex;flex-wrap:wrap;gap:10px 28px;align-items:end;justify-content:space-between}
+.sign h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,4.2vw,40px);line-height:1;margin:0;letter-spacing:.005em;text-wrap:balance}
+.sign .route{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;opacity:.86;margin:0 0 6px}
+.sign .exit{font-family:var(--display);font-weight:600;font-size:14px;line-height:1.35;max-width:46ch;margin:0;opacity:.95}
+.lede{color:var(--ink-2);max-width:78ch;margin:14px 2px 18px;font-size:15.5px}
+.lede b{color:var(--ink)}
+
+/* source bar */
+.sources{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 14px}
+.sources .lbl{font-family:var(--display);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.src{border:1px solid var(--rule-2);background:var(--panel);border-radius:999px;padding:6px 13px;cursor:pointer;font-size:13px;color:var(--ink-2)}
+.src[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.src[disabled]{opacity:.45;cursor:not-allowed}
+.provenance{font-size:13px;color:var(--muted);margin:-4px 2px 14px;max-width:90ch}
+
+/* stage */
+.stage{background:var(--panel);border:1px solid var(--rule);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
+.stage canvas{display:block;width:100%;height:280px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--rule);background:var(--panel-2)}
+.btn{border:1px solid var(--rule-2);background:var(--panel);border-radius:6px;padding:7px 13px;cursor:pointer;font-weight:600;font-size:13.5px}
+.btn.primary{background:var(--sign);border-color:var(--sign);color:var(--sign-ink)}
+.btn:hover{border-color:var(--ink-2)}
+.controls .sp{flex:1}
+.lamps{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.lamp{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.lamp i{width:14px;height:14px;border-radius:50%;background:var(--rule-2);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--ink) 12%,transparent);transition:background .15s}
+.lamp.on.g i{background:var(--good);box-shadow:0 0 10px var(--good)}
+.lamp.on.a i{background:var(--warn);box-shadow:0 0 10px var(--warn)}
+.lamp.on.r i{background:var(--bad);box-shadow:0 0 10px var(--bad)}
+.lamp.on.s i{background:var(--quiet)}
+.lamp.on{color:var(--ink)}
+
+/* grid below */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;margin-top:18px;align-items:start}
+@media (max-width:980px){.grid{grid-template-columns:minmax(0,1fr)}}
+h2{font-family:var(--display);font-weight:800;font-size:19px;margin:0 0 4px;letter-spacing:.005em}
+.eyebrow{font-family:var(--display);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:16px 18px}
+.sub{color:var(--muted);font-size:13.5px;margin:4px 0 12px;max-width:72ch}
+
+/* ledger */
+.ledger-wrap{overflow-x:auto;margin:0 -18px -16px;border-top:1px solid var(--rule)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+thead th{text-align:left;font-family:var(--display);font-weight:600;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:9px 10px;border-bottom:1px solid var(--rule-2);white-space:nowrap;background:var(--panel)}
+tbody td{padding:7px 10px;border-bottom:1px solid var(--rule);vertical-align:middle}
+tbody tr.now{background:color-mix(in srgb,var(--amber) 12%,transparent)}
+tbody tr.bad{background:var(--red-soft)}
+tbody tr.run td{font-family:var(--display);font-weight:600;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);background:var(--panel-2,var(--panel));padding:6px 10px;border-bottom:1px solid var(--rule-2)}
+tbody tr.run td span{font-family:var(--mono);font-weight:400;letter-spacing:0;text-transform:none;color:var(--muted);margin-left:8px}
+td.n,td.cyc{font-family:var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.bytes{display:flex;gap:2px;font-family:var(--mono);font-size:13px}
+.byte{border:0;background:var(--panel-2);border-radius:3px;padding:2px 3px;cursor:pointer;font-family:var(--mono);font-size:13px;line-height:1.2}
+.byte:nth-child(1){color:var(--sign);font-weight:600}
+.byte:nth-child(7),.byte:nth-child(8){color:var(--muted)}
+.byte.flip{background:var(--red);color:#fff}
+.dec{white-space:nowrap}
+.st{display:inline-block;font-family:var(--display);font-weight:800;font-size:11.5px;letter-spacing:.06em;padding:2px 7px;border-radius:3px;color:#fff}
+.chk{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+.ok{color:var(--good)} .no{color:var(--bad);font-weight:600} .na{color:var(--muted)}
+
+/* side plates */
+.plate{border:1px solid var(--rule);border-radius:10px;background:var(--panel);overflow:hidden}
+.plate + .plate{margin-top:16px}
+.plate header{background:var(--panel-2);padding:10px 16px;border-bottom:1px solid var(--rule)}
+.plate .body{padding:14px 16px}
+dl.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0;font-size:13.5px}
+dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.verdict{margin-top:12px;padding:10px 12px;border-radius:6px;font-weight:600;font-size:14px}
+.verdict.good{background:var(--sign-soft);color:var(--good)}
+.verdict.bad{background:var(--red-soft);color:var(--bad)}
+.verdict.none{background:var(--panel-2);color:var(--muted)}
+.big{font-family:var(--display);font-weight:800;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stats div span{display:block;font-size:11.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-family:var(--display)}
+
+/* why */
+.why{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:18px}
+.why .panel h3{font-family:var(--display);font-size:15px;margin:0 0 6px}
+.why .panel p{margin:0;font-size:13.5px;color:var(--ink-2)}
+
+/* paste + blind */
+section.block{margin-top:26px}
+textarea{width:100%;min-height:120px;border:1px solid var(--rule-2);border-radius:8px;background:var(--panel);padding:10px;font-family:var(--mono);font-size:12.5px;resize:vertical}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.field input,.field select{border:1px solid var(--rule-2);background:var(--panel);border-radius:6px;padding:6px 9px;color:var(--ink);min-width:0}
+.kinds{display:flex;flex-wrap:wrap;gap:6px}
+.kinds label{border:1px solid var(--rule-2);border-radius:999px;padding:4px 10px;font-size:12.5px;cursor:pointer;display:flex;gap:6px;align-items:center;background:var(--panel)}
+pre.code{max-height:260px;overflow:auto;background:var(--panel-2);border:1px solid var(--rule);border-radius:8px;padding:10px 12px;font-size:12px;margin:10px 0 0}
+.steps{margin:8px 0 0;padding-left:20px;color:var(--ink-2);font-size:13.5px}
+.steps li{margin:3px 0}
+.seal{font-family:var(--mono);background:var(--amber-soft);color:var(--ink);border:1px dashed var(--amber);border-radius:6px;padding:8px 10px;font-size:12.5px;margin-top:10px}
+.cmp{margin-top:12px}
+.cmp td.m{font-weight:600}
+/* the emulator link */
+.emu{margin-top:18px}
+.emu-pick{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.emu-pick button{border:1px solid var(--rule-2);background:var(--panel);border-radius:999px;padding:5px 11px;cursor:pointer;font-size:12.5px;color:var(--ink-2)}
+.emu-pick button[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.emu-cmd{font-family:var(--mono);font-size:13px;line-height:1.9;background:var(--panel-2);border:1px solid var(--rule);border-radius:8px;padding:8px 12px;overflow-wrap:anywhere}
+.emu-cmd .tk{border-radius:3px;padding:1px 3px;transition:background .15s,color .15s}
+.emu-cmd .tk.done{opacity:1}.emu-cmd .tk.todo{opacity:.45}
+.emu-cmd .tk.now{color:#fff!important}
+.ch-d{color:var(--muted)} .ch-i{color:var(--good)} .ch-t{color:var(--violet)} .ch-r{color:var(--amber)} .ch-o{color:var(--blue)}
+.emu-cmd .tk.now.ch-d{background:var(--muted)} .emu-cmd .tk.now.ch-i{background:var(--good)} .emu-cmd .tk.now.ch-t{background:var(--violet)}
+.emu-cmd .tk.now.ch-r{background:var(--amber)} .emu-cmd .tk.now.ch-o{background:var(--blue)} .emu-cmd .tk.now.ch-x{background:var(--ink-2)}
+.emu-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;margin-top:12px;align-items:start}
+@media (max-width:980px){.emu-grid{grid-template-columns:minmax(0,1fr)}}
+.emu-fig{overflow-x:auto}
+.emu-fig svg{display:block;width:100%;min-width:560px;height:auto}
+.emu-fig text{font-family:var(--body)}
+.emu-fig .mono{font-family:var(--mono)}
+.emu-con{font-family:var(--mono);font-size:12.5px;background:#0F1512;color:#D5E2DA;border-radius:8px;padding:10px 12px;min-height:250px;max-height:330px;overflow:auto}
+.emu-con div{white-space:pre-wrap;overflow-wrap:anywhere}
+.emu-con .prompt{color:#8FB3A0}
+.emu-con .ok{color:#6FD69B}
+.emu-con .mean{color:#A9B8B0;padding-left:2ch;font-family:var(--body);font-size:12.5px}
+.emu-con .pass{color:#0F1512;background:#6FD69B;display:inline-block;padding:1px 8px;border-radius:3px;font-weight:700;margin-top:6px}
+.emu-now{margin-top:10px;padding:10px 12px;border-radius:6px;background:var(--panel-2);font-size:14px;min-height:44px}
+.emu-now b{font-family:var(--mono)}
+footer{margin-top:40px;color:var(--muted);font-size:12.5px;max-width:92ch}
+@media (max-width:560px){.wrap{padding-inline:16px}.stage canvas{height:220px}.sign{padding:14px 16px}}
+@media (prefers-reduced-motion: reduce){.lamp i{transition:none}}
+</style>
+
+<div class="wrap">
+  <header class="sign" role="banner">
+    <div>
+      <p class="route">LaneX &middot; MLFF edge controller &middot; on the RVBL-2 RISC-V chip</p>
+      <h1>Every vehicle, one verified transaction</h1>
+    </div>
+    <p class="exit">Every decision on this page was made by the chip.<br>The page only reads its bytes, and checks them.</p>
+  </header>
+
+  <p class="lede">A multi-lane free-flow toll gantry, run by the <b>RVBL-2 RISC-V chip</b>: it takes RFID tag reads and back-end
+  commands over its UART, vehicle presence and class on its GPIO pins, and decides for every vehicle, sealing each
+  decision with a CRC and a <b>Chaskey-12</b> authentication tag (ISO/IEC 29192-6). Below is the chip's own
+  transcript, captured at its <code>tx_o</code> pin.</p>
+
+  <div class="sources" role="group" aria-label="Transcript">
+    <span class="lbl">Transcript</span>
+    <button type="button" class="src" id="src-fast" aria-pressed="true">Exported chip &middot; 921,600 bps</button>
+    <button type="button" class="src" id="src-true" aria-pressed="false">Exported chip &middot; 115,200 bps</button>
+    <button type="button" class="src" id="src-pasted" aria-pressed="false" disabled>Pasted</button>
+  </div>
+  <p class="provenance" id="prov"></p>
+
+  <div class="stage">
+    <canvas id="road" width="1200" height="280" aria-label="Animated replay: vehicles pass under the gantry and each shows the chip's decision"></canvas>
+    <div class="controls">
+      <button type="button" class="btn primary" id="play">Pause</button>
+      <button type="button" class="btn" id="step">Next vehicle</button>
+      <button type="button" class="btn" id="restart">Restart</button>
+      <label class="field" style="flex-direction:row;align-items:center;gap:6px">Speed
+        <select id="speed"><option value="0.5">0.5&times;</option><option value="1" selected>1&times;</option><option value="2">2&times;</option></select></label>
+      <span class="sp"></span>
+      <div class="lamps" aria-label="Chip output pins">
+        <span class="lamp g" id="p4"><i></i>P4 charged</span>
+        <span class="lamp a" id="p5"><i></i>P5 camera</span>
+        <span class="lamp r" id="p6"><i></i>P6 alarm</span>
+        <span class="lamp s" id="p7"><i></i>P7 lane closed</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="emu panel" id="emu" aria-labelledby="h-emu">
+    <p class="eyebrow">Application logic &middot; the emulator link</p>
+    <h2 id="h-emu">How <code>./emu</code> drives the chip</h2>
+    <p class="sub">The organisers&rsquo; emulator talks to the FPGA top over PCIe and AXI-Lite. Each option writes or reads one register,
+    and each register is one group of the chip&rsquo;s pins. One command line is one vehicle. Pick one: the command plays step by step,
+    and the right-hand side shows <b>the chip&rsquo;s own answers</b>, from the emulator preview (every line played on the chip in
+    simulation at 115,200&nbsp;bps, the way <code>emu</code> plays it).</p>
+    <div class="emu-pick" id="emu-pick" role="group" aria-label="Emulator command lines"></div>
+    <div class="emu-cmd" id="emu-cmd" aria-live="off"></div>
+    <div class="emu-grid">
+      <div>
+        <div class="emu-fig" id="emu-fig"></div>
+        <div class="emu-now" id="emu-now" aria-live="polite"></div>
+        <div class="row" style="margin-top:10px">
+          <button type="button" class="btn primary" id="emu-play">Play this line</button>
+          <button type="button" class="btn" id="emu-step">Step</button>
+          <span class="sub" style="margin:0" id="emu-prov"></span>
+        </div>
+      </div>
+      <div class="emu-con" id="emu-con" tabindex="0" aria-label="Emulator output"></div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="panel" aria-labelledby="h-ledger">
+      <p class="eyebrow">Evidence ledger</p>
+      <h2 id="h-ledger">Every record the chip sent</h2>
+      <p class="sub">Eight bytes each, in the order they left <code>tx_o</code>. This page recomputes every CRC-16 and every
+      Chaskey-12 tag itself. <b>Click any byte</b> to flip its lowest bit and watch the checks fail; click again to restore it.</p>
+      <div class="ledger-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Cycle</th><th>Bytes</th><th>Decoded</th><th>CRC</th><th>Tag</th></tr></thead>
+          <tbody id="ledger"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside aria-label="Chip identity and totals">
+      <div class="plate">
+        <header><p class="eyebrow" style="margin:0">Chip identity</p><h2 style="font-size:16px;margin:2px 0 0">What the chip is running</h2></header>
+        <div class="body">
+          <dl class="kv" id="ident"></dl>
+          <div class="verdict none" id="ident-v">No identity record in this transcript.</div>
+        </div>
+      </div>
+      <div class="plate">
+        <header><p class="eyebrow" style="margin:0">Authentication</p><h2 style="font-size:16px;margin:2px 0 0">Chaskey-12 record tags</h2></header>
+        <div class="body">
+          <div class="stats">
+            <div><b class="big" id="n-veh">0</b><span>vehicles</span></div>
+            <div><b class="big" id="n-auth">0</b><span>tags ok</span></div>
+            <div><b class="big" id="n-crc">0</b><span>CRCs ok</span></div>
+          </div>
+          <dl class="kv" style="margin-top:12px">
+            <dt>Key</dt><dd>&ldquo;RVBL-2 lane key!&rdquo; (the demo key the toll back end loads)</dd>
+            <dt>Message</dt><dd>V[0..5] &middot; gantry &middot; 03 &middot; counter</dd>
+          </dl>
+          <div class="verdict none" id="auth-v">&nbsp;</div>
+        </div>
+      </div>
+      <div class="plate">
+        <header><p class="eyebrow" style="margin:0">Revenue</p><h2 style="font-size:16px;margin:2px 0 0">This transcript</h2></header>
+        <div class="body"><dl class="kv" id="money"></dl></div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="why" aria-label="Why these decisions are the chip's">
+    <div class="panel"><h3>No decision code here</h3><p>The chip's column above is decoded from bytes, nothing more. This page never decides a vehicle; the chip's firmware does, running on the RVBL-2 core.</p></div>
+    <div class="panel"><h3>Checked independently</h3><p>CRC-16 and Chaskey-12 are recomputed in this page with separate code, verified against the Chaskey-12 reference test vectors. A single flipped bit fails both.</p></div>
+    <div class="panel"><h3>The firmware is fingerprinted</h3><p>On command the chip reads its own ROM, word by word, and reports its size and CRC. It must equal the build's fingerprint.</p></div>
+    <div class="panel"><h3>Blind test</h3><p>Make a scenario nobody has seen, run it on the ChipInventor simulator, paste the log back. The page's prediction is sealed before the chip answers.</p></div>
+  </div>
+
+  <section class="block panel" aria-labelledby="h-paste">
+    <p class="eyebrow">Your own transcript</p>
+    <h2 id="h-paste">Replay a run you made</h2>
+    <p class="sub">Paste the ChipInventor simulation log of <code>tb_app_platform.v</code> (its <code>REC</code> and <code>PINS</code> lines).
+    The demo is three runs, <code>SCEN</code> = 0, 1 and 2: paste one, or all three one after another. Each starts from reset,
+    so its tag counter starts again at 0.</p>
+    <textarea id="paste" aria-label="Transcript to replay" placeholder="LANE LaneX toll lane controller on RVBL-2 SCEN=0 lane-a UART 33 clocks/bit
+PINS 0 @... 0001 ok
+REC 0 @... 56000011fa00.... ok
+REC 1 @... 4100........ ok
+...
+LANE LaneX toll lane controller on RVBL-2 SCEN=1 lane-b UART 33 clocks/bit
+..."></textarea>
+    <div class="row" style="margin-top:10px"><button type="button" class="btn primary" id="load">Replay this transcript</button><span id="pmsg" class="sub" style="margin:0"></span></div>
+  </section>
+
+  <section class="block panel" aria-labelledby="h-blind">
+    <p class="eyebrow">Blind test</p>
+    <h2 id="h-blind">A scenario the chip has never seen</h2>
+    <p class="sub">Pick a seed and the mix of vehicles. The page builds a testbench that only drives the chip's pins and prints what it sends;
+    it holds no answers. The page's own prediction is sealed now and opened when you paste the chip's log.</p>
+    <div class="row">
+      <label class="field">Seed<input id="b-seed" type="number" min="1" max="2147483647" value="20260926"></label>
+      <label class="field">Vehicles<input id="b-n" type="number" min="1" max="12" value="3"></label>
+      <label class="field">UART rate<select id="b-rate"><option value="fast" selected>921,600 bps (fits the platform)</option><option value="true">115,200 bps (as taped out)</option></select></label>
+      <label class="field" style="flex:1;min-width:220px">UART instance (from your export)<input id="b-uart" type="text" value=""></label>
+    </div>
+    <p class="sub" style="margin:12px 0 6px">Vehicle kinds in the mix</p>
+    <div class="kinds" id="b-kinds"></div>
+    <div class="row" style="margin-top:12px">
+      <button type="button" class="btn primary" id="b-gen">Build the testbench</button>
+      <button type="button" class="btn" id="b-rnd">New random seed</button>
+      <button type="button" class="btn" id="b-copy" hidden>Copy testbench</button>
+      <span id="b-msg" class="sub" style="margin:0"></span>
+    </div>
+    <div id="b-out" hidden>
+      <div class="seal" id="b-seal"></div>
+      <ol class="steps">
+        <li>In the <code>top</code> project, the <code>imem</code> block holds the application ROM (<code>chipinventor/app/imem_app.v</code>).</li>
+        <li>Paste the testbench below into the testbench field and run the simulation.</li>
+        <li>Copy the whole simulation log and paste it into the box below.</li>
+      </ol>
+      <pre class="code" id="b-tb" tabindex="0"></pre>
+      <label class="field" style="margin-top:12px">The chip's answer: the simulation log
+        <textarea id="b-log" placeholder="REC 0 @... ..."></textarea></label>
+      <div class="row" style="margin-top:10px"><button type="button" class="btn primary" id="b-open">Open the seal and compare</button></div>
+      <div id="b-cmp" class="cmp"></div>
+    </div>
+  </section>
+
+  <footer>Protocol and decisions: application/PROTOCOL.md. The chip&rsquo;s firmware (application/firmware) matches the golden model
+  (application/testbench/lane_model.py) byte for byte on the RTL across directed, random, fuzzed and showcase traffic. Captured transcripts
+  were produced by simulating the ChipInventor export with Icarus Verilog; a pasted transcript is whatever you ran.</footer>
+</div>
+
+<script>
+/*
+ * lane_core.js - the replay page's verification and blind-test logic, kept out
+ * of the page so test_lane_core.py can run it (in QuickJS) against the
+ * golden model. gen_lane_replay.py inlines it into the page.
+ *
+ * Nothing here decides anything for the chip. It decodes the bytes the chip
+ * sent, recomputes their CRC-16 and Chaskey-12 tags independently, and - for
+ * the blind test - builds a fresh scenario, the testbench that plays it on the
+ * platform, and this page's own prediction to compare the chip's answer with.
+ */
+var LaneCore = (function () {
+  "use strict";
+
+  var STATUS = ["CHARGED", "NO TAG", "CLASS MISMATCH", "HOTLIST", "CLONE", "FREE", "LANE CLOSED"];
+  var FARES = [0, 250, 500, 750, 130, 380];                 // sen, classes 0..5
+  var DEMO_KEY = bytes("RVBL-2 lane key!");
+  var CODE_TO_CLASS = [1, 2, 3, 0];
+  var CODE_FOR = { 1: 0, 2: 1, 3: 2, 0: 3 };
+
+  function bytes(s) { var a = []; for (var i = 0; i < s.length; i++) a.push(s.charCodeAt(i) & 255); return a; }
+  function hex(a) { return a.map(function (b) { return (b < 16 ? "0" : "") + b.toString(16); }).join(""); }
+  function unhex(h) { var a = []; for (var i = 0; i + 1 < h.length; i += 2) a.push(parseInt(h.substr(i, 2), 16)); return a; }
+  function le16(v) { return [v & 255, (v >>> 8) & 255]; }
+  function le32(v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; }
+  function rd32(a, i) { return (a[i] | a[i + 1] << 8 | a[i + 2] << 16 | a[i + 3] << 24) >>> 0; }
+
+  // CRC-16/CCITT-FALSE: the chip's Xicrc instruction
+  function crc16(data, crc) {
+    crc = crc === undefined ? 0xFFFF : crc;
+    for (var i = 0; i < data.length; i++) {
+      crc ^= data[i] << 8;
+      for (var k = 0; k < 8; k++) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
+    }
+    return crc;
+  }
+  function gen2Crc(pc, epc) { return crc16([pc >> 8, pc & 255].concat(epc)) ^ 0xFFFF; }
+
+  // Chaskey-12 (Mouha 2015; ISO/IEC 29192-6:2019)
+  function rotl(x, b) { return ((x << b) | (x >>> (32 - b))) >>> 0; }
+  function permute(v) {
+    for (var r = 0; r < 12; r++) {
+      v[0] = (v[0] + v[1]) >>> 0; v[1] = rotl(v[1], 5); v[1] = (v[1] ^ v[0]) >>> 0; v[0] = rotl(v[0], 16);
+      v[2] = (v[2] + v[3]) >>> 0; v[3] = rotl(v[3], 8); v[3] = (v[3] ^ v[2]) >>> 0;
+      v[0] = (v[0] + v[3]) >>> 0; v[3] = rotl(v[3], 13); v[3] = (v[3] ^ v[0]) >>> 0;
+      v[2] = (v[2] + v[1]) >>> 0; v[1] = rotl(v[1], 7); v[1] = (v[1] ^ v[2]) >>> 0; v[2] = rotl(v[2], 16);
+    }
+  }
+  function times2(k) {
+    return [((k[0] << 1) ^ (k[3] >>> 31 ? 0x87 : 0)) >>> 0, ((k[1] << 1) | (k[0] >>> 31)) >>> 0,
+            ((k[2] << 1) | (k[1] >>> 31)) >>> 0, ((k[3] << 1) | (k[2] >>> 31)) >>> 0];
+  }
+  function words(a, i) { return [rd32(a, i), rd32(a, i + 4), rd32(a, i + 8), rd32(a, i + 12)]; }
+  function chaskey12(key, msg, taglen) {
+    var k = words(key, 0), k1 = times2(k), k2 = times2(k1), v = k.slice(), i, j;
+    var nfull = msg.length ? Math.floor((msg.length - 1) / 16) : 0;
+    for (i = 0; i < nfull; i++) {
+      var m = words(msg, 16 * i);
+      for (j = 0; j < 4; j++) v[j] = (v[j] ^ m[j]) >>> 0;
+      permute(v);
+    }
+    var last = msg.slice(16 * nfull), l;
+    if (msg.length && last.length === 16) l = k1;
+    else { l = k2; last = last.concat([1]); while (last.length < 16) last.push(0); }
+    var lb = words(last, 0);
+    for (j = 0; j < 4; j++) v[j] = (v[j] ^ lb[j] ^ l[j]) >>> 0;
+    permute(v);
+    var out = [];
+    for (j = 0; j < 4; j++) out = out.concat(le32((v[j] ^ l[j]) >>> 0));
+    return out.slice(0, taglen || 8);
+  }
+  function authMessage(vrec, gantry, ctr) { return vrec.slice(0, 6).concat([gantry, 3]).concat(le32(ctr)); }
+
+  // ---- records ------------------------------------------------------------
+  var WHY = ["?", "frame CRC wrong", "length over 32", "unknown frame type", "wrong length for its type",
+             "frame cut off mid-way"];
+  function decode(r) {
+    var d = { raw: r, kind: String.fromCharCode(r[0]), crcOk: crc16(r.slice(0, 6)) === (r[6] | r[7] << 8) };
+    if (r[0] === 0x56) {
+      d.seq = r[1]; d.status = STATUS[r[2]] || "?"; d.code = r[2]; d.phys = r[3] >> 4; d.tag = r[3] & 15;
+      d.fare = r[4] | r[5] << 8;
+    } else if (r[0] === 0x41) { d.seq = r[1]; d.tag32 = hex(r.slice(2, 6)); }
+    else if (r[0] === 0x45) { d.reason = r[1]; d.why = WHY[r[1]] || "?"; d.type = r[2]; d.badFrames = r[3]; }
+    else if (r[0] === 0x51) { d.vehicles = r[1] | r[2] << 8; d.badTag = r[3]; d.badFrame = r[4]; d.hot = r[5]; }
+    else if (r[0] === 0x49) { d.proto = r[1]; d.romWords = r[2] | r[3] << 8; d.romCrc = r[4] | r[5] << 8; }
+    return d;
+  }
+  // Check every record: CRC, and each 'A' against its 'V' with the key and
+  // counter a toll back end would hold (counter from 0 at the first 'A').
+  // runOf[i], when given, is record i's run: every run starts from reset, so
+  // the counter starts again at 0 where the run changes.
+  function verify(recs, key, gantry, runOf) {
+    var ctr = 0, lastV = null, run = null;
+    key = key || DEMO_KEY; gantry = gantry || 1;
+    return recs.map(function (r, i) {
+      var d = decode(r);
+      if (runOf && runOf[i] !== run) { run = runOf[i]; ctr = 0; lastV = null; }
+      if (d.kind === "V") lastV = r;
+      if (d.kind === "A") {
+        var want = lastV ? chaskey12(key, authMessage(lastV, gantry, ctr), 4) : null;
+        d.authOk = !!(want && lastV[1] === r[1] && hex(want) === hex(r.slice(2, 6)));
+        d.counter = ctr++;
+        d.forSeq = lastV ? lastV[1] : null;
+      }
+      return d;
+    });
+  }
+
+  // A transcript: the platform's simulation log (REC / PINS lines), the F2
+  // host tool's --json lines, or bare 16-hex-digit records. Several logs may
+  // be pasted one after another: each LANE header starts a new run, and every
+  // record and pin sample carries its run's index.
+  function parseTranscript(text) {
+    var recs = [], pins = [], runs = [], nb = null, mode = null, m;
+    function run() {
+      if (!runs.length) runs.push({ label: "", nb: null, recs: 0 });
+      return runs.length - 1;
+    }
+    text.split(/\r?\n/).forEach(function (line) {
+      line = line.trim();
+      if ((m = /^REC\s+(\d+)\s+@(\d+)\s+([0-9a-fA-F]{16})/.exec(line))) {
+        recs.push({ bytes: unhex(m[3].toLowerCase()), cycle: +m[2], run: run() }); mode = mode || "platform";
+        runs[runs.length - 1].recs++;
+      } else if ((m = /^PINS\s+(\d+)\s+@(\d+)\s+([01]{4})/.exec(line))) {
+        pins.push({ vehicle: +m[1], cycle: +m[2], bits: parseInt(m[3], 2), run: run() });
+      } else if (/^LANE\b/.test(line)) {
+        m = /UART\s+(\d+)\s+clocks\/bit/.exec(line);
+        nb = m ? +m[1] : nb;
+        var s = /SCEN=(\d+)\s+(\S+)/.exec(line), b = /seed\s+(\d+)/.exec(line);
+        runs.push({ label: s ? "SCEN " + s[1] + " " + s[2] : b ? "blind test, seed " + b[1] : "run " + (runs.length + 1),
+                    nb: m ? +m[1] : null, recs: 0 });
+      } else if (line.charAt(0) === "{") {
+        try {
+          var o = JSON.parse(line);
+          if (o.rec && /^[0-9a-f]{16}$/i.test(o.rec)) {
+            recs.push({ bytes: unhex(o.rec.toLowerCase()), cycle: null, run: run() }); mode = mode || "f2";
+            runs[runs.length - 1].recs++;
+            if (o.kind === "V" && o.pins !== undefined) pins.push({ vehicle: pins.length, cycle: null, bits: o.pins, run: run() });
+          }
+        } catch (e) { /* not ours */ }
+      } else if (/^[0-9a-fA-F]{16}$/.test(line)) {
+        recs.push({ bytes: unhex(line.toLowerCase()), cycle: null, run: run() }); mode = mode || "hex";
+        runs[runs.length - 1].recs++;
+      }
+    });
+    return { recs: recs, pins: pins, nb: nb, mode: mode, runs: runs };
+  }
+
+  // ---- blind test -----------------------------------------------------------
+  function rng(seed) {                                         // mulberry32
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function frame(type, payload) {
+    var body = [type, payload.length].concat(payload), c = crc16(body);
+    return [0xA5].concat(body, le16(c));
+  }
+  var F = {
+    read: function (t, epc, rssi, stored) {
+      var pc = 0x3000; stored = stored === undefined ? gen2Crc(pc, epc) : stored;
+      return frame(0x52, le32(t).concat(le16(pc), epc, le16(stored), [rssi]));
+    },
+    time: function (t) { return frame(0x54, le32(t)); },
+    config: function (g, closed) {
+      var p = [g, closed]; FARES.forEach(function (f) { p = p.concat(le16(f)); }); return frame(0x43, p);
+    },
+    gantry: function (g, pos) { return frame(0x47, [g].concat(le16(pos))); },
+    hot: function (epc) { return frame(0x48, epc.concat([1])); },
+    sighting: function (epc, g, t) { return frame(0x53, epc.concat([g], le32(t))); },
+    params: function (rssiMin, hold) { return frame(0x50, [rssiMin].concat(le16(500), le16(3000), le16(250), [hold], le16(48))); },
+    key: function (k) { return frame(0x4B, k); },
+    query: function () { return frame(0x51, []); }
+  };
+  var KINDS = ["charged", "taxi", "bus", "mismatch", "stolen", "clone", "no tag", "adjacent lane",
+               "corrupted tag", "motorcycle", "lane closed"];
+
+  // A fresh scenario: n vehicles of the chosen kinds, each with its own
+  // random tag, five seconds apart (the reads carry their own times; the fast
+  // run takes one or two reads a vehicle, to fit the platform's window). Returns the events to play and this
+  // page's prediction of every record and every vehicle's pins.
+  function makeBlind(opt) {
+    var r = rng(opt.seed), n = opt.n, kinds = opt.kinds && opt.kinds.length ? opt.kinds : KINDS;
+    var hold = opt.fast ? 8 : 64, floor = 30, t0 = 100000;
+    function pick(a) { return a[Math.floor(r() * a.length)]; }
+    function epc(cls) { var e = []; for (var i = 0; i < 12; i++) e.push(Math.floor(r() * 256)); e[0] = (e[0] & 0xF8) | cls; return e; }
+    var ev = [], plan = [], hot = [], sights = [];
+    for (var i = 0; i < n; i++) {
+      var kind = pick(kinds), phys = pick([1, 1, 1, 2, 3]), tagc = phys, tag = null, reads = [], p3 = 0;
+      if (kind === "taxi") { tagc = 4; phys = 1; }
+      if (kind === "bus") { tagc = 5; phys = pick([2, 3]); }
+      if (kind === "mismatch") { tagc = 1; phys = 3; }
+      if (kind === "motorcycle") phys = 0;
+      if (kind === "stolen" || kind === "clone") phys = tagc = 1;
+      if (["no tag", "motorcycle"].indexOf(kind) < 0) tag = epc(kind === "adjacent lane" || kind === "corrupted tag" ? 1 : tagc);
+      var nreads = 1 + Math.floor(r() * (opt.fast ? 2 : 3));
+      for (var k = 0; tag && k < nreads; k++) reads.push({ rssi: 60 + Math.floor(r() * 60), bad: false });
+      if (kind === "adjacent lane") reads = [{ rssi: 10 + Math.floor(r() * 19), bad: false }];
+      if (kind === "corrupted tag") reads = [{ rssi: 90, bad: true }];
+      if (kind === "stolen") hot.push(tag);
+      if (kind === "clone") sights.push(tag);
+      if (kind === "lane closed") p3 = 1;
+      plan.push({ kind: kind, phys: phys, tagc: tag ? tagc : 7, tag: tag, reads: reads, p3: p3 });
+    }
+    // setup: key, parameters (RSSI floor 30), the other gantry 40 km away, the
+    // stolen tags, and each clone's sighting there 30 s ago (gantry ID 1, the
+    // lane open and the fares are the firmware's defaults)
+    ev.push(["B", F.key(DEMO_KEY)], ["B", F.params(floor, hold)], ["B", F.gantry(2, 400)]);
+    hot.forEach(function (e) { ev.push(["B", F.hot(e)]); });
+    sights.forEach(function (e) { ev.push(["B", F.sighting(e, 2, t0 - 30000)]); });
+    // prediction, by the protocol's decision table (application/PROTOCOL.md)
+    var expect = [], pinsExp = [], seq = 0, ctr = 0, badTag = 0;
+    plan.forEach(function (v, i) {
+      var t = t0 + 5000 * i, code = CODE_FOR[v.phys];
+      ev.push(["G", 1 | code << 1 | v.p3 << 3]);
+      var good = 0;
+      v.reads.forEach(function (rd, k) {
+        var stored = rd.bad ? gen2Crc(0x3000, v.tag) ^ 0x0100 : undefined;
+        ev.push(["B", F.read(t + 10 + k, v.tag, rd.rssi, stored)]);
+        if (rd.bad) badTag++;
+        else if (rd.rssi >= floor) good++;
+      });
+      ev.push(["G", v.p3 << 3]);
+      if (v.p3) ev.push(["G", 0]);
+      var st, fare = 0, tagc = good ? v.tagc : 7;
+      if (v.p3) { st = 6; tagc = 7; }                       // closed: no tag is looked at
+      else if (!good) st = v.phys === 0 ? 5 : 1;
+      else if (v.kind === "stolen") st = 3;
+      else if (v.kind === "clone") st = 4;
+      else if (v.kind === "mismatch") { st = 2; fare = FARES[v.phys]; }
+      else { st = 0; fare = FARES[tagc]; }
+      var vr = [0x56, seq, st, (v.phys << 4) | tagc].concat(le16(fare));
+      vr = vr.concat(le16(crc16(vr)));
+      expect.push(vr);
+      var ar = [0x41, seq].concat(chaskey12(DEMO_KEY, authMessage(vr, 1, ctr++), 4));
+      expect.push(ar.concat(le16(crc16(ar))));
+      var charged = st === 0 || st === 2, camera = st === 1 || st === 2 || st === 3 || st === 4, alarm = st === 3 || st === 4;
+      pinsExp.push(v.p3 << 3 | alarm << 2 | camera << 1 | charged);
+      v.status = STATUS[st]; v.fare = fare;
+      seq = (seq + 1) & 255;
+    });
+    // one corrupted frame (the chip answers with an 'E'), then the stats
+    var bad = F.time(t0 + 5000 * n); bad[5] ^= 4;
+    ev.push(["B", bad]);
+    var er = [0x45, 1, 0x54, 1, 0, 0]; expect.push(er.concat(le16(crc16(er))));
+    ev.push(["B", F.query()]);
+    var q = [0x51].concat(le16(n), [Math.min(badTag, 255), 1, hot.length]); expect.push(q.concat(le16(crc16(q))));
+    return { events: ev, expect: expect, pins: pinsExp, plan: plan, fast: !!opt.fast, seed: opt.seed,
+             cycles: blindCycles(ev, !!opt.fast) };
+  }
+
+  // The blind testbench's timing: the same as tb_app_ci / tb_app_ci_fast
+  // (application/testbench/gen_platform_tb.py). Fast is 921,600 bps, the platform's run.
+  function timing(fast) {
+    return fast ? { nb: 33, gap: 30, rise: 1000, fall: 9000, drain: 40 }
+                : { nb: 263, gap: 20, rise: 2000, fall: 16000, drain: 40 };
+  }
+  // How many clock cycles the testbench will take: the stimulus is fixed, so
+  // this is exact up to the chip's last record.
+  function blindCycles(ev, fast) {
+    var T = timing(fast), c = 2005, pin = 0;
+    ev.forEach(function (e) {
+      if (e[0] === "G") { c += (pin & 1) && !(e[1] & 1) ? T.fall : T.rise; pin = e[1]; }
+      else c += (e[1].length * 10 + T.gap) * T.nb;
+    });
+    return c + T.drain * 10 * T.nb;
+  }
+  // The ChipInventor simulator stops a run after a fixed wall-clock time; the
+  // application's platform runs are sized to at most this many cycles.
+  var PLATFORM_BUDGET = 140000;
+
+  // The testbench that plays a blind scenario on the platform. It holds no
+  // expected answers: it only drives the pins and prints what the chip sends.
+  function blindTestbench(b, uartPath) {
+    var T = timing(b.fast), ev = [], i, L = [];
+    b.events.forEach(function (e) {
+      if (e[0] === "G") ev.push(71, 1, e[1]);
+      else { ev.push(66, e[1].length); ev = ev.concat(e[1]); }
+    });
+    L.push("`timescale 1ns/1ps");
+    L.push("// blind_test.v - generated by the lane replay page, seed " + b.seed + ", " + b.plan.length + " vehicles.");
+    L.push("// Plays a scenario on the canvas chip `top` (application ROM in imem) and prints");
+    L.push("// every record the chip sends on tx_o. It holds NO expected answers: paste the");
+    L.push("// log back into the page, which checks the chip against its own prediction.");
+    L.push("module testbench;   // the platform runs the module named testbench");
+    L.push("    localparam integer NB = " + T.nb + ", GAP = " + T.gap + " * NB, RISE = " + T.rise + ", FALL = " + T.fall + ";");
+    L.push("    localparam integer N_EV = " + ev.length + ";");
+    L.push("    reg clk = 0, rst = 1; always #16.5 clk = ~clk;");
+    L.push("    integer cycles = 0; always @(posedge clk) cycles = cycles + 1;");
+    L.push("    reg [3:0] pin_in = 4'h0; reg rx = 1'b1; wire tx;");
+    L.push("    wire p0, p1, p2, p3, p4, p5, p6, p7;");
+    L.push("    assign p0 = pin_in[0]; assign p1 = pin_in[1]; assign p2 = pin_in[2]; assign p3 = pin_in[3];");
+    L.push("    assign (weak0, weak1) p4 = 1'b0; assign (weak0, weak1) p5 = 1'b0;");
+    L.push("    assign (weak0, weak1) p6 = 1'b0; assign (weak0, weak1) p7 = 1'b0;");
+    L.push("    top dut (.clk_i(clk), .rst_i(rst), .pins_io_0(p0), .pins_io_1(p1), .pins_io_2(p2), .pins_io_3(p3),");
+    L.push("             .pins_io_4(p4), .pins_io_5(p5), .pins_io_6(p6), .pins_io_7(p7), .tx_o(tx), .rx_i(rx));");
+    if (b.fast) L.push("    defparam " + uartPath + ".BAUD_RATE = 921600;   // the platform's fast run");
+    L.push("    reg [7:0] ev [0:" + (ev.length - 1) + "];");
+    L.push("    initial begin");
+    for (i = 0; i < ev.length; i += 12)
+      L.push("        " + ev.slice(i, i + 12).map(function (v, k) { return "ev[" + (i + k) + "]=8'd" + v + ";"; }).join(" "));
+    L.push("    end");
+    L.push("    reg [63:0] got = 0; integer nb = 0, n = 0, k; reg [7:0] b;");
+    L.push("    always begin");
+    L.push("        @(negedge tx); repeat (NB / 2) @(posedge clk);");
+    L.push("        for (k = 0; k < 8; k = k + 1) begin repeat (NB) @(posedge clk); b[k] = tx; end");
+    L.push("        repeat (NB) @(posedge clk);");
+    L.push("        got = {got[55:0], b}; nb = nb + 1;");
+    L.push("        if (nb == 8) begin nb = 0; $display(\"REC %0d @%0d %h\", n, cycles, got); n = n + 1; end");
+    L.push("    end");
+    L.push("    task send(input [7:0] d); integer j; begin");
+    L.push("        rx = 0; repeat (NB) @(posedge clk);");
+    L.push("        for (j = 0; j < 8; j = j + 1) begin rx = d[j]; repeat (NB) @(posedge clk); end");
+    L.push("        rx = 1; repeat (NB) @(posedge clk); end endtask");
+    L.push("    integer i, j, len, vn = 0; reg [3:0] prev;");
+    L.push("    initial begin");
+    L.push("        $display(\"LANE blind test seed " + b.seed + " UART %0d clocks/bit\", NB);");
+    L.push("        repeat (5) @(posedge clk); rst = 0; repeat (2000) @(posedge clk);");
+    L.push("        i = 0;");
+    L.push("        while (i < N_EV) begin");
+    L.push("            len = ev[i + 1];");
+    L.push("            if (ev[i] == 71) begin");
+    L.push("                prev = pin_in; pin_in = ev[i + 2];");
+    L.push("                if (prev[0] && !pin_in[0]) begin");
+    L.push("                    repeat (FALL) @(posedge clk);");
+    L.push("                    $display(\"PINS %0d @%0d %b\", vn, cycles, {p7, p6, p5, p4}); vn = vn + 1;");
+    L.push("                end else repeat (RISE) @(posedge clk);");
+    L.push("            end else begin");
+    L.push("                for (j = 0; j < len; j = j + 1) send(ev[i + 2 + j]);");
+    L.push("                repeat (GAP) @(posedge clk);");
+    L.push("            end");
+    L.push("            i = i + 2 + len;");
+    L.push("        end");
+    L.push("        repeat (" + T.drain + " * 10 * NB) @(posedge clk);");
+    L.push("        $display(\"BLIND DONE %0d records, %0d cycles\", n, cycles);");
+    L.push("        $finish;");
+    L.push("    end");
+    L.push("endmodule");
+    return L.join("\n") + "\n";
+  }
+
+  return { STATUS: STATUS, FARES: FARES, DEMO_KEY: DEMO_KEY, KINDS: KINDS, CODE_TO_CLASS: CODE_TO_CLASS,
+           hex: hex, unhex: unhex, crc16: crc16, gen2Crc: gen2Crc, chaskey12: chaskey12,
+           authMessage: authMessage, decode: decode, verify: verify, parseTranscript: parseTranscript,
+           makeBlind: makeBlind, blindTestbench: blindTestbench, blindCycles: blindCycles,
+           PLATFORM_BUDGET: PLATFORM_BUDGET, frames: F };
+})();
+
+</script>
+<script>
+const DATA = {"transcripts":{"fast":{"text":"LANE LaneX toll lane controller on RVBL-2 SCEN=0 lane-a UART 33 clocks/bit\nPINS 0 @45005 0001 ok\nREC 0 @47718 56000011fa003c7b ok\nREC 1 @51300 4100db5f9a6a8fdf ok\nPINS 1 @64575 0011 ok\nREC 2 @67235 56010231ee023655 ok\nREC 3 @70817 4101dcf299bcd625 ok\nPINS 2 @84145 0010 ok\nREC 4 @84774 560201170000a107 ok\nREC 5 @89334 41022063a5704a0c ok\nREC 6 @93473 450154010000aa05 ok\nREC 7 @96809 510300000100c7e6 ok\n==== tb_app_ci (scenario 0): 13 passed, 0 failed, 103945 cycles ====\nTB_APP_CI: ALL TESTS PASSED\nLANE LaneX toll lane controller on RVBL-2 SCEN=1 lane-b UART 33 clocks/bit\nPINS 0 @54245 0110 ok\nREC 0 @56995 560003110000ea1c ok\nREC 1 @60577 41009a976af1e269 ok\nPINS 1 @73815 0110 ok\nREC 2 @76585 560104220000637b ok\nREC 3 @79921 41013449e126f289 ok\n==== tb_app_ci (scenario 1): 8 passed, 0 failed, 87015 cycles ====\nTB_APP_CI: ALL TESTS PASSED\nLANE LaneX toll lane controller on RVBL-2 SCEN=2 identity UART 33 clocks/bit\nREC 0 @50306 4903d60a3ded21d5 ok\nPINS 0 @88075 0001 ok\nREC 1 @90651 5600001482003c11 ok\nREC 2 @93987 41003d0c7fed4a75 ok\n==== tb_app_ci (scenario 2): 6 passed, 0 failed, 101275 cycles ====\nTB_APP_CI: ALL TESTS PASSED\n","prov":"Simulated with Icarus Verilog from our ChipInventor export (chipinventor/export_stage3.v) with the application ROM in imem; UART at 921,600 bps, the platform's three runs (SCEN 0, 1, 2), each from reset. Captured at the chip's tx_o pin."},"true":{"text":"LANE LaneX toll lane controller on RVBL-2 SCEN=0 showcase UART 263 clocks/bit\nREC 0 @80580 4903d60a3ded21d5 ok\nPINS 0 @587075 0001 ok\nREC 1 @609254 56000011fa003c7b ok\nREC 2 @631832 4100db5f9a6a8fdf ok\nPINS 1 @678715 0011 ok\nREC 3 @700865 56010231ee023655 ok\nREC 4 @723443 4101dcf299bcd625 ok\nPINS 2 @770355 0110 ok\nREC 5 @792509 5602031100006958 ok\nREC 6 @815087 41025d622b4fa2bf ok\nPINS 3 @861995 0110 ok\nREC 7 @884420 560304220000e03f ok\nREC 8 @906998 4103cf384b642839 ok\nPINS 4 @953635 0001 ok\nREC 9 @975790 5604001482003a98 ok\nREC 10 @998368 4104dbd539c3fcc6 ok\nPINS 5 @1045275 0010 ok\nPINS 6 @1063275 0000 ok\nREC 11 @1067686 5605011700007560 ok\nREC 12 @1090655 410553d2e3ddd5b8 ok\nREC 13 @1113005 5606050700003507 ok\nREC 14 @1135341 410670ce962e47e4 ok\nREC 15 @1157677 450154010000aa05 ok\nREC 16 @1180013 510700000101e07f ok\n==== tb_app_ci (scenario 0): 26 passed, 0 failed, 1215815 cycles ====\nTB_APP_CI: ALL TESTS PASSED\n","prov":"Simulated with Icarus Verilog from our ChipInventor export (chipinventor/export_stage3.v) with the application ROM in imem; UART at 115,200 bps, the chip as taped out. Captured at the chip's tx_o pin."}},"fingerprint":{"words":2774,"crc":60733,"file":"application/firmware (firmware.bin)"},"uartPath":"dut.blkProj15670_1.blk4681_30","emu":[{"n":1,"title":"valid tag, class matches -> CHARGED RM 2.50, P4 on","cmd":"./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x00 -r4 0x11000056 -r4 0x7B3C00FA -o 0x10","steps":["[ok] RISC-V started!","[ok] Written 0x000000F0 to DIRECTION","[ok] Written 0x00000001 to INPUT PINS","[ok] Written 0x301552A5 to UART RX","[ok] Written 0x00000075 to UART RX","[ok] Written 0x80511930 to UART RX","[ok] Written 0xDCA583F3 to UART RX","[ok] Written 0x39E21AF3 to UART RX","[ok] Written 0x5A6ECCE5 to UART RX","[ok] Written 0xF592 to UART RX","[ok] Written 0x00000000 to INPUT PINS","[ok] Read 0x11000056 from UART TX","[ok] Read 0x7B3C00FA from UART TX","[ok] Read 0x00000010 from OUTPUT PINS"],"pass":true},{"n":2,"title":"car tag on a lorry -> CLASS MISMATCH, charged at the lorry fare, P4+P5","cmd":"./emu -d 0xF0 -i 0x05 -t4 0x301552A5 -t4 0x00000075 -t4 0x8E9F9930 -t4 0x8C92C86B -t4 0xC4C6BBD7 -t4 0x5A96577D -t2 0x69D0 -i 0x00 -r4 0x31020056 -r4 0xFF6702EE -o 0x30","steps":["[ok] RISC-V started!","[ok] Written 0x000000F0 to DIRECTION","[ok] Written 0x00000005 to INPUT PINS","[ok] Written 0x301552A5 to UART RX","[ok] Written 0x00000075 to UART RX","[ok] Written 0x8E9F9930 to UART RX","[ok] Written 0x8C92C86B to UART RX","[ok] Written 0xC4C6BBD7 to UART RX","[ok] Written 0x5A96577D to UART RX","[ok] Written 0x69D0 to UART RX","[ok] Written 0x00000000 to INPUT PINS","[ok] Read 0x31020056 from UART TX","[ok] Read 0xFF6702EE from UART TX","[ok] Read 0x00000030 from OUTPUT PINS"],"pass":true},{"n":3,"title":"taxi tag -> CHARGED at the taxi fare RM 1.30","cmd":"./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x96C5C430 -t4 0x9D003D70 -t4 0xD1491C14 -t4 0x5AF48B19 -t2 0xB12C -i 0x00 -r4 0x14000056 -r4 0x113C0082 -o 0x10","steps":["[ok] RISC-V started!","[ok] Written 0x000000F0 to DIRECTION","[ok] Written 0x00000001 to INPUT PINS","[ok] Written 0x301552A5 to UART RX","[ok] Written 0x00000075 to UART RX","[ok] Written 0x96C5C430 to UART RX","[ok] Written 0x9D003D70 to UART RX","[ok] Written 0xD1491C14 to UART RX","[ok] Written 0x5AF48B19 to UART RX","[ok] Written 0xB12C to UART RX","[ok] Written 0x00000000 to INPUT PINS","[ok] Read 0x14000056 from UART TX","[ok] Read 0x113C0082 from UART TX","[ok] Read 0x00000010 from OUTPUT PINS"],"pass":true},{"n":4,"title":"no tag read -> NO TAG, camera P5","cmd":"./emu -d 0xF0 -i 0x01 -i 0x00 -r4 0x17010056 -r4 0x43220000 -o 0x20","steps":["[ok] RISC-V started!","[ok] Written 0x000000F0 to DIRECTION","[ok] Written 0x00000001 to INPUT PINS","[ok] Written 0x00000000 to INPUT PINS","[ok] Read 0x17010056 from UART TX","[ok] Read 0x43220000 from UART TX","[ok] Read 0x00000020 from OUTPUT PINS"],"pass":true},{"n":5,"title":"motorcycle, no tag -> FREE, no lamp","cmd":"./emu -d 0xF0 -i 0x07 -i 0x00 -r4 0x07050056 -r4 0xCAB00000 -o 0x00","steps":["[ok] RISC-V started!","[ok] Written 0x000000F0 to DIRECTION","[ok] Written 0x00000007 to INPUT PINS","[ok] Written 0x00000000 to INPUT PINS","[ok] Read 0x07050056 from UART TX","[ok] Read 0xCAB00000 from UART TX","[ok] Read 0x00000000 from OUTPUT PINS"],"pass":true},{"n":6,"title":"stolen car on the hotlist -> HOTLIST, camera + alarm P5+P6","cmd":"./emu -d 0xF0 -t4 0x710D48A5 -t4 0xAFE4D002 -t4 0x3550AD7D -t4 0x01594065 -t2 0xDC97 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0xD0027130 -t4 0xAD7DAFE4 -t4 0x40653550 -t4 0x5A5E2559 -t2 0xA128 -i 0x00 -r4 0x11030056 -r4 0x1CEA0000 -o 0x60","steps":["[ok] RISC-V started!","[ok] Written 0x000000F0 to DIRECTION","[ok] Written 0x710D48A5 to UART RX","[ok] Written 0xAFE4D002 to UART RX","[ok] Written 0x3550AD7D to UART RX","[ok] Written 0x01594065 to UART RX","[ok] Written 0xDC97 to UART RX","[ok] Written 0x00000001 to INPUT PINS","[ok] Written 0x301552A5 to UART RX","[ok] Written 0x00000075 to UART RX","[ok] Written 0xD0027130 to UART RX","[ok] Written 0xAD7DAFE4 to UART RX","[ok] Written 0x40653550 to UART RX","[ok] Written 0x5A5E2559 to UART RX","[ok] Written 0xA128 to UART RX","[ok] Written 0x00000000 to INPUT PINS","[ok] Read 0x11030056 from UART TX","[ok] Read 0x1CEA0000 from UART TX","[ok] Read 0x00000060 from OUTPUT PINS"],"pass":true},{"n":7,"title":"cloned tag: seen 40 km away 30 s ago -> CLONE, camera + alarm","cmd":"./emu -d 0xF0 -t4 0x020347A5 -t4 0x9AC60190 -t4 0xF91153A5 -t4 0xCE5BEDFF -t4 0x83BEFF60 -t4 0x02B913A3 -t4 0x00000000 -t2 0x380D -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0xEDFFF930 -t4 0xFF60CE5B -t4 0x13A383BE -t4 0x5AFC67B9 -t2 0x11AB -i 0x00 -r4 0x11040056 -r4 0x4DC70000 -o 0x60","steps":["[ok] RISC-V started!","[ok] Written 0x000000F0 to DIRECTION","[ok] Written 0x020347A5 to UART RX","[ok] Written 0x9AC60190 to UART RX","[ok] Written 0xF91153A5 to UART RX","[ok] Written 0xCE5BEDFF to UART RX","[ok] Written 0x83BEFF60 to UART RX","[ok] Written 0x02B913A3 to UART RX","[ok] Written 0x00000000 to UART RX","[ok] Written 0x380D to UART RX","[ok] Written 0x00000001 to INPUT PINS","[ok] Written 0x301552A5 to UART RX","[ok] Written 0x00000075 to UART RX","[ok] Written 0xEDFFF930 to UART RX","[ok] Written 0xFF60CE5B to UART RX","[ok] Written 0x13A383BE to UART RX","[ok] Written 0x5AFC67B9 to UART RX","[ok] Written 0x11AB to UART RX","[ok] Written 0x00000000 to INPUT PINS","[ok] Read 0x11040056 from UART TX","[ok] Read 0x4DC70000 from UART TX","[ok] Read 0x00000060 from OUTPUT PINS"],"pass":true},{"n":8,"title":"radio-corrupted tag (bad Gen2 CRC) -> NO TAG, camera","cmd":"./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x8E165130 -t4 0x75494A89 -t4 0xB4A5E024 -t4 0x5A207FB7 -t2 0x063C -i 0x00 -r4 0x17010056 -r4 0x43220000 -o 0x20","steps":["[ok] RISC-V started!","[ok] Written 0x000000F0 to DIRECTION","[ok] Written 0x00000001 to INPUT PINS","[ok] Written 0x301552A5 to UART RX","[ok] Written 0x00000075 to UART RX","[ok] Written 0x8E165130 to UART RX","[ok] Written 0x75494A89 to UART RX","[ok] Written 0xB4A5E024 to UART RX","[ok] Written 0x5A207FB7 to UART RX","[ok] Written 0x063C to UART RX","[ok] Written 0x00000000 to INPUT PINS","[ok] Read 0x17010056 from UART TX","[ok] Read 0x43220000 from UART TX","[ok] Read 0x00000020 from OUTPUT PINS"],"pass":true},{"n":9,"title":"adjacent lane's weak read below the RSSI floor -> NO TAG","cmd":"./emu -d 0xF0 -t4 0x1E0A50A5 -t4 0x0BB801F4 -t4 0x004000FA -t2 0xCD00 -t1 0xC8 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x064F9130 -t4 0x5D5EB5D9 -t4 0x66176C76 -t4 0x145724E4 -t2 0x282A -i 0x00 -r4 0x17010056 -r4 0x43220000 -o 0x20","steps":["[ok] RISC-V started!","[ok] Written 0x000000F0 to DIRECTION","[ok] Written 0x1E0A50A5 to UART RX","[ok] Written 0x0BB801F4 to UART RX","[ok] Written 0x004000FA to UART RX","[ok] Written 0xCD00 to UART RX","[ok] Written 0xC8 to UART RX","[ok] Written 0x00000001 to INPUT PINS","[ok] Written 0x301552A5 to UART RX","[ok] Written 0x00000075 to UART RX","[ok] Written 0x064F9130 to UART RX","[ok] Written 0x5D5EB5D9 to UART RX","[ok] Written 0x66176C76 to UART RX","[ok] Written 0x145724E4 to UART RX","[ok] Written 0x282A to UART RX","[ok] Written 0x00000000 to INPUT PINS","[ok] Read 0x17010056 from UART TX","[ok] Read 0x43220000 from UART TX","[ok] Read 0x00000020 from OUTPUT PINS"],"pass":true},{"n":10,"title":"lane closed (P3) -> LANE CLOSED, P7 stays on while closed","cmd":"./emu -d 0xF0 -i 0x09 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x08 -r4 0x17060056 -r4 0x120F0000 -o 0x80","steps":["[ok] RISC-V started!","[ok] Written 0x000000F0 to DIRECTION","[ok] Written 0x00000009 to INPUT PINS","[ok] Written 0x301552A5 to UART RX","[ok] Written 0x00000075 to UART RX","[ok] Written 0x80511930 to UART RX","[ok] Written 0xDCA583F3 to UART RX","[ok] Written 0x39E21AF3 to UART RX","[ok] Written 0x5A6ECCE5 to UART RX","[ok] Written 0xF592 to UART RX","[ok] Written 0x00000008 to INPUT PINS","[ok] Read 0x17060056 from UART TX","[ok] Read 0x120F0000 from UART TX","[ok] Read 0x00000080 from OUTPUT PINS"],"pass":true},{"n":11,"title":"identify: the chip reads its own ROM and reports its size and CRC","cmd":"./emu -d 0xF0 -t4 0x5B0049A5 -t1 0xAA -r4 0x0AD60349 -r4 0xD521ED3D","steps":["[ok] RISC-V started!","[ok] Written 0x000000F0 to DIRECTION","[ok] Written 0x5B0049A5 to UART RX","[ok] Written 0xAA to UART RX","[ok] Read 0x0AD60349 from UART TX","[ok] Read 0xD521ED3D from UART TX"],"pass":true}]};
+const C = LaneCore;
+const $ = id => document.getElementById(id);
+const CLK_HZ = 30303030;
+
+let recs = [], dec = [], pins = [], runs = [], flips = new Set(), source = "fast";
+
+function css(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function stColor(s){
+  return ({"CHARGED":css("--good"),"NO TAG":css("--warn"),"CLASS MISMATCH":css("--violet"),"HOTLIST":css("--bad"),
+           "CLONE":css("--bad"),"FREE":css("--quiet"),"LANE CLOSED":css("--quiet")})[s] || css("--quiet");
+}
+function rm(sen){ return "RM " + (sen / 100).toFixed(2); }
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+function load(transcript, label, prov){
+  const p = C.parseTranscript(transcript);
+  recs = p.recs.map(r => ({bytes: r.bytes.slice(), orig: r.bytes.slice(), cycle: r.cycle, run: r.run}));
+  pins = p.pins;
+  runs = p.runs;
+  flips = new Set();
+  $("prov").textContent = prov;
+  recompute();
+  restart();
+  return p;
+}
+function recompute(){
+  // each run starts from reset: its tag counter starts again at 0
+  dec = C.verify(recs.map(r => r.bytes), null, null, recs.map(r => r.run));
+  renderLedger(); renderIdentity(); renderTotals();
+}
+
+function decodedText(d){
+  if (d.kind === "V") return `<span class="st" style="background:${stColor(d.status)}">${esc(d.status)}</span> #${d.seq} &middot; class ${d.phys} &middot; tag ${d.tag === 7 ? "none" : d.tag} &middot; ${rm(d.fare)}`;
+  if (d.kind === "A") return `authenticates #${d.forSeq ?? "?"} &middot; counter ${d.counter}`;
+  if (d.kind === "E") return `line error: ${esc(d.why)} (type 0x${d.type.toString(16).padStart(2,"0")})`;
+  if (d.kind === "Q") return `stats: ${d.vehicles} vehicles, ${d.badTag} bad tags, ${d.badFrame} bad frames, ${d.hot} on hotlist`;
+  if (d.kind === "I") return `identity: ROM ${d.romWords} words, CRC 0x${d.romCrc.toString(16).padStart(4,"0")}`;
+  return "unknown record";
+}
+function renderLedger(){
+  const tb = $("ledger");
+  tb.innerHTML = recs.map((r, i) => {
+    const d = dec[i];
+    const bytes = r.bytes.map((b, k) => `<button type="button" class="byte${b !== r.orig[k] ? " flip" : ""}" data-i="${i}" data-k="${k}" aria-label="byte ${k}, click to flip its lowest bit">${b.toString(16).padStart(2,"0")}</button>`).join("");
+    const tag = d.kind === "A" ? (d.authOk ? '<span class="ok" title="Chaskey-12 tag verified">&#10003; ok</span>' : '<span class="no" title="Chaskey-12 tag does not verify">&#10007; bad</span>') : '<span class="na">&mdash;</span>';
+    const crc = d.crcOk ? '<span class="ok">&#10003;</span>' : '<span class="no">&#10007;</span>';
+    const bad = !d.crcOk || (d.kind === "A" && !d.authOk);
+    const ru = runs[r.run], head = runs.length > 1 && ru && (i === 0 || recs[i - 1].run !== r.run) ?
+      `<tr class="run"><td colspan="6">${esc(ru.label)}<span>${ru.recs} records${ru.nb ? ` &middot; UART ${ru.nb} clocks/bit` : ""} &middot; from reset, tag counter 0</span></td></tr>` : "";
+    return head + `<tr id="row-${i}" class="${bad ? "bad" : ""}"><td class="n">${i}</td><td class="cyc">${r.cycle == null ? "&mdash;" : r.cycle.toLocaleString("en")}</td>`+
+           `<td><div class="bytes">${bytes}</div></td><td class="dec">${decodedText(d)}</td><td class="chk">${crc}</td><td class="chk">${tag}</td></tr>`;
+  }).join("") || `<tr><td colspan="6" class="na">No records.</td></tr>`;
+}
+$("ledger").addEventListener("click", e => {
+  const b = e.target.closest(".byte"); if (!b) return;
+  const i = +b.dataset.i, k = +b.dataset.k;
+  recs[i].bytes[k] ^= 1;
+  recompute();
+});
+
+function renderIdentity(){
+  const idx = dec.findIndex(d => d.kind === "I"), dl = $("ident"), v = $("ident-v");
+  const fp = DATA.fingerprint;
+  if (idx < 0){
+    dl.innerHTML = `<dt>Build</dt><dd>${fp.words} words, CRC 0x${fp.crc.toString(16).padStart(4,"0")}</dd>`;
+    v.className = "verdict none"; v.textContent = "No identity record in this transcript."; return;
+  }
+  const d = dec[idx], same = d.crcOk && d.romWords === fp.words && d.romCrc === fp.crc;
+  dl.innerHTML = `<dt>Protocol</dt><dd>v${d.proto}</dd><dt>Chip says</dt><dd>${d.romWords} words, CRC 0x${d.romCrc.toString(16).padStart(4,"0")}</dd>`+
+                 `<dt>Build</dt><dd>${fp.words} words, CRC 0x${fp.crc.toString(16).padStart(4,"0")}</dd><dt>Image</dt><dd>${esc(fp.file)}</dd>`;
+  v.className = "verdict " + (same ? "good" : "bad");
+  v.textContent = same ? "The chip is running exactly this firmware image." : "The chip's ROM does not match this build.";
+}
+function renderTotals(){
+  const V = dec.filter(d => d.kind === "V"), A = dec.filter(d => d.kind === "A");
+  $("n-veh").textContent = V.length;
+  $("n-auth").textContent = A.filter(d => d.authOk).length + "/" + A.length;
+  $("n-crc").textContent = dec.filter(d => d.crcOk).length + "/" + dec.length;
+  const bad = dec.filter(d => !d.crcOk || (d.kind === "A" && !d.authOk)).length, av = $("auth-v");
+  av.className = "verdict " + (dec.length ? (bad ? "bad" : "good") : "none");
+  av.textContent = !dec.length ? "No records." : bad ? `${bad} record${bad > 1 ? "s" : ""} fail${bad > 1 ? "" : "s"} verification.` :
+                   A.length ? "Every record verifies: CRC-16 and Chaskey-12." : "Every CRC verifies (no key loaded in this run).";
+  const charged = V.filter(d => d.status === "CHARGED" || d.status === "CLASS MISMATCH");
+  const sum = charged.reduce((s, d) => s + d.fare, 0);
+  const flagged = V.filter(d => ["NO TAG","CLASS MISMATCH","HOTLIST","CLONE"].includes(d.status)).length;
+  const alarms = V.filter(d => d.status === "HOTLIST" || d.status === "CLONE").length;
+  $("money").innerHTML = `<dt>Charged</dt><dd>${charged.length} vehicle${charged.length === 1 ? "" : "s"}, ${rm(sum)}</dd>`+
+    `<dt>Camera</dt><dd>${flagged} photographed for enforcement</dd><dt>Alarms</dt><dd>${alarms} (stolen or cloned tag)</dd>`;
+}
+
+/* ---- the road ------------------------------------------------------------ */
+const cv = $("road"), g = cv.getContext("2d");
+let W = 1200, H = 280, dpr = 1;
+function size(){
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  W = cv.clientWidth; H = cv.clientHeight;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener("resize", () => { size(); draw(); });
+
+let vq = [], vi = 0, cars = [], playing = true, speed = 1, lastT = 0, shown = null;
+const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const LEN = [30, 54, 70, 104];                                // motorcycle, car, van, lorry
+function restart(){
+  vq = []; let vn = 0;
+  dec.forEach((d, i) => { if (d.kind === "V") { vq.push({d, i, pins: pins[vn] ? pins[vn].bits : null}); vn++; } });
+  vi = 0; cars = []; shown = null; setLamps(0);
+  if (reduce) { playing = false; $("play").textContent = "Play"; }
+  spawn();
+}
+function spawn(){
+  if (vi >= vq.length) return;
+  const q = vq[vi++];
+  cars.push({x: -130, q, decided: false});
+}
+function lampBits(q){
+  if (q.pins != null) return q.pins;
+  const s = q.d.status;
+  return (s === "CHARGED" || s === "CLASS MISMATCH" ? 1 : 0) | (["NO TAG","CLASS MISMATCH","HOTLIST","CLONE"].includes(s) ? 2 : 0) |
+         (s === "HOTLIST" || s === "CLONE" ? 4 : 0) | (s === "LANE CLOSED" ? 8 : 0);
+}
+function setLamps(b){ ["p4","p5","p6","p7"].forEach((id, k) => $(id).classList.toggle("on", !!(b >> k & 1))); }
+function markRow(i){
+  document.querySelectorAll("#ledger tr.now").forEach(r => r.classList.remove("now"));
+  const r = $("row-" + i); if (r) r.classList.add("now");
+}
+
+function draw(){
+  const road = css("--road"), edge = css("--road-edge"), mark = css("--lane-mark"), verge = css("--verge");
+  const gx = Math.round(W * 0.56), top = 64, bot = H - 50, mid = (top + bot) / 2;
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = verge; g.fillRect(0, 0, W, H);
+  g.fillStyle = road; g.fillRect(0, top, W, bot - top);
+  g.strokeStyle = edge; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(0, top + 3); g.lineTo(W, top + 3); g.moveTo(0, bot - 3); g.lineTo(W, bot - 3); g.stroke();
+  g.strokeStyle = mark; g.lineWidth = 2; g.setLineDash([22, 18]);
+  g.beginPath(); g.moveTo(0, top + (bot - top) * 0.2); g.lineTo(W, top + (bot - top) * 0.2);
+  g.moveTo(0, top + (bot - top) * 0.8); g.lineTo(W, top + (bot - top) * 0.8); g.stroke(); g.setLineDash([]);
+  // read zone
+  g.fillStyle = "rgba(242,169,0,0.09)"; g.fillRect(gx - 70, top, 140, bot - top);
+  // gantry
+  g.fillStyle = css("--ink-2");
+  g.fillRect(gx - 3, 18, 6, top - 12); g.fillRect(gx - 3, bot + 4, 6, H - bot - 10);
+  g.fillStyle = css("--sign"); g.fillRect(gx - 120, 12, 240, 40);
+  g.strokeStyle = css("--sign-ink"); g.lineWidth = 2; g.strokeRect(gx - 116, 16, 232, 32);
+  g.fillStyle = css("--sign-ink"); g.font = "800 15px " + css("--display"); g.textAlign = "center"; g.textBaseline = "middle";
+  const label = shown ? shown.d.status + (shown.d.fare ? "  " + rm(shown.d.fare) : "") : "LANEX  LANE 1";
+  g.fillText(label, gx, 32);
+  // cars
+  cars.forEach(c => {
+    const d = c.q.d, len = LEN[d.phys] || 54, y = mid - (d.phys === 3 ? 20 : 16), h = d.phys === 3 ? 40 : d.phys === 0 ? 14 : 32;
+    const col = c.decided ? stColor(d.status) : css("--car");
+    g.fillStyle = col; roundRect(c.x, d.phys === 0 ? mid - 7 : y, len, h, 6); g.fill();
+    g.fillStyle = "rgba(0,0,0,0.25)"; g.fillRect(c.x + len - 16, (d.phys === 0 ? mid - 7 : y) + 4, 8, h - 8);
+    if (d.tag !== 7) { g.fillStyle = css("--amber"); g.fillRect(c.x + len - 26, (d.phys === 0 ? mid - 7 : y) + 3, 7, 5); }
+    if (c.decided) {
+      g.fillStyle = css("--ink"); g.font = "600 11px " + css("--mono"); g.textAlign = "center";
+      g.fillText("#" + d.seq + " " + d.status, c.x + len / 2, (d.phys === 0 ? mid - 7 : y) + h + 14);
+    }
+  });
+  g.textAlign = "left"; g.fillStyle = css("--muted"); g.font = "600 11px " + css("--mono");
+  g.fillText("tx_o → record " + (shown ? shown.i : "–") + (shown && recs[shown.i].cycle != null ? "  @ cycle " + recs[shown.i].cycle.toLocaleString("en") : ""), 12, H - 18);
+}
+function roundRect(x, y, w, h, r){ g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+
+function tick(t){
+  const dt = Math.min(50, t - (lastT || t)); lastT = t;
+  if (playing) advance(dt * speed);
+  draw();
+  requestAnimationFrame(tick);
+}
+function advance(dt){
+  const gx = W * 0.56, v = 0.16 * dt;
+  cars.forEach(c => {
+    const len = LEN[c.q.d.phys] || 54;
+    c.x += v;
+    if (!c.decided && c.x + len / 2 >= gx) {
+      c.decided = true; shown = c.q; setLamps(lampBits(c.q)); markRow(c.q.i);
+    }
+  });
+  cars = cars.filter(c => c.x < W + 140);
+  const last = cars[cars.length - 1];
+  if (!last || last.x > W * 0.34) {
+    if (vi < vq.length) spawn();
+    else if (!cars.length) { vi = 0; spawn(); }
+  }
+}
+$("play").addEventListener("click", () => { playing = !playing; $("play").textContent = playing ? "Pause" : "Play"; });
+$("restart").addEventListener("click", () => restart());
+$("speed").addEventListener("change", e => { speed = +e.target.value; });
+$("step").addEventListener("click", () => {
+  const next = cars.find(c => !c.decided);
+  if (next) { next.x = W * 0.56 - (LEN[next.q.d.phys] || 54) / 2; advance(0); }
+  else { spawn(); const c = cars[cars.length - 1]; if (c) { c.x = W * 0.56 - (LEN[c.q.d.phys] || 54) / 2; advance(0); } }
+  draw();
+});
+
+/* ---- sources -------------------------------------------------------------- */
+function choose(which){
+  source = which;
+  ["fast","true","pasted"].forEach(k => $("src-" + k).setAttribute("aria-pressed", String(k === which)));
+  if (which === "pasted") return load(pasted, "pasted", "Pasted transcript: whatever run you made, decoded and checked here.");
+  const t = DATA.transcripts[which];
+  load(t.text, which, t.prov);
+}
+let pasted = "";
+$("src-fast").addEventListener("click", () => choose("fast"));
+$("src-true").addEventListener("click", () => choose("true"));
+$("src-pasted").addEventListener("click", () => choose("pasted"));
+$("load").addEventListener("click", () => {
+  const p = C.parseTranscript($("paste").value);
+  if (!p.recs.length) { $("pmsg").textContent = "No records found. Paste lines starting REC, JSON lines from rvbl2 --json, or 16-hex-digit records."; return; }
+  pasted = $("paste").value; $("src-pasted").disabled = false; choose("pasted");
+  $("pmsg").textContent = `Loaded ${p.recs.length} records` + (p.pins.length ? ` and ${p.pins.length} pin samples.` : ".");
+  $("road").scrollIntoView({behavior: reduce ? "auto" : "smooth", block: "center"});
+});
+
+/* ---- blind test ------------------------------------------------------------- */
+let blind = null;
+$("b-uart").value = DATA.uartPath;
+$("b-kinds").innerHTML = C.KINDS.map((k, i) => `<label><input type="checkbox" id="bk-${i}" value="${esc(k)}" checked>${esc(k)}</label>`).join("");
+function kinds(){ return C.KINDS.filter((k, i) => $("bk-" + i).checked); }
+$("b-rnd").addEventListener("click", () => { $("b-seed").value = 1 + Math.floor(Math.random() * 2147483646); });
+$("b-gen").addEventListener("click", () => {
+  const ks = kinds(), n = Math.max(1, Math.min(12, +$("b-n").value || 3)), seed = Math.max(1, +$("b-seed").value || 1);
+  if (!ks.length) { $("b-msg").textContent = "Choose at least one kind of vehicle."; return; }
+  const fast = $("b-rate").value === "fast";
+  blind = C.makeBlind({seed, n, kinds: ks, fast});
+  const tb = C.blindTestbench(blind, $("b-uart").value.trim() || DATA.uartPath);
+  $("b-tb").textContent = tb;
+  const seal = C.hex(C.chaskey12(C.DEMO_KEY, [].concat(...blind.expect), 8));
+  $("b-seal").textContent = `Sealed prediction: ${blind.expect.length} records for ${n} vehicles, fingerprint ${seal} (Chaskey-12 over the predicted bytes). It opens when you paste the chip's log.`;
+  $("b-out").hidden = false; $("b-copy").hidden = false; $("b-cmp").innerHTML = "";
+  const cyc = blind.cycles.toLocaleString("en"), fits = blind.cycles <= C.PLATFORM_BUDGET;
+  $("b-msg").textContent = !fast ? `${cyc} cycles at the chip's real rate: too long for the platform's window; run it locally.` :
+    fits ? `${cyc} cycles: fits the platform's window. Needs the UART instance name from your export (filled in).` :
+           `${cyc} cycles: likely too long for the platform's window (about ${C.PLATFORM_BUDGET.toLocaleString("en")}); use fewer vehicles or another seed.`;
+});
+$("b-copy").addEventListener("click", () => {
+  const t = $("b-tb").textContent;
+  const sel = () => { const r = document.createRange(); r.selectNodeContents($("b-tb")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $("b-msg").textContent = "Selected: press Ctrl+C."; };
+  try { navigator.clipboard.writeText(t).then(() => { $("b-msg").textContent = "Copied."; }, sel); } catch (e) { sel(); }
+});
+$("b-open").addEventListener("click", () => {
+  if (!blind) return;
+  const p = C.parseTranscript($("b-log").value), got = p.recs.map(r => r.bytes), exp = blind.expect;
+  const v = C.verify(got), rows = [];
+  let same = 0;
+  const n = Math.max(got.length, exp.length);
+  for (let i = 0; i < n; i++) {
+    const a = got[i], b = exp[i], ok = a && b && C.hex(a) === C.hex(b);
+    same += ok ? 1 : 0;
+    const da = a ? C.decode(a) : null, db = b ? C.decode(b) : null;
+    rows.push(`<tr class="${ok ? "" : "bad"}"><td class="n">${i}</td><td class="mono">${a ? C.hex(a) : "&mdash;"}</td><td class="mono">${b ? C.hex(b) : "&mdash;"}</td>`+
+      `<td>${db ? (db.kind === "V" ? esc(db.status) : "record " + db.kind) : ""}</td><td class="m ${ok ? "ok" : "no"}">${ok ? "&#10003; same" : "&#10007; differs"}</td></tr>`);
+  }
+  const pinsOk = p.pins.length === blind.pins.length && p.pins.every((x, i) => x.bits === blind.pins[i]);
+  const verified = v.every(d => d.crcOk && (d.kind !== "A" || d.authOk));
+  const all = same === exp.length && got.length === exp.length && pinsOk && verified;
+  $("b-cmp").innerHTML = `<div class="verdict ${all ? "good" : "bad"}">${all ?
+      `The chip matched the sealed prediction: ${blind.plan.length} vehicles, ${exp.length} records byte for byte, every pin, every CRC and tag verified.` :
+      `${same} of ${exp.length} records match; pins ${pinsOk ? "match" : "differ"}; ${verified ? "all records verify" : "some records fail verification"}.`}</div>`+
+    `<div class="ledger-wrap" style="margin:12px 0 0;border:1px solid var(--rule);border-radius:8px"><table><thead><tr><th>#</th><th>The chip sent</th><th>Sealed prediction</th><th>Meaning</th><th></th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`+
+    `<p class="sub">Vehicles in this scenario: ${blind.plan.map((v, i) => `${i}: ${esc(v.kind)} (class ${v.phys}) &rarr; ${esc(v.status)}`).join("; ")}.</p>`;
+  if (got.length) { pasted = $("b-log").value; $("src-pasted").disabled = false; }
+});
+
+/* ---- the emulator link ---------------------------------------------------------- */
+// emu.c's registers, and the pins each one reaches (ROWS[r]); dir 1 = toward the chip
+const ROWS = [
+  {reg: "IN  0x04", opts: "-d  -i", port: "P3–P0  GPIO in", dir: 1},
+  {reg: "TX  0x0C", opts: "-t1 -t2 -t4", port: "rx_i  UART in", dir: 1},
+  {reg: "RX0/1  0x10/14", opts: "-r1 -r2 -r4", port: "tx_o  UART out", dir: -1},
+  {reg: "OUT  0x08", opts: "-o", port: "P7–P4  GPIO out", dir: -1}];
+const CHV = {d: "--muted", i: "--good", t: "--violet", r: "--amber", o: "--blue"};
+const EY = [110, 152, 194, 236];
+const FRAME = {0x52: "R, a tag read", 0x54: "T, the lane time", 0x43: "C, configuration", 0x47: "G, a gantry position",
+  0x48: "H, add to the hotlist", 0x68: "h, remove from the hotlist", 0x53: "S, a sighting at another gantry", 0x51: "Q, a stats query",
+  0x50: "P, lane parameters", 0x4B: "K, the record key", 0x49: "I, identify"};
+const CLS = ["class 1", "class 2", "class 3", "a motorcycle"];
+const LAMP = ["P4 charged", "P5 camera", "P6 alarm", "P7 lane closed"];
+const hx = (b, n) => b.toString(16).toUpperCase().padStart(n || 2, "0");
+
+function emuSvg(){
+  const t = (x, y, s, a) => `<text x="${x}" y="${y}" ${a || ""}>${s}</text>`;
+  const box = (x, w, fill, stroke, sw) => `<rect x="${x}" y="36" width="${w}" height="244" rx="8" style="fill:var(${fill});stroke:var(${stroke})" stroke-width="${sw}"/>`;
+  let s = `<svg viewBox="0 0 780 292" role="img" aria-label="./emu writes and reads the FPGA top's AXI-Lite registers; each register drives or reads one group of the RVBL-2 chip's pins">`;
+  s += "<defs>" + ["off", "d", "i", "t", "r", "o"].map(k => `<marker id="ah-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(${k === "off" ? "--rule-2" : CHV[k]})"/></marker>`).join("") + "</defs>";
+  s += box(6, 150, "--panel", "--rule-2", 1.5) + box(250, 226, "--panel", "--rule-2", 1.5) + box(572, 202, "--sign-soft", "--sign", 2.5);
+  s += t(81, 66, "./emu", 'class="mono" text-anchor="middle" style="fill:var(--ink);font-size:17px;font-weight:600"');
+  s += t(81, 86, "the organisers&rsquo; host tool", 'text-anchor="middle" style="fill:var(--muted);font-size:11.5px"');
+  s += t(81, 262, "AWS F2 console", 'text-anchor="middle" style="fill:var(--muted);font-size:11.5px"');
+  s += t(363, 66, "FPGA top", 'text-anchor="middle" style="fill:var(--ink);font-size:15px;font-weight:600"');
+  s += t(363, 86, "AXI-Lite registers", 'text-anchor="middle" style="fill:var(--muted);font-size:11.5px"');
+  s += t(673, 66, "RVBL-2 chip", 'text-anchor="middle" style="fill:var(--ink);font-size:15px;font-weight:600"');
+  s += t(673, 86, "running the LaneX firmware", 'text-anchor="middle" style="fill:var(--muted);font-size:11.5px"');
+  s += t(203, 30, "PCIe / AXI-Lite", 'text-anchor="middle" style="fill:var(--muted);font-size:11px"');
+  s += t(524, 30, "pins", 'text-anchor="middle" style="fill:var(--muted);font-size:11px"');
+  ROWS.forEach((r, k) => {
+    const y = EY[k];
+    s += t(262, y + 4, r.reg, 'class="mono" style="fill:var(--ink);font-size:12px"');
+    s += t(466, y + 4, r.opts, 'class="mono" text-anchor="end" style="fill:var(--muted);font-size:11px"');
+    s += t(584, y + 4, r.port, 'class="mono" style="fill:var(--ink);font-size:12px"');
+    const [a1, a2] = r.dir > 0 ? [156, 250] : [250, 156], [b1, b2] = r.dir > 0 ? [476, 572] : [572, 476];
+    s += `<line id="wa-${k}" x1="${a1}" y1="${y}" x2="${a2}" y2="${y}" stroke-width="2" style="stroke:var(--rule-2)" marker-end="url(#ah-off)"/>`;
+    s += `<line id="wb-${k}" x1="${b1}" y1="${y}" x2="${b2}" y2="${y}" stroke-width="2" style="stroke:var(--rule-2)" marker-end="url(#ah-off)"/>`;
+    s += `<text id="va-${k}" x="203" y="${y - 13}" class="mono" text-anchor="middle" style="font-size:11px;font-weight:600"></text>`;
+    s += `<text id="vb-${k}" x="524" y="${y - 13}" class="mono" text-anchor="middle" style="font-size:11px;font-weight:600"></text>`;
+  });
+  LAMP.forEach((l, k) => {
+    const x = 596 + k * 46;
+    s += `<circle id="el-${k}" cx="${x}" cy="258" r="7" style="fill:var(--rule-2)"/>`;
+    s += t(x + 11, 262, "P" + (4 + k), 'class="mono" style="fill:var(--muted);font-size:10.5px"');
+  });
+  return s + "</svg>";
+}
+
+// one ./emu line -> its steps: the reset, then one step per option, each with emu's own output line
+function emuSteps(line){
+  const tok = line.cmd.split(/\s+/).slice(1), steps = [{opt: "reset", val: null, out: line.steps[0]}];
+  for (let i = 0, k = 1; i < tok.length; i += 2, k++) steps.push({opt: tok[i], val: tok[i + 1], out: line.steps[k]});
+  const fr = [], rd = [];
+  let lamps = 0;
+  steps.forEach(st => {
+    const o = st.opt, v = st.val == null ? 0 : parseInt(st.val, 16), n = +(o.slice(2) || 0);
+    st.ch = o === "reset" ? "x" : o[1];
+    st.row = {d: 0, i: 0, t: 1, r: 2, o: 3}[st.ch];
+    st.lamps = lamps;
+    if (o === "reset") st.mean = "emu resets the chip. The firmware boots in 1,758 cycles and makes P7–P4 outputs (DATADIR = 0xF0).";
+    else if (o === "-d") { st.label = "dir " + st.val; st.mean = "-d 0xF0: emu drives P3–P0 (the lane sensors) and releases P7–P4 to read the chip&rsquo;s lamps."; }
+    else if (o === "-i") {
+      st.label = st.val;
+      const parts = [];
+      if (v & 1) parts.push(`P0 = 1: a vehicle enters the read zone; P2:P1 = ${(v >> 1 & 3).toString(2).padStart(2, "0")}: the classifier measures ${CLS[v >> 1 & 3]}`);
+      else parts.push("P0 = 0: the vehicle has left the zone, so the chip decides");
+      if (v & 8) parts.push("P3 = 1: the lane is closed");
+      st.mean = parts.join(". ") + ".";
+    } else if (o.startsWith("-t")) {
+      const bytes = []; for (let b = 0; b < n; b++) bytes.push(v / 2 ** (8 * b) & 0xFF);   // least-significant byte first, as emu sends
+      st.label = bytes.map(b => hx(b)).join(" ");
+      const roles = [];
+      bytes.forEach(b => {
+        fr.push(b);
+        const p = fr.length;
+        if (p === 1) roles.push(b === 0xA5 ? "A5 starts a frame" : hx(b) + " (no frame start)");
+        else if (p === 2) roles.push(`${hx(b)} is its type: ${FRAME[b] || "unknown"}`);
+        else if (p === 3) roles.push(`${hx(b)} its length, ${b} bytes`);
+        if (p >= 3 && p === fr[2] + 5) {
+          roles.push(`the CRC-16 ends the frame: ${fr.length} bytes, checked on the chip with its Xicrc instructions`);
+          fr.length = 0;
+        }
+      });
+      st.mean = `The FPGA top sends ${st.label} into the chip&rsquo;s rx_i, 10 bits per byte` + (roles.length ? ": " + roles.join("; ") + "." : " (payload).");
+    } else if (o.startsWith("-r")) {
+      const bytes = []; for (let b = 0; b < n; b++) bytes.push(v / 2 ** (8 * b) & 0xFF);
+      st.label = bytes.map(b => hx(b)).join(" ");
+      rd.push(...bytes);
+      if (rd.length >= 8) {
+        const d = C.decode(rd.slice(0, 8));
+        const crc = d.crcOk ? "its CRC-16 checks (recomputed on this page)" : "its CRC-16 does not check";
+        st.mean = d.kind === "V" ? `The chip&rsquo;s record, 8 bytes: V #${d.seq}, <b>${esc(d.status)}</b>, measured class ${d.phys}, ${d.tag === 7 ? "no tag" : "tag class " + d.tag}, ${rm(d.fare)}; ${crc}.` :
+                  d.kind === "I" ? `The chip&rsquo;s identity record: it read its own ROM, <b>${d.romWords.toLocaleString("en")} words, CRC 0x${hx(d.romCrc, 4)}</b>, the build&rsquo;s fingerprint; ${crc}.` :
+                  `The chip&rsquo;s record ${esc(d.kind)}; ${crc}.`;
+        rd.length = 0;
+      } else st.mean = `emu reads the first ${rd.length} bytes the chip sent on tx_o: ${st.label}. A record is 8 bytes, as much as emu can read back in one run.`;
+    } else if (o === "-o") {
+      st.label = st.val; lamps = v >> 4 & 15; st.lamps = lamps;
+      const on = LAMP.filter((l, k) => lamps >> k & 1);
+      st.mean = `emu reads P7–P4 and compares: ${on.length ? on.join(", ") : "no lamp"}.`;
+    }
+  });
+  return steps;
+}
+
+let emuLine = 0, emuAt = 0, emuTimer = null, emuSt = [];
+function emuPaint(){
+  const line = DATA.emu[emuLine], st = emuSt;
+  $("emu-cmd").innerHTML = `<span class="tk ch-x ${emuAt >= 0 ? "done" : "todo"}${emuAt === 0 ? " now" : ""}">./emu</span> ` + st.slice(1).map((x, k) =>
+    `<span class="tk ch-${x.ch} ${k + 1 <= emuAt ? "done" : "todo"}${k + 1 === emuAt ? " now" : ""}">${esc(x.opt)} ${esc(x.val)}</span>`).join(" ");
+  const cur = st[emuAt];
+  for (let r = 0; r < 4; r++) {
+    const on = cur && cur.row === r, c = on ? cur.ch : "off";
+    ["a", "b"].forEach(p => {
+      const w = $("w" + p + "-" + r), lab = $("v" + p + "-" + r);
+      const live = on && !(p === "b" && cur.ch === "d");
+      w.style.stroke = live ? `var(${CHV[c]})` : "var(--rule-2)"; w.setAttribute("stroke-width", live ? 3.5 : 2);
+      w.setAttribute("marker-end", `url(#ah-${live ? c : "off"})`);
+      lab.textContent = live ? cur.label : ""; lab.style.fill = live ? `var(${CHV[c]})` : "none";
+    });
+  }
+  const lamps = cur ? cur.lamps : 0;
+  for (let k = 0; k < 4; k++) $("el-" + k).style.fill = lamps >> k & 1 ? `var(${["--good", "--warn", "--bad", "--quiet"][k]})` : "var(--rule-2)";
+  $("emu-now").innerHTML = cur ? cur.mean : "";
+  const con = [`<div class="prompt">$ ${esc(line.cmd)}</div>`];
+  st.slice(0, emuAt + 1).forEach(x => con.push(`<div class="ok">${esc(x.out)}</div><div class="mean">${x.mean}</div>`));
+  if (emuAt === st.length - 1) con.push(`<div class="pass">PASS: every value the chip returned matched</div>`);
+  $("emu-con").innerHTML = con.join("");
+  $("emu-con").scrollTop = $("emu-con").scrollHeight;
+  $("emu-play").textContent = emuTimer ? "Pause" : emuAt === st.length - 1 ? "Play this line again" : "Play this line";
+}
+function emuStop(){ if (emuTimer) { clearTimeout(emuTimer); emuTimer = null; } }
+function emuRun(){
+  emuStop();
+  const next = () => {
+    if (emuAt >= emuSt.length - 1) { emuTimer = null; emuPaint(); return; }
+    emuAt++;
+    emuTimer = setTimeout(next, emuSt[emuAt].ch === "t" ? 450 : 1300);
+    emuPaint();
+  };
+  emuTimer = setTimeout(next, 600);
+  emuPaint();
+}
+function emuPick(i, play){
+  emuStop(); emuLine = i; emuSt = emuSteps(DATA.emu[i]);
+  document.querySelectorAll("#emu-pick button").forEach((b, k) => b.setAttribute("aria-pressed", String(k === i)));
+  if (play && !reduce) { emuAt = 0; emuRun(); } else { emuAt = emuSt.length - 1; emuPaint(); }
+}
+$("emu-fig").innerHTML = emuSvg();
+$("emu-pick").innerHTML = DATA.emu.map((l, i) => { const t = l.title.split(/ ->|:/)[0]; return `<button type="button" aria-pressed="false">${esc(t[0].toUpperCase() + t.slice(1))}</button>`; }).join("");
+$("emu-pick").addEventListener("click", e => { const b = e.target.closest("button"); if (b) emuPick([...b.parentNode.children].indexOf(b), true); });
+$("emu-play").addEventListener("click", () => {
+  if (emuTimer) { emuStop(); emuPaint(); return; }
+  if (emuAt >= emuSt.length - 1) emuAt = 0;
+  emuRun();
+});
+$("emu-step").addEventListener("click", () => { emuStop(); emuAt = emuAt >= emuSt.length - 1 ? 0 : emuAt + 1; emuPaint(); });
+$("emu-prov").textContent = `${DATA.emu.length} lines, ${DATA.emu.length} passed on the chip`;
+emuPick(0, false);
+
+/* ---- start ------------------------------------------------------------------- */
+size();
+choose("fast");
+// #decided: open with the first vehicle under the gantry and its decision shown, paused
+if (location.hash === "#decided") {
+  $("step").click();
+  playing = false; $("play").textContent = "Play";
+  markRow(vq[0] ? vq[0].i : 0);
+}
+requestAnimationFrame(tick);
+</script>
+
+</body>
+</html>
