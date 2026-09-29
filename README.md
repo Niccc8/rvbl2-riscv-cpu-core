@@ -24,7 +24,7 @@ platform itself. See [How the chip is proven](#how-the-chip-is-proven).
 | **Emulator preview** | **PASS**: 11/11 `./emu` command lines of the application, 4/4 of the official firmware, played on the chip |
 | **On ChipInventor** | application SCEN 0, 1, 2: 13/13, 8/8, 6/6 · the full chip suite: 15,517 checks |
 | **GPIO and UART, alone** | `tb_gpio` 42 · `tb_uart` 243 · `tb_periph_soc` 25 · the chip suite's SUITE 4 (Stage 3 peripherals): 219 |
-| **Firmware** | C → assembly → the organisers' Firmware Builder: 2,722 instructions in a 2,774-word image, 2,892 B of static data |
+| **Firmware** | C → assembly ([`main.s`](application/firmware/out/lane/asm/main.s)) → the organisers' Firmware Builder: 2,722 instructions in a 2,774-word image, 2,892 B of static data; rebuilt byte-identical with Ubuntu's GCC 13.2 |
 | **Timing** | boot 1,758 cycles · a received byte waits at most 199 cycles (one byte lasts 2,630) · decision at most 0.62 ms after the vehicle leaves |
 | **Equivalence** | the ChipInventor design runs in lockstep with the reference RTL: 1,238,859 comparisons, 0 mismatches |
 
@@ -42,7 +42,7 @@ ChampionCHIP platform and the video is on YouTube; **everything else is in this 
 | Video demo (YouTube) | *link to be added* (also on the report's first page) |
 | All developed source code (C, Verilog) | Verilog: **[`rtl/`](rtl/)** (with `gpio.v`, `uart.v`), **[`chipinventor/blocks/`](chipinventor/blocks/)** · C: **[`application/firmware/`](application/firmware/)** · testbenches: **[`official-firmware-testbench/`](official-firmware-testbench/)**, **[`application/testbench/`](application/testbench/)**, **[`tb/`](tb/)** |
 | Live demonstration | **[https://niccc8.github.io/rvbl2-riscv-cpu-core/demo/](https://niccc8.github.io/rvbl2-riscv-cpu-core/demo/)**: the chip's own records, replayed and checked in your browser |
-| Complete firmware, binary and assembly | **[`application/firmware/out/lane/`](application/firmware/out/lane/)**: `firmware.bin`, `firmware.txt`, `asm/*.s`, `firmware.dmp` · the official test firmware: [`official-firmware-testbench/firmware/`](official-firmware-testbench/firmware/) |
+| Complete firmware, binary and assembly | **The application in assembly: [`application/firmware/out/lane/asm/main.s`](application/firmware/out/lane/asm/main.s)**, with [`hal.s`](application/firmware/out/lane/asm/hal.s), [`divmod.s`](application/firmware/out/lane/asm/divmod.s) and [`crt0.s`](application/firmware/out/lane/asm/crt0.s): the complete program · **the binary: [`firmware.bin`](application/firmware/out/lane/firmware.bin)**, with `firmware.txt` (the IMEM lines) and `firmware.dmp` (the disassembly) · [how to read `main.s`](application/firmware/README.md#reading-mains) · the official test firmware: [`official-firmware-testbench/firmware/`](official-firmware-testbench/firmware/) |
 
 ---
 

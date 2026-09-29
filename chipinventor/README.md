@@ -115,7 +115,12 @@ the reset vector. Our program is position-independent and was placed above it; i
 covers FENCE, ECALL, EBREAK, illegal instructions, misaligned access and the 58 instruction
 signatures, none of which the official firmware reaches.
 
-## The order to do things in
+## The order to do things in (Phase 2)
+
+This is the Phase 2 procedure for the core alone, kept as it was graded; its counts (20
+instances, 72 connections, 15,281 checks) are Phase 2's. For Stage 3, follow
+[Stage 3: GPIO and UART](#stage-3-gpio-and-uart) above: two projects, and the suite runs as
+`PART` 1–4 on the platform.
 
 **1. Smoke-test the paste path first.** Create one block — `alu` — before anything else.
 Fill in the fields from `BLOCK_METADATA.md`, paste `blocks/alu.v` into the Code field,
@@ -307,7 +312,9 @@ WRITEBACK), and a **dependent-register loop**. Both are spliced in before the fi
 
 ## Verification coverage
 
-15,281 checks in one file, against a baseline of 8,285 across sixteen.
+15,517 checks in one file in Stage 3 (15,281 in Phase 2, against a baseline of 8,285 across
+sixteen files). On the platform it runs as `PART` 1–4; the parts total 15,523, because parts
+2–4 each end with the same 3 pin and line monitor checks.
 
 | Suite | Covers | Checks |
 |---|---|---:|
@@ -316,14 +323,15 @@ WRITEBACK), and a **dependent-register loop**. Both are spliced in before the fi
 | **2A** | **The official validation firmware, from reset. Verdict `x4 == 0`, both exit loops, and its six DMEM words checked independently of the branches it used to check them** | ~10 |
 | 2B | Our supplementary program: 58 instruction signatures, JAL/JALR/AUIPC/FENCE/EBREAK, load-from-IMEM, dependent loop | ~80 |
 | 3 | Reset injected at 40 points, then **both** programs re-run to completion — the official one back to `x4 == 0` | ~3,700 |
+| **4** | **Stage 3 peripherals**: `gpio`, `uart` and `gpio_bits` alone, then on the chip: the Block Guide's Figure 1 tri-state on all 8 pins, its GPIO and echo listings, the echo with the far end 2 % slow and 2 % fast, a 24-check register program, and pin and line monitors over the whole run | 219 |
 
 The one thing not carried over is gate-level equivalence (901 checks). It co-simulated the
 RTL against a locally synthesised netlist; the platform runs its own synthesis and exposes
 no netlist to the testbench field. It still runs in the root flow, and passed after the CRC
 fix.
 
-`scripts/tb_mirror_equiv.v` now compares the two designs over **both** programs — 410,400
-cycle-by-cycle comparisons, zero mismatches. Phase 1 (the official firmware) covers every
+`scripts/tb_mirror_equiv.v` now compares the two designs over **both** programs — 470,400
+cycle-by-cycle comparisons in Stage 3 (410,400 in Phase 2), zero mismatches. Phase 1 (the official firmware) covers every
 RV32I instruction, all four multiplies and all three CRC widths; phase 2 covers FENCE,
 ECALL, EBREAK, illegal instructions and misaligned access, which the official firmware
 never reaches.
