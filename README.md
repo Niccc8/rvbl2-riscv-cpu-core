@@ -37,12 +37,13 @@ ChampionCHIP platform and the video is on YouTube; **everything else is in this 
 
 | Guide §9 requires | Where it is |
 |---|---|
-| Technical report (PDF, max. 7 pages) | submitted on the ChampionCHIP platform (7 pages, 1.6 MB); its figures are in [`report-stage3/figures/`](report-stage3/figures/) |
+| Technical report (PDF) | submitted on the ChampionCHIP platform (8 pages: 7 plus 1 of the 2 extra pages the organisers allow; 1.6 MB); its figures are in [`report-stage3/figures/`](report-stage3/figures/) |
 | GitHub link | this repository, branch **`stage3`** |
-| Video demo (YouTube) | *link to be added* (also on the report's first page) |
+| Video demo (YouTube) | **[https://youtu.be/OZdPSbZZKvU](https://youtu.be/OZdPSbZZKvU)** (also on the report's first page) |
 | All developed source code (C, Verilog) | Verilog: **[`rtl/`](rtl/)** (with `gpio.v`, `uart.v`), **[`chipinventor/blocks/`](chipinventor/blocks/)** · C: **[`application/firmware/`](application/firmware/)** · testbenches: **[`official-firmware-testbench/`](official-firmware-testbench/)**, **[`application/testbench/`](application/testbench/)**, **[`tb/`](tb/)** |
 | Live demonstration | **[https://niccc8.github.io/rvbl2-riscv-cpu-core/demo/](https://niccc8.github.io/rvbl2-riscv-cpu-core/demo/)**: the chip's own records, replayed and checked in your browser |
 | Complete firmware, binary and assembly | **The application in assembly: [`application/firmware/out/lane/asm/main.s`](application/firmware/out/lane/asm/main.s)**, with [`hal.s`](application/firmware/out/lane/asm/hal.s), [`divmod.s`](application/firmware/out/lane/asm/divmod.s) and [`crt0.s`](application/firmware/out/lane/asm/crt0.s): the complete program · **the binary: [`firmware.bin`](application/firmware/out/lane/firmware.bin)**, with `firmware.txt` (the IMEM lines) and `firmware.dmp` (the disassembly) · [how to read `main.s`](application/firmware/README.md#reading-mains) · the official test firmware: [`official-firmware-testbench/firmware/`](official-firmware-testbench/firmware/) |
+| Project files (source archive) | uploaded on the platform, built from this branch by [`scripts/make_stage3_zip.py`](scripts/make_stage3_zip.py): every file of the list above, and what rebuilds and reruns them |
 
 ---
 

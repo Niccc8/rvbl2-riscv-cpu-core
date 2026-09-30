@@ -105,7 +105,7 @@ already known.
 
 **CRC (Xicrc).** The chip's own CRC instructions do all CRC work:
 - frames: one `crcb` per received byte;
-- tag reads: the RFID tag's CRC is 14 `crcb` and one `xori` (the standard's CRC is our
+- tag reads: the RFID tag's CRC is 14 `crcb` and one `xor` (the standard's CRC is our
   CRC-16 inverted);
 - records: 6 `crcb` per 8-byte record;
 - the ROM measurement: one `crcw` per 32-bit word of the whole program.

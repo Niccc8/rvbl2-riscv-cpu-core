@@ -73,7 +73,7 @@ All multi-byte fields are little-endian, and `len` ≤ 32.
 
 **Tag integrity.** A Gen2 tag stores `StoredCRC = CRC-16/EPC-C1G2(PC word ‖ EPC)`, which is
 our Xicrc CRC-16/CCITT-FALSE followed by `XOR 0xFFFF`. The chip recomputes it with 14
-`crcb` instructions and one `xori`, and ignores a read that does not match. The standard's
+`crcb` instructions and one `xor` (0xFFFF is too wide for `xori`), and ignores a read that does not match. The standard's
 check value `0xD64E` is verified on the RTL by the firmware self-test (`firmware/selftest`).
 
 **Registered class** = `epc[0] & 7`. This is our tag profile, and an assumption: the
