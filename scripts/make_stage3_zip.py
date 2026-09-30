@@ -26,6 +26,7 @@ Left out, on purpose:
 import os
 import subprocess
 import sys
+import time
 import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -118,25 +119,45 @@ def git(*args):
 
 
 def main():
-    tracked = git('ls-files', '-z').split('\0')
-    files = [f for f in tracked if f and not f.startswith(EXCLUDE_PREFIX)]
+    # Every file comes from the commit itself (git's blobs), not the working
+    # tree: a Windows checkout may hold CRLF copies, and CRLF breaks the shell
+    # scripts and the organisers' Makefile on the Linux machines that rerun it.
+    entries = []                                   # (path, mode, sha)
+    for rec in git('ls-tree', '-r', '-z', 'HEAD').split('\0'):
+        if not rec:
+            continue
+        meta, path = rec.split('\t', 1)
+        mode, kind, sha = meta.split()
+        if kind == 'blob' and not path.startswith(EXCLUDE_PREFIX):
+            entries.append((path, int(mode, 8), sha))
 
     dirty = set(git('diff', '--name-only', 'HEAD').split())
-    dirty_in = sorted(f for f in files if f in dirty)
+    dirty_in = sorted(p for p, _, _ in entries if p in dirty)
     if dirty_in:
         sys.stderr.write('uncommitted changes in files the archive includes:\n  %s\n'
                          'commit them first: the archive must match the commit.\n'
                          % '\n  '.join(dirty_in))
         return 1
-    missing = [f for f in files if not os.path.isfile(os.path.join(ROOT, f))]
-    if missing:
-        sys.stderr.write('missing sources:\n  %s\n' % '\n  '.join(missing))
-        return 1
 
+    when = time.localtime(int(git('log', '-1', '--format=%ct').strip()))[:6]
+    cat = subprocess.Popen(['git', 'cat-file', '--batch'], cwd=ROOT,
+                           stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     with zipfile.ZipFile(OUT, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
-        z.writestr('%s/README.txt' % TOP, README)
-        for f in files:
-            z.write(os.path.join(ROOT, f), '%s/%s' % (TOP, f))
+        info = zipfile.ZipInfo('%s/README.txt' % TOP, when)
+        info.external_attr = 0o100644 << 16
+        z.writestr(info, README, zipfile.ZIP_DEFLATED)
+        for path, mode, sha in entries:
+            cat.stdin.write(sha.encode() + b'\n')
+            cat.stdin.flush()
+            size = int(cat.stdout.readline().split()[2])
+            data = cat.stdout.read(size)
+            cat.stdout.read(1)                     # the newline after the object
+            info = zipfile.ZipInfo('%s/%s' % (TOP, path), when)
+            info.external_attr = mode << 16        # keeps 755 on the scripts
+            z.writestr(info, data, zipfile.ZIP_DEFLATED)
+    cat.stdin.close()
+    cat.wait()
+    files = entries
 
     size = os.path.getsize(OUT)
     limit = 20 * 1048576
