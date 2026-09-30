@@ -11,15 +11,6 @@ __pycache__/
 *.vcd
 *.vvp
 
-# LaTeX build artifacts. The PDF itself IS committed.
-report/*.aux
-report/*.log
-report/*.out
-report/*.atfi
-report/*.toc
-report/*.fls
-report/*.fdb_latexmk
-
 # Working material for the video, not part of the submission or the
 # showcase. Scripts and slide briefs live here.
 presentation/

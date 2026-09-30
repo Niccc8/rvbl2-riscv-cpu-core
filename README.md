@@ -183,7 +183,8 @@ tools/rvbl-firmware-builder/  the organisers' Firmware Builder, an unchanged cop
 report-stage3/figures/        the Stage 3 report's figures, and our architecture drawings (SVG, PNG)
 docs/demo/                    the demonstration page, as GitHub Pages serves it
 docs/, scripts/, tests/       specifications and reports; regression drivers; test programs
-report/, macros/, synth/      Stage 2: report, optional SRAM macro, synthesis reports
+report-stage2/figures/        Stage 2: the report's figures (the report itself is on the main branch)
+macros/, synth/               Stage 2: optional SRAM macro, synthesis reports
 ```
 
 `build/` is generated and not committed: the scripts above create it.
@@ -210,7 +211,9 @@ report/, macros/, synth/      Stage 2: report, optional SRAM macro, synthesis re
 | **Official validation firmware** | PASS: `x4 = 0x00000000` after 991 cycles |
 | **Technology** | Sky130A, `sky130_fd_sc_hd`; die 0.404 mm², setup +2.25 ns at 33 ns, 0 DRC, LVS clean |
 
-The Stage 2 report is [`report/RVBL2_ChampionCHIP_Report.pdf`](report/RVBL2_ChampionCHIP_Report.pdf),
+The Stage 2 report is on the `main` branch:
+[`report/RVBL2_ChampionCHIP_Report.pdf`](https://github.com/Niccc8/rvbl2-riscv-cpu-core/blob/main/report/RVBL2_ChampionCHIP_Report.pdf)
+(its figures are in [`report-stage2/figures/`](report-stage2/figures/)),
 and the Stage 2 physical results are in
 [`chipinventor/openlane/RESULTS.md`](chipinventor/openlane/RESULTS.md).
 

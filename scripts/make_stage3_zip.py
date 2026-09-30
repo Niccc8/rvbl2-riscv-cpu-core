@@ -17,8 +17,8 @@ it would include has uncommitted changes: the archive is exactly the commit.
 Left out, on purpose:
   chipinventor/openlane/   Stage 2's physical design (GDS and GL netlists,
                            58 MB), submitted in Phase 2 and unchanged since.
-  report/, report-stage3/  the reports and their figures (the PDF is uploaded
-                           separately); Championchip-phase-2-guide.*
+  report-stage2/,          the reports' figures (the Stage 3 PDF is uploaded
+  report-stage3/           separately; the Stage 2 report is on main).
   synth/                   Stage 2 synthesis logs.
   macros/                  SkyWater's SRAM macro: third-party, and only used
                            with DMEM_MACRO=1; the default build never reads it.
@@ -40,12 +40,11 @@ DEMO_URL = 'https://niccc8.github.io/rvbl2-riscv-cpu-core/demo/'
 
 EXCLUDE_PREFIX = (
     'chipinventor/openlane/',
-    'report/',
+    'report-stage2/',
     'report-stage3/',
     'synth/',
     'macros/',
-    'Championchip-phase-2-guide.',
-    '.git',                     # .gitignore, .gitattributes
+    '.git',                    # .gitignore, .gitattributes
     'docs/.nojekyll',
 )
 
