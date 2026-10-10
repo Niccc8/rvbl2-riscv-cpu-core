@@ -1,6 +1,6 @@
 # LaneX: the free-flow transaction engine, on RVBL-2 silicon
 
-**Equipe 13 · ChampionCHIP eXperience 2026, Stage 3**
+**Equipe 13 · ChampionCHIP eXperience 2026 · Stage 3 (2nd place) · Stage 4: AWS F2 FPGA**
 
 **LaneX** is a Multi-Lane Free Flow (MLFF) edge controller on our RVBL-2 RISC-V core. Malaysia
 is moving its tolls to MLFF: no barriers, no booths, vehicles at highway speed. LaneX joins the
@@ -28,9 +28,29 @@ platform itself. See [How the chip is proven](#how-the-chip-is-proven).
 | **Timing** | boot 1,758 cycles · a received byte waits at most 199 cycles (one byte lasts 2,630) · decision at most 0.62 ms after the vehicle leaves |
 | **Equivalence** | the ChipInventor design runs in lockstep with the reference RTL: 1,238,859 comparisons, 0 mismatches |
 
+*(The table above is the Stage 3 record. Stage 4 numbers are below.)*
+
 ---
 
-## Competition submission: Guide §9
+## Stage 4: on the AWS F2 FPGA, under the organisers' own tools
+
+The organisers give a frozen `top.sv` (AWS Shell, AXI-Lite registers, 250 MHz). We give one file,
+[`stage4/riscv.sv`](stage4/riscv.sv), **generated** from [`rtl/`](rtl/) and the firmware by
+[`scripts/stage4/gen_riscv_sv.py`](scripts/stage4/gen_riscv_sv.py): their `top.sv` needs **zero
+edits**. Inside, a thin FPGA shell divides the clock to 15.625 MHz (MMCM) for our unchanged,
+verified core, and provides the `Transmitter`/`Receiver` that `top.sv` instantiates.
+
+| | |
+|---|---|
+| **LaneX protocol v4** | the Stage 4 audit's fixes: lane clock survives the 32-bit wrap (49.7 days) · a full hotlist is reported · the key locks once loaded · a counter start stops replays across reboots · the identity record is MAC-signed when keyed · the vehicle detector arms once the lane is seen empty ([`PROTOCOL.md`](application/PROTOCOL.md)) |
+| **Application regression** | directed 103/103 · random 396/396 · fuzz 262/262 · showcase 30/30 (and at 921,600 bps) · coverage 40/40 bins · platform netlist 26/26 · firmware 2,793 words, rebuilt byte-identical |
+| **Full-system simulation** | **the organisers' own `emu.c`, unmodified**, drives their real `top.sv` and our `riscv.sv`: all 12 command lines, the PC readback, and negative lines caught |
+| **Pre-flight gate** | [`scripts/stage4/preflight.sh`](scripts/stage4/preflight.sh): lint with the real `top.sv`, the system simulation, emu's start-up window with an undriven pin read as 0 and as 1, Yosys synthesis for UltraScale+ (DMEM in block RAM, no latch), a timing estimate (> 3× margin), and five deliberately broken builds, each caught |
+| **Docs** | [`docs/stage4/`](docs/stage4/): ground truth `01`, audit `02`, market `03`, plan `04`, runbook `05`, evidence `06`, pitch kit `pitch/` |
+
+---
+
+## Competition submission: Guide §9 (Stage 3)
 
 Everything Submission Guide §9 asks for, linked directly. The report PDF is submitted on the
 ChampionCHIP platform and the video is on YouTube; **everything else is in this repository**.

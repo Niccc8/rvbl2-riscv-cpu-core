@@ -1,8 +1,23 @@
 # Stage 4 FPGA plan: `riscv.sv` for the organisers' `top.sv` (for GATE 2)
 
-**Status:** plan only, nothing built. Ground truth: `01_aws_reference.md` (re-checked 2026-10-10:
-organisers' Stage 4 repo still `b748304`, `top.sv` sha256 `0fd73910…`; `emu.c` `31e4ca7c…`).
-**Goal:** one AWS synthesis (~45 min of VM time), right the first time.
+**Status:** approved at GATE 2 (2026-10-10) and **built**. Ground truth: `01_aws_reference.md`
+(re-checked 2026-10-10: organisers' Stage 4 repo still `b748304`, `top.sv` sha256 `0fd73910…`;
+`emu.c` `31e4ca7c…`). **Goal:** one AWS synthesis (~45 min of VM time), right the first time.
+
+> **As built: two changes from the approved plan, both forced by pre-flight evidence**
+> (`06_verification.md`):
+> 1. **Clock ÷16 = 15.625 MHz, not ÷8.** The timing estimate (G6, a deliberately pessimistic
+>    per-cell model on the Yosys netlist) put the longest core path (a load from the ROM:
+>    register read → address add → ROM → write-back) at 17–20 ns: positive slack at 32 ns, but
+>    not the 2× margin this plan promised. At 64 ns it uses 27–31 %. Functionally free: a UART
+>    byte is still 1,356 cycles against a measured worst receive wait of 197; a decision takes
+>    ~1 ms against emu's 50 ms; UART divider 136 (+0.3 % baud error). MMCM `CLKOUT0_DIVIDE_F` 64.
+>    The BUFGCE_DIV fallback stays ÷8 (its maximum), 31.25 MHz, with positive but smaller margin.
+> 2. **Firmware: the vehicle detector arms once the lane has been seen empty** (R4). The
+>    faithful emu start-up window (reset released, pin 0 floating for ≥100 ms, pins 7–1 stale)
+>    failed 5 of 12 lines if a floating pin reads 1. Now a vehicle present at boot is not
+>    decided and a departure without an arrival is ignored; 12/12 for both resolutions.
+>    Model, `PROTOCOL.md` and firmware changed together; full regression re-run.
 
 ## 1. The decision in one paragraph
 

@@ -176,14 +176,14 @@ by naming our hierarchy to match: an instance `e_PROCESSOR` inside `RISCV` holdi
 | R6 | **Boot must be robust to the emu start-up window**: pin 0 floats and pins 7–1 hold stale values for ~100 ms after reset release, until the line's own `-d` | A phantom vehicle would put a stray record in the 8-byte window and shift every `-r` |
 | R7 | At most 8 bytes from the chip per `emu` run, or the bytes that matter must be the last 8 | §3.5, §4 |
 | R8 | Our UART divider = our core clock / 115,200 (2,170 at 250 MHz; another value if the core runs slower) | Both ends at 115,200 bps |
-| R9 | Timing must close at the clock our core actually runs at | 250 MHz is given; our core was estimated at 80–140 MHz [OLD §14.9a]. Decided in `04_fpga_plan.md` |
+| R9 | Timing must close at the clock our core actually runs at | 250 MHz is given; our core was estimated at 80–140 MHz [OLD §14.9a]. **Resolved:** MMCM ÷16 → 15.625 MHz inside `RISCV`, > 3× margin (`04_fpga_plan.md` As built, `06_verification.md` G6) |
 
 ## 7. Open points (answer on the first hardware session, or ask the organisers)
 
 | # | Question | Current best evidence | Risk if wrong |
 |---|---|---|---|
 | Q1 | May a CL instantiate an **MMCM / BUFGCE_DIV** inside `riscv.sv` to run the core slower than 250 MHz? | AWS's own CL examples instantiate clock generators inside the CL; nothing in the PDF or repo forbids it | Decides whether R9 is solved by a slower clock or by a faster core (`04_fpga_plan.md`) |
-| Q2 | What does Vivado's tri-state conversion produce for a pin **nobody** drives (pin 0 during emu's start-up window)? | A disabled single driver reads 0 (§3.4) | Handled by design (R6), whatever the answer |
+| Q2 | What does Vivado's tri-state conversion produce for a pin **nobody** drives (pin 0 during emu's start-up window)? | A disabled single driver reads 0 (§3.4) | **Closed by design:** all 12 lines pass with the pin read as 0 and as 1 (`06_verification.md` G4), after the firmware arms its detector only once the lane is seen empty |
 | Q3 | Does the web editor accept a ~400 kB file? | The example `riscv.sv` was 16 kB | Fallback: split into several `.sv` files (the build compiles every file in the tree [OLD]) |
 | Q4 | Can the build's timing summary be read in the Logs pane? | The log prints `report_timing` commands [PDF p8] | Without it, rely on our own margin analysis |
 

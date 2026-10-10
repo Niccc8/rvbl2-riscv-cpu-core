@@ -1,6 +1,6 @@
 # Stage 4 hand-off (read this first in a new session)
 
-**Updated 2026-10-10 14:30.** Branch `stage4` (local only, not pushed). The mission is Nicholas's
+**Updated 2026-10-10 15:05.** Branch `stage4` (local only, not pushed). The mission is Nicholas's
 Stage 4 prompt: harden LaneX, build the pitch intelligence, ship a first-try-correct AWS F2 build.
 Gates: GATE 1 (audit scope) **passed**; GATE 2 (go for the FPGA build) and GATE 3 (go/no-go) pending.
 
@@ -43,12 +43,28 @@ Gates: GATE 1 (audit scope) **passed**; GATE 2 (go for the FPGA build) and GATE 
 - Organisers' repos re-cloned to the session scratchpad `ext/s4`, `ext/s3` (unchanged: b748304, 560947c).
 - Local `aws_fpga_example/` is the OLD Stage 3 example (top.sv sha 3e6b...), not Stage 4's.
 
+## Phase 3 (after GATE 2), state at 15:05
+
+- `stage4-aws/` moved to `archive/stage4-aws-pre-topsv/` (local only, git-excluded). New tree `stage4/`
+  (README), organisers' files in `stage4/vendor/` (git-excluded; fetch steps in `stage4/README.md`).
+- **`scripts/stage4/gen_riscv_sv.py` -> `stage4/riscv.sv`** (MMCM /16 = 15.625 MHz, UART 136) and
+  `stage4/riscv_bufgce_div.sv` (fallback, BUFGCE_DIV /8 = 31.25 MHz, UART 271). ROM 2,793 words, `I` CRC 0x56DE.
+- **Two evidence-driven deviations** (written up at the top of `04_fpga_plan.md`): clock /16 (timing
+  estimate 17-20 ns pessimistic), and firmware "arm the detector once the lane was seen empty"
+  (start-up window with a floating pin read as 1 failed 5/12 lines).
+- Pre-flight pieces, all built and individually green: G2 lint (0 errors, waivers in
+  `stage4/sim/lint_waivers.txt`), G3 system sim (`stage4/sim/emu_sys/`, organisers' emu.c via dlopen, 15/15
+  at 0.1x), G5 Yosys (2 RAMB36E2, no latch), G6 `scripts/stage4/sta_estimate.py`, G7 `mutants.sh` 5/5 caught.
+  `scripts/stage4/preflight.sh` ties G1-G7 (not yet run end to end).
+- Harness fixes in `gen_emu_preview.py` (circular window; faithful start-up window; PULL param; GAP after -d).
+- `05_RUNBOOK.md` written. `06_verification.md` NOT yet written (fill from `build/stage4/preflight_summary.txt`).
+
 ## Next, in order
 
-1. If random passed: commit the v4 work (explicit paths; no co-author line).
-2. GATE 2 answer -> Phase 3 per `04_fpga_plan.md` §9.
-3. `03_market.md` (synthesise research A-D) and the pitch kit in `docs/stage4/pitch/`.
-4. Refresh `docs/demo/index.html` (still the Stage 3 v3 snapshot) only after `run_ci.sh` produces v4 transcripts.
+1. Confirm the re-run regression (random, fuzz, preview PULL 0/1) is green; commit Phase 3.
+2. Run `bash scripts/stage4/preflight.sh` (~20 min) -> `06_verification.md`; full-scale G3 (`PREFLIGHT_SCALE=1.0`) if time.
+3. GATE 3 verdict to Nicholas. Then `03_market.md` + pitch kit (`docs/stage4/pitch/`).
+4. Refresh `docs/demo/index.html` (Stage 3 v3 snapshot) only after `run_ci.sh` produces v4 transcripts.
 
 ## Key facts to not re-derive (details in `01_aws_reference.md`)
 

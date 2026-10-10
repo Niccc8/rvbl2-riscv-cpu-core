@@ -1,0 +1,25 @@
+# Verilator -sv -Wall warnings accepted in riscv.sv (pre-flight G2), as RULE signal-or-text.
+# All come from the verified rtl/ (unchanged for the FPGA) and are benign; the generated
+# FPGA shell (RISCV, Transmitter, Receiver, the ROM) must stay warning-free.
+#
+# Unused bits/signals: the upper half of the 64-bit product feeds MULH* only through
+# the selected half; low address bits of word-addressed memories and peripherals;
+# the core's debug outputs (state, sys_event_o); dmem's reset input (memories are not reset).
+UNUSEDSIGNAL product_full
+UNUSEDSIGNAL pc_next
+UNUSEDSIGNAL state
+UNUSEDSIGNAL sys_event_o
+UNUSEDSIGNAL bus_addr_i
+UNUSEDSIGNAL bus_wdata_i
+UNUSEDSIGNAL wr_lane
+UNUSEDSIGNAL address_i
+UNUSEDSIGNAL rs2_data
+UNUSEDSIGNAL funct3
+UNUSEDSIGNAL rst_i
+UNUSEDSIGNAL lane_bits
+UNUSEDSIGNAL alu_result
+# Width: dmem compares its 11-bit word address with the 32-bit parameter DMEM_WORDS;
+# the UART's 9-bit counter limits are computed from 32-bit localparams (values < 512).
+WIDTHEXPAND word_addr
+WIDTHTRUNC BIT_LAST
+WIDTHTRUNC HALF_LAST
