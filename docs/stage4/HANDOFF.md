@@ -1,7 +1,8 @@
 # Stage 4 state (read this first in a new session)
 
 **Updated 2026-10-10.** Branch `stage4` (local, not pushed). Mission: harden LaneX, build the pitch
-intelligence, ship a first-try-correct AWS F2 build. **All three gates passed; the build is ready.**
+intelligence, ship a first-try-correct AWS F2 build. **GATE 1 and 2 passed; GATE 3 verdict GO (re-confirmed
+after the 31.25 MHz change: pre-flight GO, full regression green).**
 Next human step: Nicholas runs `05_RUNBOOK.md` on ChipInventor's AWS FPGA page.
 
 ## Where everything is

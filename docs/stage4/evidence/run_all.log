@@ -1,0 +1,66 @@
+DMEM realization: behavioral register array (default)
+==============================================
+ Tooling
+==============================================
+PASS          test_asm   ==== test_asm: 23 passed, 0 failed ====
+PASS          xcheck_gnu_as   ==== xcheck_gnu_as: 10 passed, 0 failed ====
+PASS          tb_selftest   ==== tb_selftest: 11 passed, 0 failed ====
+
+==============================================
+ Unit-level testbenches
+==============================================
+PASS          tb_alu   ==== tb_alu: 1128 passed, 0 failed ====
+PASS          tb_branch_comparator   ==== tb_branch_comparator: 24 passed, 0 failed ====
+PASS          tb_immediate_generator   ==== tb_immediate_generator: 34 passed, 0 failed ====
+PASS          tb_register_file   ==== tb_register_file: 36 passed, 0 failed ====
+PASS          tb_multiplier   ==== tb_multiplier truth-table: 4 passed, 0 failed ====
+PASS          tb_crc_unit   ==== tb_crc_unit: 322 passed, 0 failed ====
+PASS          tb_lsu   ==== tb_lsu: 26 passed, 0 failed ====
+PASS          tb_imem   ==== tb_imem: 7 passed, 0 failed ====
+PASS          tb_dmem   ==== tb_dmem: 17 passed, 0 failed ====
+PASS          tb_address_decoder   ==== tb_address_decoder: 2021 passed, 0 failed ====
+PASS          tb_control_unit   ==== tb_control_unit: 1461 passed, 0 failed ====
+PASS          tb_gpio   ==== tb_gpio: 42 passed, 0 failed ====
+PASS          tb_uart   ==== tb_uart: 243 passed, 0 failed ====
+
+==============================================
+ Integration-level testbenches
+==============================================
+PASS          tb_core   ==== tb_core: 29 passed, 0 failed ====
+PASS          tb_soc   ==== tb_soc: 14 passed, 0 failed ====
+PASS          tb_reset   ==== tb_reset: 2002 passed, 0 failed (40 injection points) ====
+PASS          tb_firmware   ==== tb_firmware: 70 passed, 0 failed ====
+PASS          tb_periph_soc   ==== tb_periph_soc: 25 passed, 0 failed ====
+
+==============================================
+ ChipInventor mirror
+==============================================
+PASS          check_ci_sync   ==== check_ci_sync: 19 passed, 0 failed ====
+PASS          tb_ci_equiv   ==== tb_ci_equiv: 1238859 passed, 0 failed ====
+
+==============================================
+ Stage 3: official firmware and application
+==============================================
+PASS          official   ==== tb_emu_preview: 4 passed, 0 failed ====
+OK            application firmware built (organisers' flow); generated files current
+PASS          tb_app   ==== tb_app: 103 passed, 0 failed ====
+PASS          tb_app_show   ==== tb_app: 30 passed, 0 failed ====
+PASS          tb_app_fast   ==== tb_app: 30 passed, 0 failed ====
+PASS          tb_app_fuzz   ==== tb_app: 262 passed, 0 failed ====
+PASS          tb_app_random   ==== tb_app: 396 passed, 0 failed ====
+PASS          tb_app_ci   ==== tb_app_ci (scenario 0): 26 passed, 0 failed, 1215815 cycles ====
+PASS          emu_preview   ==== tb_emu_preview: 12 passed, 0 failed ====
+PASS          emu_float   ==== tb_emu_preview: 12 passed, 0 failed ====
+PASS          wave_app   ==== tb_wave_app: 3 passed, 0 failed ====
+PASS          page_core   ==== test_lane_core: 182 passed, 0 failed ====
+
+==============================================
+ Gate-level equivalence
+==============================================
+SKIP          tb_gatelevel   (run scripts/synth_yosys_generic.sh first)
+
+==============================================
+ SUMMARY: 34/34 testbenches passed, 10894 individual checks
+          plus 1238859 lockstep comparisons (canvas mirror vs rtl/)
+==============================================
+Markdown summary written to build/test_summary.md

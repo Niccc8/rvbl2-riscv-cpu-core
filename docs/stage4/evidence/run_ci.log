@@ -1,0 +1,93 @@
+
+=== 1/16  Official validation firmware is intact ===
+OK   official firmware: 259 words, 0x00400000..0x00400408, contiguous, sha256 pinned
+OK   vendored firmware matches the audited bytes
+
+=== 2/16  Supplementary firmware image is current ===
+OK   ci_prog.s matches tb_firmware_prog.s + the coverage block
+OK   position-independent: 483 words identical at 0x00400000 and 0x00400800
+OK   firmware source is current
+
+=== 3/16  Stage 3 program images are current and position-independent ===
+OK   5 Stage 3 programs current and position-independent
+
+=== 4/16  Generated ROM matches every firmware image ===
+OK   imem.v: 947 words - validation_firmware.hex @ word 0 (259), ci_prog.hex @ word 512 (483), guard @ word 10
+
+=== 5/16  Testbench constants match the firmware ===
+OK   testbench constants match firmware/ci_prog_expected.vh (8 values)
+OK   official firmware anchors still point at the right instructions (4)
+OK   Stage 3 slots, periph_regress length and done marker match (7 values)
+
+=== 6/16  Mirror equivalence: ci_top.v vs the frozen Phase 2 core ===
+OK   470400 passed, 0 failed
+OK   blocks/crc_unit.v equals rtl_ref/crc_unit.v on every input: both linear, equal on the zero vector and all 48 basis vectors for each funct3 (+ random), 40392 inputs checked
+
+=== 7/16  Combined suite against the local mirror ===
+OK   15517 passed, 0 failed - combined suite on ci_top.v
+
+=== 8/16  OFFICIAL VALIDATION FIRMWARE VERDICT ===
+OK   Firmware settled after 991 cycles at pc=004003ec (all_good)
+OK   x4 = 00000000 - the official firmware PASSES on this core
+
+=== 9/16  Mock IMEM drives the core (this is what OpenLane synthesises) ===
+OK   mock ROM runs on the core: x5=10, x6=5, x7=15
+
+=== 10/16  Blocks are free of constructs the platform cannot resolve ===
+OK   no ifdef / include / file I/O / block comment in any block
+OK   no initial blocks in any block (nothing leaks into synthesis)
+
+=== 11/16  Docs, schematics and wiring map regenerate cleanly ===
+OK   NETLIST.md (rvbl2_soc: 92 connections, 33 to draw on the Phase 2 copy; top: 34 connections)
+     OK    rvbl2_soc: canvas 4344x1390, 29 blocks/pins, 62 routed wires (27 new)
+     OK    top: canvas 1344x1214, 13 blocks/pins, 32 routed wires (0 new)
+     OK   layout clean: no wire crosses a block, no two nets share a line
+OK   build/wiring_map.html
+
+=== 12/16  Testbench alias block matches ci_top.v ===
+OK   alias block matches ci_top.v (9 aliases)
+
+=== 13/16  Export tooling proven on a platform-format mock export ===
+OK   13 passed, 0 failed - checker passes the mock, fails all 10 wiring faults
+OK   15517 passed, 0 failed - dry run of step 15 on the mock export
+
+=== 14/16  Exported netlist matches the verified design ===
+     OK   all 20 block sources match blocks/*.v
+     OK   imem holds the Stage 3 submission's application ROM (protocol v3) (app/imem_app_stage3.v), bit-identical, 2774 words
+     OK   SoC project exported as module rvbl2_soc, instantiated once in top
+     OK   rvbl2_soc: 10 pins, names, directions and widths as ci_top.v
+     OK   rvbl2_soc: 21 instances, same block mix as ci_top.v
+     OK   rvbl2_soc: netlist graph-identical to ci_top.v (53 nets; unconnected in the export: control_unit.state_o, control_unit.sys_event_o)
+     OK   dmem parameters: DMEM_WORDS=2048
+     OK   uart parameters: BAUD_RATE=115200, CLK_FREQ_HZ=30303030, SLOT=1 (default)
+     OK   gpio parameters: N_PINS=8, SLOT=0 (default)
+     OK   top: 12 pins, names, directions and widths as ci_top.v
+     OK   top: 3 instances, same block mix as ci_top.v
+     OK   top: netlist graph-identical to ci_top.v (34 nets)
+     OK   Inout Pin polarity: all 8 pins have D = DATADIR[n], C = DATAOUT[n]
+     note control_unit: 1 of 2 (* keep *) attributes dropped by the platform
+     note ir_reg: 1 of 1 (* keep *) attributes dropped by the platform
+     note pc_reg: 1 of 1 (* keep *) attributes dropped by the platform
+OK   export_stage3.v is wired identically to ci_top.v
+
+=== 15/16  Combined suite against the EXPORTED netlist ===
+note the suite runs on export_stage3.v with the validation ROM in imem (swapped in; the export holds another of our ROMs)
+OK   15517 passed, 0 failed - combined suite on export_stage3.v
+OK   PART 1-4 each pass on export_stage3.v: 15523 checks = 15517 + 6 repeated monitor checks
+OK   paste build/tb_platform.v into the platform's testbench field; run it with PART = 1, 2, 3, 4
+
+=== 16/16  Application ROM and its platform testbench (the lane controller) ===
+OK   imem_app.v: 2793 words - application firmware
+OK   115,200 bps (as taped out): tb_app_ci (scenario 0): 26 passed, 0 failed, 1215815 cycles
+OK   921,600 bps (platform run): tb_app_ci (scenario 0): 13 passed, 0 failed, 103945 cycles
+OK   921,600 bps (platform run): tb_app_ci (scenario 1): 8 passed, 0 failed, 87015 cycles
+OK   921,600 bps (platform run): tb_app_ci (scenario 2): 6 passed, 0 failed, 101275 cycles
+OK   on export_stage3.v with the application ROM: tb_app_ci (scenario 0): 13 passed, 0 failed, 103945 cycles
+OK   on export_stage3.v with the application ROM: tb_app_ci (scenario 1): 8 passed, 0 failed, 87015 cycles
+OK   on export_stage3.v with the application ROM: tb_app_ci (scenario 2): 6 passed, 0 failed, 101275 cycles
+OK   paste build/tb_app_platform.v (and app/imem_app.v into imem); run it with SCEN = 0, 1, 2
+OK   on export_stage3.v at 115,200 bps: tb_app_ci (scenario 0): 26 passed, 0 failed, 1215815 cycles
+
+========================================
+ ALL CHECKS PASSED - safe to paste into ChipInventor
+========================================

@@ -56,7 +56,7 @@ simulated hardware time.** All evidence logs: `docs/stage4/evidence/`.
 
 | Suite | Result |
 | --- | --- |
-| `run_all.sh` (RUN_LONG=1): every Stage 2 core and Stage 3 SoC/application testbench | RUN_ALL |
+| `run_all.sh` (RUN_LONG=1): every Stage 2 core and Stage 3 SoC/application testbench | **34/34 testbenches, 10,894 checks** + 1,238,859 lockstep comparisons (gate-level skipped, as at baseline: needs a generic synthesis netlist) |
 | `tb_app` directed / random / fuzz / smoke / showcase (+ showcase at 921,600 bps) | 103/103 · 396/396 · 262/262 · 18/18 · 30/30 (+ 30/30) |
 | Golden-model functional coverage | 40/40 bins |
 | Emulator preview, undriven pin = 0 / = 1 | 12/12 / 12/12 |
