@@ -43,6 +43,7 @@ verified core, and provides the `Transmitter`/`Receiver` that `top.sv` instantia
 | **LaneX protocol v4** | the Stage 4 audit's fixes: lane clock survives the 32-bit wrap (49.7 days) · a full hotlist is reported · the key locks once loaded · a counter start stops replays across reboots · the identity record is MAC-signed when keyed · the vehicle detector arms once the lane is seen empty ([`PROTOCOL.md`](application/PROTOCOL.md)) |
 | **Application regression** | directed 103/103 · random 396/396 · fuzz 262/262 · showcase 30/30 (and at 921,600 bps) · coverage 40/40 bins · platform netlist 26/26 · firmware 2,793 words, rebuilt byte-identical |
 | **Full-system simulation** | **the organisers' own `emu.c`, unmodified**, drives their real `top.sv` and our `riscv.sv`: all 12 command lines, the PC readback, and negative lines caught |
+| **On the AWS F2 FPGA** | **PASS on the first build**: the bring-up ladder (reset, PC readback, the chip's own ROM CRC `0x56DE`) and **all 12 `./emu` lines** byte for byte under the organisers' emulator ([console log](docs/stage4/evidence/aws_console_log.txt)) |
 | **Pre-flight gate** | [`scripts/stage4/preflight.sh`](scripts/stage4/preflight.sh): lint with the real `top.sv`, the system simulation, emu's start-up window with an undriven pin read as 0 and as 1, Yosys synthesis for UltraScale+ (DMEM in block RAM, no latch), a timing estimate (> 3× margin), and five deliberately broken builds, each caught |
 | **Docs** | [`docs/stage4/`](docs/stage4/): ground truth `01`, audit `02`, market `03`, plan `04`, runbook `05`, evidence `06`, pitch kit `pitch/` |
 
@@ -220,10 +221,9 @@ macros/, synth/               Stage 2: optional SRAM macro, synthesis reports
 
 ## Honest limitations
 
-- **Hardware: the AWS F2 run is pending.** The organisers' own `emu.c` drives the full F2 design
-  (their `top.sv` + our `riscv.sv`) in simulation, and every pre-flight check passes
-  ([`docs/stage4/06_verification.md`](docs/stage4/06_verification.md)); the board run itself is
-  the next step ([runbook](docs/stage4/05_RUNBOOK.md)).
+- **An FPGA-validated prototype, not a product.** It runs on the AWS F2 (all 12 `./emu` lines
+  pass on the board), but it has not met a real RFID reader, classifier or camera, and the core runs
+  from a divided clock (31.25 MHz), not the F2's 250 MHz.
 - **Configuration frames are not authenticated.** Records are (Chaskey-12, a locked key, a
   replay-proof counter); commands that change fares or lists are a roadmap item.
 - **Not certified, and not alone.** No roadside-equipment certification; lane controllers such

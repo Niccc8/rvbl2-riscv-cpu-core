@@ -1,0 +1,232 @@
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# aws ec2 describe-fpga-images --fpga-image-ids afi-0732c3cb90c96019a --region us-east-1
+{
+    "FpgaImages": [
+        {
+            "FpgaImageId": "afi-0732c3cb90c96019a",
+            "FpgaImageGlobalId": "agfi-0c12a9e5d082dcac8",
+            "Name": "top",
+            "Description": "Custom Logic",
+            "ShellVersion": "0x10212415",
+            "PciId": {
+                "DeviceId": "0xf010",
+                "VendorId": "0x1d0f",
+                "SubsystemId": "0x1d51",
+                "SubsystemVendorId": "0xfedc"
+            },
+            "State": {
+                "Code": "available"
+            },
+            "CreateTime": "2026-10-10T12:31:56.000Z",
+            "UpdateTime": "2026-10-10T12:45:35.000Z",
+            "OwnerId": "<redacted>",
+            "Tags": [],
+            "Public": false,
+            "DataRetentionSupport": false
+        }
+    ]
+}
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# sudo fpga-clear-local-image -S 0
+AFI          0       No AFI                  cleared           1        ok               0       0x10212415
+AFIDEVICE    0       0x1d0f      0x9048      0000:34:00.0
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# sudo fpga-load-local-image -S 0 -I agfi-0c12a9e5d082dcac8
+AFI          0       agfi-0c12a9e5d082dcac8  loaded            0        ok               0       0x10212415
+AFIDEVICE    0       0x1d0f      0xf010      0000:34:00.0
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./axil_rw write 0 0x00 0 && sleep 1 && ./axil_rw write 0 0x00 1 && sleep 1
+Wrote 0x00000000 @ 0x00000000
+Wrote 0x00000001 @ 0x00000000
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./axil_rw read 0 0x00
+Read  0x00000001 @ 0x00000000
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./axil_rw read 0 0x1C
+Read  0x00401da4 @ 0x0000001c
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./axil_rw read 0 0x1C
+Read  0x00401ecc @ 0x0000001c
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./emu -d 0xF0 -t4 0x5B0049A5 -t1 0xAA -r4 0x0AE90449 -r4 0x19A356DE
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x5B0049A5 to UART RX
+[ok] Written 0xAA to UART RX
+[ok] Read 0x0AE90449 from UART TX
+[ok] Read 0x19A356DE from UART TX
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x00 -r4 0x11000056 -r4 0x7B3C00FA -o 0x10
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x80511930 to UART RX
+[ok] Written 0xDCA583F3 to UART RX
+[ok] Written 0x39E21AF3 to UART RX
+[ok] Written 0x5A6ECCE5 to UART RX
+[ok] Written 0xF592 to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x11000056 from UART TX
+[ok] Read 0x7B3C00FA from UART TX
+[ok] Read 0x00000010 from OUTPUT PINS
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./emu -d 0xF0 -i 0x05 -t4 0x301552A5 -t4 0x00000075 -t4 0x8E9F9930 -t4 0x8C92C86B -t4 0xC4C6BBD7 -t4 0x5A96577D -t2 0x69D0 -i 0x00 -r4 0x31020056 -r4 0xFF6702EE -o 0x30
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000005 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x8E9F9930 to UART RX
+[ok] Written 0x8C92C86B to UART RX
+[ok] Written 0xC4C6BBD7 to UART RX
+[ok] Written 0x5A96577D to UART RX
+[ok] Written 0x69D0 to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x31020056 from UART TX
+[ok] Read 0xFF6702EE from UART TX
+[ok] Read 0x00000030 from OUTPUT PINS
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x96C5C430 -t4 0x9D003D70 -t4 0xD1491C14 -t4 0x5AF48B19 -t2 0xB12C -i 0x00 -r4 0x14000056 -r4 0x113C0082 -o 0x10
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x96C5C430 to UART RX
+[ok] Written 0x9D003D70 to UART RX
+[ok] Written 0xD1491C14 to UART RX
+[ok] Written 0x5AF48B19 to UART RX
+[ok] Written 0xB12C to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x14000056 from UART TX
+[ok] Read 0x113C0082 from UART TX
+[ok] Read 0x00000010 from OUTPUT PINS
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./emu -d 0xF0 -i 0x01 -i 0x00 -r4 0x17010056 -r4 0x43220000 -o 0x20
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x17010056 from UART TX
+[ok] Read 0x43220000 from UART TX
+[ok] Read 0x00000020 from OUTPUT PINS
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./emu -d 0xF0 -i 0x07 -i 0x00 -r4 0x07050056 -r4 0xCAB00000 -o 0x00
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000007 to INPUT PINS
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x07050056 from UART TX
+[ok] Read 0xCAB00000 from UART TX
+[ok] Read 0x00000000 from OUTPUT PINS
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./emu -d 0xF0 -t4 0x710D48A5 -t4 0xAFE4D002 -t4 0x3550AD7D -t4 0x01594065 -t2 0xDC97 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0xD0027130 -t4 0xAD7DAFE4 -t4 0x40653550 -t4 0x5A5E2559 -t2 0xA128 -i 0x00 -r4 0x11030056 -r4 0x1CEA0000 -o 0x60
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x710D48A5 to UART RX
+[ok] Written 0xAFE4D002 to UART RX
+[ok] Written 0x3550AD7D to UART RX
+[ok] Written 0x01594065 to UART RX
+[ok] Written 0xDC97 to UART RX
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0xD0027130 to UART RX
+[ok] Written 0xAD7DAFE4 to UART RX
+[ok] Written 0x40653550 to UART RX
+[ok] Written 0x5A5E2559 to UART RX
+[ok] Written 0xA128 to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x11030056 from UART TX
+[ok] Read 0x1CEA0000 from UART TX
+[ok] Read 0x00000060 from OUTPUT PINS
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./emu -d 0xF0 -t4 0x020347A5 -t4 0x9AC60190 -t4 0xF91153A5 -t4 0xCE5BEDFF -t4 0x83BEFF60 -t4 0x02B913A3 -t4 0x00000000 -t2 0x380D -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0xEDFFF930 -t4 0xFF60CE5B -t4 0x13A383BE -t4 0x5AFC67B9 -t2 0x11AB -i 0x00 -r4 0x11040056 -r4 0x4DC70000 -o 0x60
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x020347A5 to UART RX
+[ok] Written 0x9AC60190 to UART RX
+[ok] Written 0xF91153A5 to UART RX
+[ok] Written 0xCE5BEDFF to UART RX
+[ok] Written 0x83BEFF60 to UART RX
+[ok] Written 0x02B913A3 to UART RX
+[ok] Written 0x00000000 to UART RX
+[ok] Written 0x380D to UART RX
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0xEDFFF930 to UART RX
+[ok] Written 0xFF60CE5B to UART RX
+[ok] Written 0x13A383BE to UART RX
+[ok] Written 0x5AFC67B9 to UART RX
+[ok] Written 0x11AB to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x11040056 from UART TX
+[ok] Read 0x4DC70000 from UART TX
+[ok] Read 0x00000060 from OUTPUT PINS
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x8E165130 -t4 0x75494A89 -t4 0xB4A5E024 -t4 0x5A207FB7 -t2 0x063C -i 0x00 -r4 0x17010056 -r4 0x43220000 -o 0x20
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x8E165130 to UART RX
+[ok] Written 0x75494A89 to UART RX
+[ok] Written 0xB4A5E024 to UART RX
+[ok] Written 0x5A207FB7 to UART RX
+[ok] Written 0x063C to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x17010056 from UART TX
+[ok] Read 0x43220000 from UART TX
+[ok] Read 0x00000020 from OUTPUT PINS
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./emu -d 0xF0 -t4 0x1E0A50A5 -t4 0x0BB801F4 -t4 0x004000FA -t2 0xCD00 -t1 0xC8 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x064F9130 -t4 0x5D5EB5D9 -t4 0x66176C76 -t4 0x145724E4 -t2 0x282A -i 0x00 -r4 0x17010056 -r4 0x43220000 -o 0x20
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x1E0A50A5 to UART RX
+[ok] Written 0x0BB801F4 to UART RX
+[ok] Written 0x004000FA to UART RX
+[ok] Written 0xCD00 to UART RX
+[ok] Written 0xC8 to UART RX
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x064F9130 to UART RX
+[ok] Written 0x5D5EB5D9 to UART RX
+[ok] Written 0x66176C76 to UART RX
+[ok] Written 0x145724E4 to UART RX
+[ok] Written 0x282A to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x17010056 from UART TX
+[ok] Read 0x43220000 from UART TX
+[ok] Read 0x00000020 from OUTPUT PINS
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./emu -d 0xF0 -i 0x09 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x08 -r4 0x17060056 -r4 0x120F0000 -o 0x80
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000009 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x80511930 to UART RX
+[ok] Written 0xDCA583F3 to UART RX
+[ok] Written 0x39E21AF3 to UART RX
+[ok] Written 0x5A6ECCE5 to UART RX
+[ok] Written 0xF592 to UART RX
+[ok] Written 0x00000008 to INPUT PINS
+[ok] Read 0x17060056 from UART TX
+[ok] Read 0x120F0000 from UART TX
+[ok] Read 0x00000080 from OUTPUT PINS
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./emu -d 0xF0 -t4 0x52144BA5 -t4 0x2D4C4256 -t4 0x616C2032 -t4 0x6B20656E -t4 0xE8217965 -t4 0x51000003 -t1 0x14 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x00 -r4 0xCEC30041 -r4 0xF241EFCB -o 0x10
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x52144BA5 to UART RX
+[ok] Written 0x2D4C4256 to UART RX
+[ok] Written 0x616C2032 to UART RX
+[ok] Written 0x6B20656E to UART RX
+[ok] Written 0xE8217965 to UART RX
+[ok] Written 0x51000003 to UART RX
+[ok] Written 0x14 to UART RX
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x80511930 to UART RX
+[ok] Written 0xDCA583F3 to UART RX
+[ok] Written 0x39E21AF3 to UART RX
+[ok] Written 0x5A6ECCE5 to UART RX
+[ok] Written 0xF592 to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0xCEC30041 from UART TX
+[ok] Read 0xF241EFCB from UART TX
+[ok] Read 0x00000010 from OUTPUT PINS
+root@ip-10-0-0-18:/home/ubuntu/aws-fpga/sdk/userspace# ./emu -d 0xF0 -t4 0x5B0049A5 -t1 0xAA -r4 0x0AE90449 -r4 0x19A356DE
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x5B0049A5 to UART RX
+[ok] Written 0xAA to UART RX
+[ok] Read 0x0AE90449 from UART TX
+[ok] Read 0x19A356DE from UART TX

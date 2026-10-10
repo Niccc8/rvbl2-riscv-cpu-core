@@ -61,6 +61,24 @@ The design rule is runbook §2.5: a small negative slack on a crossing → load 
 report would need `set_clock_groups -asynchronous` between the two clocks, which only an XDC
 constraint file (not available in this flow) can give.
 
+## 1c. On the AWS F2 FPGA (2026-10-10)
+
+Console log (account number redacted): `docs/stage4/evidence/aws_console_log.txt`.
+
+| Step | Result |
+| --- | --- |
+| AFI state | `available`, `Name: top`, ShellVersion `0x10212415`, DeviceId `0xf010` |
+| Load | `fpga-load-local-image … loaded … ok`; manual reset written |
+| L0 reset register | `0x00000001` ✓ |
+| L1 PC readback | `0x00401da4`, then `0x00401ecc`: different, both inside the ROM ✓ |
+| L2 identify (line 12) | `0x0AE90449`, `0x19A356DE` ✓: the chip measured its own ROM, **2,793 words, CRC `0x56DE`** = this build |
+| L3–L4 lines 1–11, then line 12 again | **all pass**: every `-r4` record and every `-o` lamp value equals the golden model's; 0 `[error]` in the whole session |
+
+Checked mechanically (each run's reads against the command's expected values; each command
+against `application/emulator-preview/emu_commands.txt`): **12 of 12 generated lines passed on the
+hardware, on the first and only build.** The −0.112 ns setup slack on the pin-synchroniser crossing
+(§1b) had no visible effect, as predicted.
+
 ## 2. What each check proves, and its limits
 
 | # | Check | Proves | Does not prove |
