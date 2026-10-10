@@ -334,14 +334,18 @@ endmodule
 """
 
 
-def build(args):
-    words = load_rom()
+def chip_modules(words, target="aws", mutate=None):
+    """The RVBL-2 chip as rvbl2_* modules: rtl/*.v with the FPGA edits, then the
+    firmware ROM. target "aws" is the AWS F2 build (pins on top.sv's inout bus);
+    target "de10lite" is the DE10-Lite board (scripts/stage4/gen_de10lite.py),
+    which differs only where a MAX 10 has no internal tri-state and where Quartus
+    wants its RAM coded its own way (DE10LITE_* below)."""
     srcs = sorted(f for f in os.listdir(RTL) if f.endswith(".v"))
     texts = {f: open(os.path.join(RTL, f), encoding="utf-8").read() for f in srcs}
     names = []
     for f, t in texts.items():
         names += re.findall(r"^\s*module\s+(\w+)", t, re.M)
-    clash = SV_RESERVED_MODULES & {PREFIX + n for n in names} | (SV_RESERVED_MODULES & set())
+    clash = SV_RESERVED_MODULES & {PREFIX + n for n in names}
     assert not clash, clash
     body = []
     for f in srcs:
@@ -349,8 +353,15 @@ def build(args):
         if f == "imem.v":
             continue                                      # replaced by the ROM below
         if f == "dmem.v":
-            t = once(t, "(* keep *) reg [31:0] mem [0:DMEM_WORDS-1];",
-                     "reg [31:0] mem [0:DMEM_WORDS-1];", "dmem keep")
+            if target == "de10lite":
+                t = once(t, DMEM_BEHAVIOURAL_NOTES, DE10LITE_DMEM_NOTE, "dmem notes")
+                t = once(t, DMEM_SIM_NOTE, "", "dmem simulation note")
+                t = once(t, "    (* keep *) reg [31:0] mem [0:DMEM_WORDS-1];\n", "", "dmem array")
+                t = once(t, "    reg [31:0] data_r;\n    assign data_o = data_r;\n", "", "dmem data_r")
+                t = once(t, DMEM_BEHAVIOURAL, DE10LITE_DMEM, "dmem realization")
+            else:
+                t = once(t, "(* keep *) reg [31:0] mem [0:DMEM_WORDS-1];",
+                         "reg [31:0] mem [0:DMEM_WORDS-1];", "dmem keep")
         if f == "riscv_core.v":
             t = once(t, "    (* keep *) output wire sys_event_o\n);",
                      "    (* keep *) output wire sys_event_o,\n"
@@ -370,16 +381,24 @@ def build(args):
             t = once(t, "    riscv_core u_core (",
                      "    // top.sv reads this wire as riscvtop.e_PROCESSOR.w_PC_Output (0x1C)\n"
                      "    wire [31:0] w_PC_Output;\n    riscv_core u_core (", "top pc wire")
-            t = once(t, "    assign gpio_i = pins_io;",
-                     "    // FPGA: the pins come from top.sv's 250 MHz registers; sample them\n"
+            src = "pins_io"
+            if target == "de10lite":
+                t = once(t, "    inout  wire [7:0] pins_io,\n", DE10LITE_PIN_PORTS, "top pin ports")
+                t = once(t, DE10LITE_PAD_OLD, DE10LITE_PAD_NEW, "top pad tri-state")
+                t = once(t, "    assign gpio_i = pins_io;", "    assign gpio_i = pins_i;", "top pin input")
+                src = "pins_i"
+            t = once(t, "    assign gpio_i = %s;" % src,
+                     "    // FPGA: the pins come from %s; sample them\n"
                      "    // through two flip-flops in this clock domain\n"
                      "    reg [7:0] pins_s1, pins_s2;\n"
                      "    always @(posedge clk_i) begin\n"
-                     "        pins_s1 <= pins_io;\n"
+                     "        pins_s1 <= %s;\n"
                      "        pins_s2 <= pins_s1;\n"
                      "    end\n"
-                     "    assign gpio_i = pins_s2;", "top pin synchroniser")
-            if args.mutate == "pins":
+                     "    assign gpio_i = pins_s2;" % (
+                         "the board fabric" if target == "de10lite" else "top.sv's 250 MHz registers", src),
+                     "top pin synchroniser")
+            if mutate == "pins":
                 t = once(t, "assign pins_io[n] = gpio_oe[n] ? gpio_o[n] : 1'bz;",
                          "assign pins_io[n] = !gpio_oe[n] ? gpio_o[n] : 1'bz;", "mutation pins")
         # prefix module declarations and instantiations
@@ -389,6 +408,110 @@ def build(args):
                        flags=re.M)
         body.append("// ---- from rtl/%s " % f + "-" * max(0, 70 - len(f)) + "\n" + t.strip() + "\n")
     body.append(imem_module(words))
+    return body
+
+
+# ---- DE10-Lite target (MAX 10): the only differences from the AWS chip ------
+# 1. A MAX 10 has no internal tri-state and the chip is not at the FPGA's pins:
+#    top.v's pad tri-state (Figure 1) is resolved in the board fabric instead,
+#    value for value: pins_i[n] = pins_oe[n] ? pins_o[n] : the outside level.
+DE10LITE_PIN_PORTS = """\
+    output wire [7:0] pins_o,     // DE10-Lite: the pad tri-state is resolved in the
+    output wire [7:0] pins_oe,    // board fabric (a MAX 10 has no internal tri-state):
+    input  wire [7:0] pins_i,     // pins_i = pins_oe ? pins_o : the outside level
+"""
+DE10LITE_PAD_OLD = """\
+    genvar n;
+    generate
+        for (n = 0; n < 8; n = n + 1) begin : g_pad
+            assign pins_io[n] = gpio_oe[n] ? gpio_o[n] : 1'bz;
+        end
+    endgenerate
+"""
+DE10LITE_PAD_NEW = """\
+    assign pins_o  = gpio_o;
+    assign pins_oe = gpio_oe;
+"""
+# 2. The data RAM in the form Quartus documents for M9K inference: one RAM per
+#    byte lane, a plain write enable, a registered read. Same behaviour at the
+#    ports as rtl/dmem.v for every access: a read cycle presents the word on
+#    data_o one cycle later; after a write cycle, or a cycle with neither,
+#    data_o keeps its value (DMEM_WORDS = 2048 fills the 8 KB window, so
+#    impl_sel is always 1). Zero at power-up, as an M9K is.
+DMEM_BEHAVIOURAL_NOTES = """\
+    // ------------------------------------------------------------------
+    // Behavioral realization (default): a register array.
+    // ------------------------------------------------------------------
+    // (* keep *) prevents synthesis tools from concluding this array is
+    // unobservable dead logic. `top` deliberately has zero data outputs
+    // (Block Guide S2.2), so a naive RTL-to-gate flow that eliminates logic
+    // with no path to a primary output would otherwise remove this entire
+    // design. Purely a synthesis hint; has no effect on simulation.
+"""
+DE10LITE_DMEM_NOTE = """\
+    // ------------------------------------------------------------------
+    // DE10-Lite realization (generated): byte-lane M9K RAMs, below.
+    // ------------------------------------------------------------------
+"""
+# (its "// synthesis ..." line would read as a directive to Quartus, and it
+# describes code this realization does not have)
+DMEM_SIM_NOTE = """\
+    // Simulation-only zero-fill for waveform determinism. Fenced off from
+    // synthesis so it cannot attach init values to 65,536 flip-flops that
+    // deliberately have no hardware reset network. Synthesis must therefore
+    // define SYNTHESIS - scripts/synth_yosys_generic.sh passes -DSYNTHESIS and
+    // openlane/config.json sets SYNTH_DEFINES for the same reason.
+"""
+DMEM_BEHAVIOURAL = """\
+    always @(posedge clk_i) begin
+        if (we_i && impl_sel) begin
+            if (bw_i[0]) mem[phys_addr][7:0]   <= data_i[7:0];
+            if (bw_i[1]) mem[phys_addr][15:8]  <= data_i[15:8];
+            if (bw_i[2]) mem[phys_addr][23:16] <= data_i[23:16];
+            if (bw_i[3]) mem[phys_addr][31:24] <= data_i[31:24];
+        end else if (oe_i) begin
+            data_r <= impl_sel ? mem[phys_addr] : 32'b0;
+        end
+    end
+"""
+DE10LITE_DMEM = """\
+    // DE10-Lite: four byte-lane RAMs (M9K blocks)
+    (* ramstyle = "M9K" *) reg [7:0] ram0 [0:DMEM_WORDS-1];
+    (* ramstyle = "M9K" *) reg [7:0] ram1 [0:DMEM_WORDS-1];
+    (* ramstyle = "M9K" *) reg [7:0] ram2 [0:DMEM_WORDS-1];
+    (* ramstyle = "M9K" *) reg [7:0] ram3 [0:DMEM_WORDS-1];
+    integer z;
+    initial begin
+        for (z = 0; z < DMEM_WORDS; z = z + 1) begin
+            ram0[z] = 8'h00; ram1[z] = 8'h00; ram2[z] = 8'h00; ram3[z] = 8'h00;
+        end
+    end
+    wire        wr = we_i && impl_sel;
+    reg  [7:0]  q0, q1, q2, q3;
+    reg         rd_q, sel_q;
+    reg  [31:0] data_r;           // data_o's held value
+    always @(posedge clk_i) begin
+        if (wr && bw_i[0]) ram0[phys_addr] <= data_i[7:0];
+        if (wr && bw_i[1]) ram1[phys_addr] <= data_i[15:8];
+        if (wr && bw_i[2]) ram2[phys_addr] <= data_i[23:16];
+        if (wr && bw_i[3]) ram3[phys_addr] <= data_i[31:24];
+        q0 <= ram0[phys_addr];
+        q1 <= ram1[phys_addr];
+        q2 <= ram2[phys_addr];
+        q3 <= ram3[phys_addr];
+    end
+    always @(posedge clk_i) begin
+        rd_q   <= oe_i && !wr;
+        sel_q  <= impl_sel;
+        data_r <= data_o;
+    end
+    assign data_o = rd_q ? (sel_q ? {q3, q2, q1, q0} : 32'b0) : data_r;
+"""
+
+
+def build(args):
+    words = load_rom()
+    body = chip_modules(words, "aws", args.mutate)
     shell = SHELL.replace("CLOCK", SHELL_BUFGCE_DIV if args.clock == "bufgce_div" else
                           SHELL_MMCM.replace("MMCMDIV", str(MMCM_DIV[args.clock])))
     shell = shell.replace("CORE_MHZ", ("%.3f" % (args.core_hz / 1e6)).rstrip("0").rstrip("."))

@@ -79,6 +79,29 @@ against `application/emulator-preview/emu_commands.txt`): **12 of 12 generated l
 hardware, on the first and only build.** The −0.112 ns setup slack on the pin-synchroniser crossing
 (§1b) had no visible effect, as predicted.
 
+## 1d. The DE10-Lite desk lane (2026-10-11, before the board)
+
+Design: `07_max10_prototype.md`; files: `stage4/de10lite/`. The chip is generated from `rtl/` and
+`firmware.hex` by the AWS generator's own code; the three AWS files still regenerate byte-identical
+(`gen_riscv_sv.py --check`, all three variants).
+
+| Check | Result |
+| --- | --- |
+| `python scripts/stage4/gen_de10lite.py --check` | generated files current; the frame templates replay to `lane_model.py`'s own frames (7 time values incl. the 32-bit wrap); the tour's 12 lines equal `emu_commands.txt` and `lane_model.emu_commands()` |
+| `python stage4/de10lite/sim/check_board.py` (Verilator 5.020, whole board: chip + ROM + fabric + an HC-SR04 model + a laptop) | **BOARD PASS: 623 checks, 0 failed**. Full pass (time ×10): matrix 430 (56 vehicles: 8 presets × car / lorry / manual / van / motorcycle / lorry-as-motorcycle, then 8 with the lane closed; 114 records), host 50, tour 37 (12 `./emu` lines + 2 lane runs), edges 76. Stress pass (time ×312: frames outlast vehicles), model comparison only: all PASS |
+| What V2 compares | every byte and pin change the chip received, replayed by `lane_model.py` run by run: **the model's output equals the chip's, byte for byte, in every run**; the laptop's copy equals the chip's output; every decision equals the one PROTOCOL.md §6 gives for that preset and height |
+| `python stage4/de10lite/dashboard/test_live.py` (QuickJS) | **LIVE PASS: 29 checks**: back-office frames = the model's; the demo stream; the four simulated laptop streams (169 records, 78 signatures found and verified by the page itself, across chip resets and tour mode); a damaged byte costs one record; a forged tag is reported |
+| Quartus Prime Lite 25.1std.0 on Nicholas's laptop (`quartus_sh --flow compile lanex`, copy in `build/`) | **0 errors**; 14,715 LEs (30 %), 2,276 registers, 66,048 memory bits (M9K), 11 multiplier elements, 1 PLL (clk[0] = 32.000 ns); **setup slack +4.491 ns** (Fmax 36.35 MHz) and hold +0.326 ns at Slow 1200 mV 85 °C; `.sof` and `.pof` written. Worst path: inside the chip core, register file → register file. Without the high-performance fitter effort: +0.468 ns |
+
+Found and fixed by these checks before any hardware: (1) a vehicle could clear before the chip had
+seen it arrive, when the channel into the chip was busy with a laptop frame; (2) a lorry's class
+could be lost the same way. Both now wait until the chip has seen the vehicle's current pins.
+(3) The testbench had a race of its own (it waited for KEY1's identify record after it had come);
+a watchdog now ends any run that waits for an event that never comes.
+
+Not covered until the board: the HC-SR04 on real toys (its readings, the threshold), the USB-UART
+on Windows, Web Serial in the browser, the internal-flash boot.
+
 ## 2. What each check proves, and its limits
 
 | # | Check | Proves | Does not prove |

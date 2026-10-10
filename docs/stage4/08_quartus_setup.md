@@ -1,7 +1,11 @@
 # Quartus Prime Lite on Windows for the DE10-Lite: install, driver, first compile, programming
 
-Follow top to bottom once. Sources (accessed 2026-10-10) are listed at the end; anything marked
-**(check)** could not be confirmed from an official page and tells you what to look for.
+Follow top to bottom once. Sources (accessed 2026-10-10) are listed at the end.
+
+> **Status 2026-10-11: done on Nicholas's laptop.** Quartus Prime Lite **25.1std.0** (Build 1129),
+> downloaded to `C:\Program Files\Quartus`, **installed to `C:\altera_lite\25.1std`**; the
+> USB-Blaster works (a school project compiled and ran on the board). The LaneX project compiled
+> there too: §6 has the numbers. What remains is §6–§8 with `stage4/de10lite/`.
 
 ## 0. Before you start (5 min)
 
@@ -36,9 +40,9 @@ Two ways (pick one):
    - **MAX 10 FPGA** device support
    - Untick other device families (Cyclone IV/V/10, Arria…) and **Questa**: we simulate with our
      own tools, so you do not need Questa or its licence. This saves several GB.
-3. **Install folder:** accept the default, but **write it down** — you need it in §4 and §7. It
-   must not contain spaces. Older versions used `C:\intelFPGA_lite\<version>`; 25.1 may use
-   `C:\altera_lite\25.1std` **(check: whatever the installer shows)**. Below it is called `<Q>`.
+3. **Install folder:** accept the default, `C:\altera_lite\25.1std` for 25.1 (confirmed on
+   Nicholas's laptop; older versions used `C:\intelFPGA_lite\<version>`). It must not contain
+   spaces. Below it is called `<Q>`.
 4. If the installer offers **"Install USB-Blaster driver"** (or "Install devices drivers"), leave it
    **ticked** — that may do §4 for you.
 5. Finish. Launch **Quartus Prime Lite**. If it asks about a licence, choose **run the Quartus
@@ -80,37 +84,44 @@ The DE10-Lite has an on-board **USB-Blaster** (the original one, not "USB-Blaste
 
 ✓ If you see the device, the toolchain is ready.
 
-## 6. Compile the LaneX project (after I deliver `stage4/de10lite/`)
+## 6. Compile the LaneX project
 
 You do **not** need the Pin Planner: the project's `.qsf` already contains the device, every pin,
-the I/O standard (3.3-V LVTTL), the weak pull-ups on the sensor inputs and the flash settings —
-taken from Terasic's schematic and pin tables.
+the I/O standards (3.3-V LVTTL; the keys 3.3 V Schmitt trigger, as Terasic's own file), the weak
+pull-ups on the inputs and the flash settings — from Terasic's schematic and pin tables.
 
 1. **File → Open Project…** → `stage4\de10lite\lanex.qpf`.
-2. **Processing → Start Compilation** (or Ctrl+L). A few minutes.
+2. **Processing → Start Compilation** (or Ctrl+L). About 7 minutes: the project asks the fitter for
+   high performance effort, which buys timing margin. (Or double-click
+   `stage4\de10lite\compile.bat`.)
 3. Check, in the Compilation Report:
-   - **Flow Summary:** device 10M50DAF484C7G; logic elements roughly 15–20k of 49,760.
-   - **Timing Analyzer → Slow 1200mV 85C Model → Fmax Summary:** the core clock's Fmax must be
-     **≥ 31.25 MHz**, and there must be no red "Timing requirements not met". If it is lower, tell
-     me the number: I regenerate the project at 25 MHz (one switch) and you recompile.
-4. (Optional) **Tools → Pin Planner** to see the assignments: `CLOCK_50` on PIN_P11, `KEY[0]` on
-   PIN_B8, `SW[0]` on PIN_C10, `LEDR[0]` on PIN_A8, `HEX0[0]` on PIN_C14, `GPIO[0]` on PIN_V10.
+   - **Flow Summary:** device 10M50DAF484C7G; about **14,700 logic elements (30 %)**, 66,048
+     memory bits, 1 PLL.
+   - **Timing Analyzer:** no red "Timing requirements not met"; every slack positive. **Slow
+     1200mV 85C Model → Fmax Summary:** the core clock (`u_pll|…|clk[0]`) **≥ 31.25 MHz**.
+     Measured on this laptop: **36.35 MHz, setup slack +4.491 ns, hold +0.326 ns**.
+   - If a slack is ever negative: in `lanex.qsf` change `set_parameter -name CORE_HZ 31250000`
+     to `25000000` and compile again (the PLL and every UART divider follow).
+4. (Optional) **Tools → Pin Planner** to see the assignments: `MAX10_CLK1_50` on PIN_P11, `KEY[0]`
+   on PIN_B8, `SW[0]` on PIN_C10, `LEDR[0]` on PIN_A8, `HEX0[0]` on PIN_C14, `GPIO[0]` on PIN_V10.
 
-Command line (same result), from a terminal in `stage4\de10lite`, with `<Q>\quartus\bin64` on PATH:
+Warnings you can ignore: "Inserted always-enabled tri-state buffer between GPIO[n] and its
+non-tri-state driver" (the header pins are declared `inout`, as in Terasic's projects), and
+notes about unused PLL outputs.
 
-```text
-quartus_sh --flow compile lanex
-```
+Command line (same result): `<Q>\quartus\bin64\quartus_sh --flow compile lanex` in
+`stage4\de10lite`.
 
 ## 7. Program the board
 
 **Quick test (RAM, lost at power-off):** Programmer → **Add File…** →
-`output_files\lanex.sof` → tick **Program/Configure** → **Start**. Progress 100 %: the board runs
-our design immediately.
+`output_files\lanex.sof` → tick **Program/Configure** → **Start** (or `program_sram.bat`).
+Progress 100 %: the board runs our design immediately.
 
 **Permanent (internal flash, boots by itself — use this for the demo):** Programmer → remove the
-`.sof` → **Add File…** → `output_files\lanex.pof` → tick **Program/Configure** (it selects the
-configuration flash and the settings) → **Start**. Then unplug and replug power: the demo starts on
+`.sof` → **Add File…** → `output_files\lanex.pof` → tick **Program/Configure** and **Verify** →
+**Start** (or `program_flash.bat`, which runs `quartus_pgm -o "pv;output_files\lanex.pof"`).
+Quartus writes the `.pof` at every compile (confirmed with 25.1std). Then unplug and replug power: the demo starts on
 its own, with no laptop (the MAX 10 configures itself from its internal flash at power-up).
 
 ## 8. Host link drivers (only for plan A/B in `07` §5)

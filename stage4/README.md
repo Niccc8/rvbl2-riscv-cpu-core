@@ -6,6 +6,7 @@
 | `riscv_15mhz.sv` | Timing backup: identical except MMCM ÷16 → 15.625 MHz. Only if the build log shows the core clock missing timing and the board misbehaves (runbook §6) | Only as a backup |
 | `riscv_bufgce_div.sv` | Primitive backup: identical except a BUFGCE_DIV ÷8 instead of the MMCM. Only if the MMCM is refused (runbook §5) | Only as a backup |
 | `sim/` | Simulation and lint stand-ins (Xilinx primitives, AWS `sh_ddr`, defines), the system simulator `emu_sys/`, the lint waiver list | No |
+| `de10lite/` | **The DE10-Lite desk lane** (the same chip + ROM on a MAX 10, with an ultrasonic sensor, lamps and a laptop dashboard). Start at `de10lite/README.md` | No (a separate board) |
 | `vendor/` | The organisers' `top.sv`, `emu.c` and AWS's `cl_ports.vh`, unmodified, for the pre-flight gate. **Not in git** (their files) | `top.sv` is theirs, unchanged |
 
 **How to build and check** (details: `docs/stage4/05_RUNBOOK.md`, evidence: `docs/stage4/06_verification.md`):

@@ -34,3 +34,6 @@
 *.spef      binary
 *.sdf       binary
 *.gz        binary
+
+# Windows command scripts: CRLF, or cmd.exe can misread them.
+*.bat       text eol=crlf
