@@ -23,3 +23,7 @@ UNUSEDSIGNAL alu_result
 WIDTHEXPAND word_addr
 WIDTHTRUNC BIT_LAST
 WIDTHTRUNC HALF_LAST
+# Fallback file only (BUFGCE_DIV, no lock term): rst_async is then ~i_nRst itself, which
+# top.sv also uses synchronously. It is the asynchronous-assert / synchronous-release
+# input of our 2-flip-flop reset synchroniser: intended.
+SYNCASYNCNET rst_async

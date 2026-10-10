@@ -34,6 +34,7 @@ bad() { say "FAIL  $1  $2"; FAIL=$((FAIL+1)); }
 
 # Linux tools: native if present, else WSL
 if command -v verilator > /dev/null 2>&1 && command -v yosys > /dev/null 2>&1; then
+    WROOT="$ROOT"
     LX() { bash -c "$1"; }
 else
     case "$ROOT" in                                   # Git Bash /c/... or C:/... -> /mnt/c/...
@@ -60,8 +61,9 @@ for f in ("stage4/riscv.sv", "stage4/riscv_bufgce_div.sv"):
     rom = [int(v, 16) for v in re.findall(r"12'd\d+: rom_word = 32'h([0-9a-f]{8});", t)]
     if rom != hexw:
         sys.exit("%s: ROM differs from firmware.hex" % f)
+    code = re.sub(r"//[^\n]*", "", t)                 # comments may mention anything
     for bad in ("$readmem", "`timescale", "`default_nettype", "`define", "`include", "\ninitial", " initial begin"):
-        if bad in t:
+        if bad in code:
             sys.exit("%s contains %s" % (f, bad))
     mods = re.findall(r"^module\s+(\w+)", t, re.M)
     if not all(m in ("RISCV", "Transmitter", "Receiver") or m.startswith("rvbl2_") for m in mods):
@@ -95,7 +97,8 @@ for l in open(log):
     if f != sv:
         continue                     # the organisers' top.sv and our sim stubs
     n += 1
-    if rule == "DECLFILENAME" or any(rule == r and ("'%s'" % s) in msg for r, s in waive):
+    # a waived name matches as 'name' or as the end of a hierarchical 'a.b.name'
+    if rule == "DECLFILENAME" or any(rule == r and re.search(r"['.]%s'" % re.escape(s), msg) for r, s in waive):
         continue
     unwaived.append(l.strip())
 if errs or unwaived:
@@ -110,7 +113,8 @@ done
 LINES=application/emulator-preview/emu_commands.txt
 for f in riscv riscv_bufgce_div; do
     if LX "bash scripts/stage4/build_emu_sys.sh stage4/$f.sv /tmp/rvbl2_pf_$f" > "$B/emu_sys_build_$f.log" 2>&1; then
-        LX "cd /tmp/rvbl2_pf_$f && ./sim_emu --lines \"\$OLDPWD/$LINES\" --scale $SCALE --negative" > "$B/emu_sys_$f.log" 2>&1
+        # an absolute path, expanded here: wsl.exe re-parses the command in a shell of its own
+        LX "cd /tmp/rvbl2_pf_$f && ./sim_emu --lines '$WROOT/$LINES' --scale $SCALE --negative" > "$B/emu_sys_$f.log" 2>&1
         r=$(grep -a "^==== emu_sys" "$B/emu_sys_$f.log")
         if grep -aq "EMU_SYS: ALL TESTS PASSED" "$B/emu_sys_$f.log"; then
             ok G3 "$f.sv: organisers' emu.c on top.sv, 12 lines + bring-up + 2 negatives at ${SCALE}x emu waits: $r"
