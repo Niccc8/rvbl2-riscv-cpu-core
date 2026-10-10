@@ -17,7 +17,8 @@ PASS on the first build (`06` §1c).** Claim earned: "FPGA-validated prototype".
 | FPGA design (as built) | `04_fpga_plan.md` |
 | **Runbook for the AWS session** | **`05_RUNBOOK.md`** |
 | Verification evidence | `06_verification.md` |
-| MAX 10 (DE10-Lite) prototype scope | `07_max10_prototype.md` (not built; awaiting Nicholas) |
+| DE10-Lite desk lane (Tier 1) plan | `07_max10_prototype.md` (board confirmed: DE10-Lite 10M50DAF484C7G; plan awaiting approval) |
+| Quartus Prime Lite install + programming guide | `08_quartus_setup.md` |
 | Pitch kit | `pitch/01–05` |
 | AWS run screenshots + recording (for slides) | `stage4/evidence/` (index in its README; the 270 MB recording and the unredacted screenshot are local only, git-excluded) |
 | Build files | `stage4/riscv.sv` (31.25 MHz, the build), `riscv_15mhz.sv`, `riscv_bufgce_div.sv` (backups) |
