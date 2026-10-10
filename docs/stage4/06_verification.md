@@ -40,6 +40,27 @@ bring-up (RST = 1, PC moving inside the ROM) **PASS**; lines 1–12 **PASS** (0.
 each); the two corrupted lines are reported by emu with `[error]`, as they must be. **15/15, 46.5 s of
 simulated hardware time.** All evidence logs: `docs/stage4/evidence/`.
 
+## 1b. The AWS build (2026-10-10, ChipInventor AWS FPGA, Vivado 2024.1)
+
+Log: `docs/stage4/evidence/aws_build_log.txt`. **AFI `afi-0732c3cb90c96019a`, AGFI `agfi-0c12a9e5d082dcac8`.**
+
+| Item | Result |
+| --- | --- |
+| Synthesis | 0 errors; 16 critical warnings, all `[Synth 8-5799]` tri-state → logic on `io_Pins` (expected); the rest of the critical warnings are the AWS Shell's own DDR/PCIe constraint files |
+| Our primitives | `MMCME4_BASE` → `MMCME4_ADV` (internal compensation), BUFG → BUFGCE: accepted (risk R2 closed) |
+| PC readback | `riscvtop.e_PROCESSOR.w_PC_Output` resolved, no error (risk R3 closed) |
+| Mapping | DMEM in block RAM (2K × 32), ROM in LUTs, multiplier in DSP48E2 cascades; no black boxes; DRC 0 errors |
+| Final timing | **Hold met** (no negative hold path). **Setup WNS −0.112 ns, TNS −0.290 ns** (a few endpoints). Worst path: `input_en_reg[4]` (`top.sv`, 250 MHz) → `riscvtop/e_PROCESSOR/pins_s1_reg[4]/D` (our clock) — the host's direction register through the tri-state logic into the **first flip-flop of our pin synchroniser**. Checkpoint named `post_route.VIOLATED.dcp`; the AFI was created |
+
+**Why the violation is harmless.** The failing paths cross from `top.sv`'s 250 MHz registers into
+our 31.25 MHz clock and end at a 2-flip-flop synchroniser, which exists to absorb a late or
+metastable first sample (the second stage has a full 32 ns core cycle to settle). Bit 4 is an output
+pin of ours whose read-back the firmware never uses (it reads `& 0x0F`), and emu changes pins only
+every ≥ 50 ms. No path inside our core clock or inside `top.sv`'s own 250 MHz logic is reported.
+The design rule is runbook §2.5: a small negative slack on a crossing → load and test. A clean
+report would need `set_clock_groups -asynchronous` between the two clocks, which only an XDC
+constraint file (not available in this flow) can give.
+
 ## 2. What each check proves, and its limits
 
 | # | Check | Proves | Does not prove |

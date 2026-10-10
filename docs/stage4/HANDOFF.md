@@ -3,7 +3,8 @@
 **Updated 2026-10-10.** Branch `stage4` (local, not pushed). Mission: harden LaneX, build the pitch
 intelligence, ship a first-try-correct AWS F2 build. **GATE 1 and 2 passed; GATE 3 verdict GO (re-confirmed
 after the 31.25 MHz change: pre-flight GO, full regression green).**
-Next human step: Nicholas runs `05_RUNBOOK.md` on ChipInventor's AWS FPGA page.
+**AWS build done 2026-10-10: `afi-0732c3cb90c96019a` / `agfi-0c12a9e5d082dcac8`** (0 errors; setup WNS −0.112 ns on
+the pin-synchroniser crossing only, hold met; `06` §1b). Next: runbook §3, load and the bring-up ladder.
 
 ## Where everything is
 

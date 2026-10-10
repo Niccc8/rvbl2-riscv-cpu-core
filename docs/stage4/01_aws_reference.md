@@ -186,7 +186,7 @@ by naming our hierarchy to match: an instance `e_PROCESSOR` inside `RISCV` holdi
 | Q1 | May a CL instantiate an **MMCM / BUFGCE_DIV** inside `riscv.sv` to run the core slower than 250 MHz? | AWS's own CL examples instantiate clock generators inside the CL; nothing in the PDF or repo forbids it | Decides whether R9 is solved by a slower clock or by a faster core (`04_fpga_plan.md`) |
 | Q2 | What does Vivado's tri-state conversion produce for a pin **nobody** drives (pin 0 during emu's start-up window)? | A disabled single driver reads 0 (§3.4) | **Closed by design:** all 12 lines pass with the pin read as 0 and as 1 (`06_verification.md` G4), after the firmware arms its detector only once the lane is seen empty |
 | Q3 | Does the web editor accept a ~400 kB file? | The example `riscv.sv` was 16 kB | Fallback: split into several `.sv` files (the build compiles every file in the tree [OLD]) |
-| Q4 | Can the build's timing summary be read in the Logs pane? | The log prints `report_timing` commands [PDF p8] | Without it, rely on our own margin analysis |
+| Q4 | Can the build's timing summary be read in the Logs pane? **Yes**: intermediate and final `WNS/WHS` and AWS's own negative-slack check are in the log (`06` §1b) | The log prints `report_timing` commands [PDF p8] | Without it, rely on our own margin analysis |
 
 ## 8. Discrepancies with our older notes
 
