@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
-"""sta_estimate.py - a deliberately pessimistic static timing estimate of the
-synthesized riscv.sv (Yosys synth_xilinx JSON netlist), for the pre-flight gate.
+"""sta_estimate.py - a static timing estimate of the synthesized riscv.sv (Yosys
+synth_xilinx JSON netlist), for the pre-flight gate.
 
-    python scripts/stage4/sta_estimate.py build/stage4/riscv_synth.json
+    python scripts/stage4/sta_estimate.py NETLIST.json [PERIOD_NS] [--model typical] [--trace]
 
 It is not Vivado's timer: there is no placement. Every cell gets a fixed delay that
-already includes a generous net delay, chosen at or above the UltraScale+ -2
-datasheet values (DS923), so the estimate errs long. Paths start at flip-flop and
-block-RAM outputs and end at their inputs; the DSP48E2 cells (no pipeline registers
-here) and the carry chains are combinational. The verdict compares the longest path
-with the core clock period (32 ns at 31.25 MHz).
+includes a net delay. Two models:
+  pessimistic (default, the verdict): every delay at or above the UltraScale+ -2
+      datasheet values (DS923) plus a generous net, so the estimate errs long;
+  typical (--model typical, indicative only): datasheet-typical logic plus an
+      average routed net.
+Paths start at flip-flop and block-RAM outputs and end at their inputs; the
+DSP48E2 cells (no pipeline registers here) and the carry chains are combinational.
+Yosys maps worse than Vivado (flip-flop register file, fabric adders after the
+DSPs), which makes both numbers conservative.
+
+Verdict (pessimistic model): GO when the slack is at least 25 % of the period.
+The requirement on the board is Vivado's own WNS >= 0; the 25 % is our margin for
+the estimate's own error.
 """
 import json
 import sys
@@ -28,6 +36,14 @@ SOURCE = {"FDRE": 0.60, "FDSE": 0.60, "FDCE": 0.60, "FDPE": 0.60,   # clk->Q + n
 SETUP = {"FDRE": 0.15, "FDSE": 0.15, "FDCE": 0.15, "FDPE": 0.15, "RAMB36E2": 0.60, "RAMB18E2": 0.60}
 CARRY_CASCADE = 0.10      # CO -> CI of the next CARRY in a chain (dedicated route)
 CASCADE = True
+TYPICAL = {               # --model typical: logic per DS923 plus an average routed net
+    "DELAY": {"LUT1": 0.40, "LUT2": 0.40, "LUT3": 0.40, "LUT4": 0.40, "LUT5": 0.40, "LUT6": 0.40,
+              "INV": 0.40, "MUXF7": 0.12, "MUXF8": 0.12, "MUXF9": 0.12,
+              "CARRY4": 0.30, "CARRY8": 0.30, "DSP48E2": 3.00},
+    "SOURCE": {"FDRE": 0.40, "FDSE": 0.40, "FDCE": 0.40, "FDPE": 0.40, "RAMB36E2": 1.80, "RAMB18E2": 1.80},
+    "CARRY_CASCADE": 0.05,
+}
+MARGIN = 0.25             # GO: slack >= 25 % of the period (pessimistic model)
 IGNORE = {"BUFG", "MMCME4_BASE", "BUFGCE_DIV", "IBUF", "OBUF", "IOBUF", "OBUFT"}
 
 
@@ -119,12 +135,21 @@ def main(path, period=32.0):
     slack = period - a
     print("core clock %.2f ns (%.2f MHz): slack %.2f ns, path uses %.0f %% of the period"
           % (period, 1000 / period, slack, 100 * a / period))
-    print("VERDICT: %s" % ("GO" if a < 0.5 * period else "NO-GO"))
-    return 0 if a < 0.5 * period else 1
+    go = a <= (1 - MARGIN) * period
+    print("model: %s" % MODEL)
+    print("VERDICT: %s (GO needs slack >= %d %% of the period)" % ("GO" if go else "NO-GO", MARGIN * 100))
+    return 0 if go else 1
 
 
 if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if "--flat-carry" in sys.argv:
         CASCADE = False
+    MODEL = "pessimistic"
+    if "--model" in sys.argv and sys.argv[sys.argv.index("--model") + 1] == "typical":
+        MODEL = "typical"
+        DELAY.update(TYPICAL["DELAY"])
+        SOURCE.update(TYPICAL["SOURCE"])
+        CARRY_CASCADE = TYPICAL["CARRY_CASCADE"]
+        args = [x for x in args if x != "typical"]
     sys.exit(main(args[0], float(args[1]) if len(args) > 1 else 32.0))

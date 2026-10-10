@@ -102,3 +102,18 @@ Stage 4 section is P0.
 - **P0 (do):** A1–A7 (the FPGA path), C3 wording, the Stage 4 README section and the pre-flight script.
 - **P1 (recommend, your call):** **B1** lane-clock wrap fix · **B2** report a full hotlist · **C1** key lock · **C2** counter start in `K` · **C5(a)** an authenticated emu line. Each: golden model, `PROTOCOL.md`, firmware and a directed test in lockstep; full regression after each.
 - **P2 (document only):** B3–B5, C4, D1–D3.
+
+## J. Outcome (closed 2026-10-10)
+
+| Item | Outcome | Evidence |
+|---|---|---|
+| A1 clock | MMCM ÷8 → 31.25 MHz inside `RISCV`; `top.sv` unchanged | `04` §2; `06` G6 |
+| A2 start-up window | Found real (a floating pin read as 1 made phantom vehicles); fixed in firmware: the detector arms once the lane is seen empty | `06` G4 |
+| A3–A7 | Generator: `rvbl2_` prefix, SV-clean, no `(* keep *)` on DMEM, literal ROM, `Transmitter`/`Receiver` with emu's semantics | `06` G1–G3, G5 |
+| A8 / C5(a) | Twelfth emu line reads the `A` record | `05` §4 line 11 |
+| B1 | Serial-number time (RFC 1982); directed test across the 32-bit wrap | protocol v4 |
+| B2 | Full hotlist reported, `E` reason 6 | protocol v4 |
+| C1, C2 | Key locked once loaded (`E` 7); `K` may carry a counter start | protocol v4 |
+| C3 | "Build fingerprint" wording everywhere; keyed `I` followed by its `A` | `PROTOCOL.md` §4 |
+| B3–B5, C4, D1–D3 | Documented as roadmap (not built) | `PROTOCOL.md`, `03` |
+| New, found while verifying | Market: SIDRA's PARSEC already does lane control in the TNG MLFF demo → LaneX positioned as the chip-level core / design-in partner | `03` §2, research A §4 |

@@ -251,10 +251,13 @@ fi
 #                 and showcase, plus fuzz and random with RUN_LONG=1
 #   tb_app_ci     the platform testbench on the canvas design
 #   emu_preview   the Emulator Preview: the ./emu command lines of
-#                 application/emulator-preview/emu_commands.txt, on the chip
+#                 application/emulator-preview/emu_commands.txt, on the chip,
+#                 with emu's start-up window (an undriven pin read as 0)
+#   emu_float     the same, the undriven pin read as 1 (AWS F2 risk R4)
 #   page_core     the replay page's own decoding and checking logic
-# Stage 4 (AWS F2), kept for the next stage, with RUN_STAGE4=1 (needs stage4-aws/):
-#   tb_cl, cosim  the F2 wrapper over AXI4-Lite, and the host tool against it
+# Stage 4 (AWS F2), with RUN_STAGE4=1 (needs WSL or Linux with Verilator and Yosys,
+# and the organisers' files in stage4/vendor/, see stage4/README.md):
+#   preflight     scripts/stage4/preflight.sh: the build files' gate (G1-G7)
 run_flow() {   # name, level, log, command...
     local name=$1 level=$2 log=$3; shift 3
     TOTAL=$((TOTAL+1))
@@ -319,6 +322,12 @@ if [ $HAVE_FW = 1 ]; then
         (cd "$BUILD" && vvp -n emu_preview.vvp)
     }
     run_flow emu_preview "Emulator preview" "$BUILD/emu_preview.log" emu_preview
+    emu_float() {
+        iverilog -g2005 -s testbench -P testbench.PULL=1\'b1 -o "$BUILD/emu_float.vvp" $CI_BLOCKS \
+            chipinventor/ci_top.v chipinventor/app/imem_app.v application/emulator-preview/tb_emu_preview.v && \
+        (cd "$BUILD" && vvp -n emu_float.vvp)
+    }
+    run_flow emu_float "Emulator preview (undriven pin reads 1)" "$BUILD/emu_float.log" emu_float
     # one vehicle, for the report's waveform (application/testbench/tb_wave_app.v)
     wave_app() {
         iverilog -g2005 -s testbench -o "$BUILD/wave_app.vvp" $CI_BLOCKS chipinventor/ci_top.v \
@@ -337,31 +346,13 @@ if [ $HAVE_FW = 1 ]; then
     else
         echo "SKIP          page_core   (python -m pip install quickjs)"
     fi
-    if [ "${RUN_STAGE4:-0}" = "1" ] && [ -d stage4-aws ]; then
+    if [ "${RUN_STAGE4:-0}" = "1" ]; then
         echo ""
         echo "---- Stage 4 (AWS F2) ----"
-        CL_SRC="stage4-aws/sim/xilinx_models.v stage4-aws/aws/rvbl2_cl.sv stage4-aws/aws/rvbl2_dut.sv stage4-aws/aws/rvbl2_imem.sv stage4-aws/aws/rvbl2_soc.sv"
-        cl_tb() {
-            make -C application/firmware APP=emu_demo APP_DIR=../../stage4-aws/emu_demo TC=$TC && \
-            $PY stage4-aws/gen_aws_project.py && \
-            iverilog -g2012 -o "$BUILD/tb_cl.vvp" $CL_SRC stage4-aws/tb/tb_cl.sv && vvp -n "$BUILD/tb_cl.vvp"
+        preflight() {
+            bash scripts/stage4/preflight.sh && echo "STAGE4 PREFLIGHT: ALL TESTS PASSED"
         }
-        run_flow tb_cl "AWS F2 wrapper" "$BUILD/tb_cl.log" cl_tb
-        if command -v wsl.exe > /dev/null 2>&1 && \
-           wsl.exe -d Ubuntu-24.04 -- bash -lc 'command -v gcc' > /dev/null 2>&1; then
-            cosim() {
-                iverilog -g2012 -o "$BUILD/tb_cosim.vvp" $CL_SRC stage4-aws/tb/tb_cosim.sv && \
-                wsl.exe -d Ubuntu-24.04 -- bash -lc "cd '$(wslpath -a . 2>/dev/null || echo /mnt/c${PWD#/c})' && \
-                    gcc -std=gnu11 -O2 -Wall -Werror -DRVBL2_SIM -o build/rvbl2_sim stage4-aws/host/rvbl2_f2.c && \
-                    export RVBL2_SIM_CMD='$(command -v vvp | sed 's#^/c#/mnt/c#').exe -n build/tb_cosim.vvp' && \
-                    ./build/rvbl2_sim verdict chipinventor/firmware/validation_firmware.hex && \
-                    ./build/rvbl2_sim attest application/firmware/out/lane/firmware.hex --plain && \
-                    ./build/rvbl2_sim lane showcase --plain --rom application/firmware/out/lane/firmware.hex" | tr -d '\0'
-            }
-            run_flow cosim "Host tool x CL RTL" "$BUILD/cosim.log" cosim
-        else
-            echo "SKIP          cosim   (needs WSL with gcc)"
-        fi
+        run_flow preflight "AWS F2 pre-flight" "$BUILD/preflight.log" preflight
     fi
 else
     echo "SKIP          application flows   (needs make and a RISC-V GNU toolchain)"

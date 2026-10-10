@@ -244,8 +244,8 @@ module tb_app;
         if (att_lat >= 0)
             $display("  ROM measurement ('I' frame sent -> 'I' record received): %0d cycles", att_lat);
         $display("  longest decision delay (car leaves -> its record starts): %0d cycles", max_exit);
-        $display("  longest RXDONE wait: %0d cycles (one byte-time is %0d cycles; ASIC %0d, FPGA 50 MHz %0d)",
-                 max_lat, 10 * NB, 2630, 4340);
+        $display("  longest RXDONE wait: %0d cycles (one byte-time is %0d cycles; ASIC %0d, AWS F2 31.25 MHz %0d)",
+                 max_lat, 10 * NB, 2630, 2713);
         $display("==== tb_app: %0d passed, %0d failed ====", pass, fail);
         if (fail == 0) $display("TB_APP: ALL TESTS PASSED");
         else           $display("TB_APP: FAILURES PRESENT");

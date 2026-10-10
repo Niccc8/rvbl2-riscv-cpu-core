@@ -37,7 +37,7 @@ platform itself. See [How the chip is proven](#how-the-chip-is-proven).
 The organisers give a frozen `top.sv` (AWS Shell, AXI-Lite registers, 250 MHz). We give one file,
 [`stage4/riscv.sv`](stage4/riscv.sv), **generated** from [`rtl/`](rtl/) and the firmware by
 [`scripts/stage4/gen_riscv_sv.py`](scripts/stage4/gen_riscv_sv.py): their `top.sv` needs **zero
-edits**. Inside, a thin FPGA shell divides the clock to 15.625 MHz (MMCM) for our unchanged,
+edits**. Inside, a thin FPGA shell divides the clock to 31.25 MHz (MMCM), our ASIC's own clock, for our unchanged,
 verified core, and provides the `Transmitter`/`Receiver` that `top.sv` instantiates.
 
 | | |

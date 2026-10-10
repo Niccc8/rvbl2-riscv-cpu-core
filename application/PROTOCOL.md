@@ -121,7 +121,7 @@ arrives. A noisy line therefore cannot flood the transmit queue.
 bit first) of the firmware image, from IMEM word 0 to the end of `.data`'s initial values
 (`__rom_end`, the exact image in `firmware.bin`). The chip reads its own ROM to compute
 it, as a background job, so the answer takes about 65,500 cycles (2.2 ms) at 115,200 bps and 46,700 at 921,600; records made
-meanwhile may leave first. The host tool and the replay page compare it with the build.
+meanwhile may leave first. The replay page and the `./emu` identify line compare it with the build.
 
 **What `I` proves, and what it doesn't.** The CRC is a **build fingerprint**: it detects a
 wrong or corrupted image, not a malicious one (a hostile firmware could report any CRC). While a
@@ -221,7 +221,7 @@ of `now` is taken as a step back and ignored, so a host must not jump that far b
 | Rule | Value | Why |
 |---|---|---|
 | Boot | **1,758 cycles** from reset release to the main loop (58 µs at 30.3 MHz) | The big tables and the transmit queue are in `.noinit`, so start-up zeroes only 360 bytes |
-| The longest a received byte waits | **137–199 cycles** across every scenario, against a budget of 2,630 (ASIC), 4,340 (FPGA, 50 MHz) and 330 at 921,600 bps | The main loop never blocks. The MAC runs 4 rounds and the ROM measurement 64 words per iteration, as background jobs. The UART holds a single byte, so every long loop (hash probes, MAC rounds, record pushes, the ROM measurement) moves it into a 64-byte receive ring as soon as it lands; the parser reads from the ring |
+| The longest a received byte waits | **137–199 cycles** across every scenario, against a budget of 2,630 (ASIC, 30.3 MHz), 2,713 (AWS F2, 31.25 MHz) and 330 at 921,600 bps | The main loop never blocks. The MAC runs 4 rounds and the ROM measurement 64 words per iteration, as background jobs. The UART holds a single byte, so every long loop (hash probes, MAC rounds, record pushes, the ROM measurement) moves it into a 64-byte receive ring as soon as it lands; the parser reads from the ring |
 | Host inter-frame gap | ≥ 2 byte-times after a frame | Headroom for end-of-frame work |
 | **Frame timeout** | Off by default. With `P`'s `timeout` = N, a half-received frame is dropped after N quiet main-loop iterations and reported as `E` reason 5 (the testbenches use 48, about 3 byte-times) | The organisers' emulator sends one byte per AXI access, about 0.1 s apart, so any timeout would cut its frames. A host that streams its bytes can turn it on, so line noise never leaves a frame hanging |
 | **Exit hold-off** | A decision waits until the UART has been quiet for `hold` iterations (default 64) after P0 falls. Measured at most **18,873 cycles** (v4; v3: 18,823) from the car leaving to its record (0.62 ms at 30.3 MHz), including any cut-off frame | Reads still in flight when the car leaves are counted. That covers a late reader report, or `emu` queuing a frame before `-i 0x00`. The next car's arrival decides the previous one at once |
@@ -262,7 +262,7 @@ the F2:
 Seventeen records in all.
 
 **Replay page.** `replay/lane_replay.html`, built by `replay/gen_lane_replay.py`, replays a
-transcript (the platform's simulation log, or `rvbl2 --json` from the F2). It recomputes
+transcript (the platform's simulation log, or bare records). It recomputes
 every CRC and tag, compares the identity record with the build, lets the viewer corrupt any
 byte, and generates **blind tests**: a fresh scenario and a testbench with no expected
 answers, run on the platform, with the page's prediction sealed until the chip's log is

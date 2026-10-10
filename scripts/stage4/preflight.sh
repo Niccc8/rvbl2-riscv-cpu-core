@@ -50,13 +50,14 @@ say ""
 
 # ---- G1 ------------------------------------------------------------------------
 if $PY scripts/stage4/gen_riscv_sv.py --check > /dev/null && \
+   $PY scripts/stage4/gen_riscv_sv.py --check --clock mmcm_slow --out stage4/riscv_15mhz.sv > /dev/null && \
    $PY scripts/stage4/gen_riscv_sv.py --check --clock bufgce_div --out stage4/riscv_bufgce_div.sv > /dev/null; then
-    ok G1 "riscv.sv and riscv_bufgce_div.sv are current (regenerated from rtl/ + firmware.hex)"
+    ok G1 "riscv.sv, riscv_15mhz.sv and riscv_bufgce_div.sv are current (regenerated from rtl/ + firmware.hex)"
 else bad G1 "a generated file is stale: run scripts/stage4/gen_riscv_sv.py"; fi
 if $PY - <<'EOF'
 import re, sys
 hexw = [int(l, 16) for l in open("application/firmware/out/lane/firmware.hex") if l.strip() and not l.startswith(("//", "@"))]
-for f in ("stage4/riscv.sv", "stage4/riscv_bufgce_div.sv"):
+for f in ("stage4/riscv.sv", "stage4/riscv_15mhz.sv", "stage4/riscv_bufgce_div.sv"):
     t = open(f).read()
     rom = [int(v, 16) for v in re.findall(r"12'd\d+: rom_word = 32'h([0-9a-f]{8});", t)]
     if rom != hexw:
@@ -68,7 +69,7 @@ for f in ("stage4/riscv.sv", "stage4/riscv_bufgce_div.sv"):
     mods = re.findall(r"^module\s+(\w+)", t, re.M)
     if not all(m in ("RISCV", "Transmitter", "Receiver") or m.startswith("rvbl2_") for m in mods):
         sys.exit("%s: unexpected module name" % f)
-print("ROM %d words identical to firmware.hex in both files; no file I/O, directives or initial blocks; modules RISCV, Transmitter, Receiver, rvbl2_* only" % len(hexw))
+print("ROM %d words identical to firmware.hex in all three files; no file I/O, directives or initial blocks; modules RISCV, Transmitter, Receiver, rvbl2_* only" % len(hexw))
 EOF
 then ok G1 "ROM bit-identical to firmware.hex; no \$readmemh/\`timescale/\`define/initial; module names safe"
 else bad G1 "ROM or content check"; fi
@@ -78,7 +79,7 @@ if [ "$s1" = "$TOP_SHA" ] && [ "$s2" = "$EMU_SHA" ]; then
 else bad G1 "stage4/vendor/top.sv or emu.c missing or modified (top $s1, emu $s2)"; fi
 
 # ---- G2 ------------------------------------------------------------------------
-for f in riscv riscv_bufgce_div; do
+for f in riscv riscv_15mhz riscv_bufgce_div; do
     LX "verilator --lint-only -sv -Wall -Istage4/sim -Istage4/vendor --top-module top stage4/sim/unisim_models.v stage4/sim/sh_ddr_stub.v stage4/$f.sv stage4/vendor/top.sv" > "$B/lint_$f.log" 2>&1
     if $PY - "$B/lint_$f.log" "stage4/$f.sv" <<'EOF'
 import re, sys
@@ -111,7 +112,7 @@ done
 
 # ---- G3 ------------------------------------------------------------------------
 LINES=application/emulator-preview/emu_commands.txt
-for f in riscv riscv_bufgce_div; do
+for f in riscv riscv_15mhz riscv_bufgce_div; do
     if LX "bash scripts/stage4/build_emu_sys.sh stage4/$f.sv /tmp/rvbl2_pf_$f" > "$B/emu_sys_build_$f.log" 2>&1; then
         # an absolute path, expanded here: wsl.exe re-parses the command in a shell of its own
         LX "cd /tmp/rvbl2_pf_$f && ./sim_emu --lines '$WROOT/$LINES' --scale $SCALE --negative" > "$B/emu_sys_$f.log" 2>&1
@@ -137,7 +138,7 @@ if command -v iverilog > /dev/null 2>&1; then
 else say "SKIP  G4  iverilog not found (run on the Windows side)"; fi
 
 # ---- G5 + G6 --------------------------------------------------------------------
-for f in riscv riscv_bufgce_div; do
+for f in riscv riscv_15mhz riscv_bufgce_div; do
     cat > "$B/synth_$f.ys" <<EOF
 read_verilog -lib -specify +/xilinx/cells_sim.v
 read_verilog -lib +/xilinx/cells_xtra.v
@@ -157,12 +158,11 @@ EOF
         if [ "${ram:-0}" = "2" ]; then
             ok G5 "$f.sv: Yosys synth_xilinx xcup: no latch, check clean; RAMB36E2 $ram (DMEM), DSP48E2 $dsp, LUT $lut, FF $ff"
         else bad G5 "$f.sv: DMEM not in block RAM (RAMB36E2=${ram:-0})"; fi
-        period=64; [ $f = riscv_bufgce_div ] && period=32
+        period=32; [ $f = riscv_15mhz ] && period=64
         $PY scripts/stage4/sta_estimate.py "$B/synth_$f.json" $period > "$B/sta_$f.txt"; rc=$?
         line=$(grep "longest path" "$B/sta_$f.txt" | sed 's/ into.*//'); use=$(grep -o "uses [0-9]* %" "$B/sta_$f.txt")
-        if [ $rc -eq 0 ]; then ok G6 "$f.sv @ ${period} ns: $line, $use of the period (pessimistic model): GO"
-        elif [ $f = riscv_bufgce_div ] && grep -q "slack [0-9]" "$B/sta_$f.txt"; then
-            say "NOTE  G6  $f.sv @ ${period} ns: $line, $use: positive slack, below the 2x bar (fallback only)"
+        typ=$($PY scripts/stage4/sta_estimate.py "$B/synth_$f.json" $period --model typical | grep "longest path" | sed 's/ into.*//; s/longest path estimate: //')
+        if [ $rc -eq 0 ]; then ok G6 "$f.sv @ ${period} ns: $line, $use of the period (pessimistic; typical $typ): GO"
         else bad G6 "$f.sv @ ${period} ns: $line, $use"; fi
     else bad G5 "$f.sv: Yosys failed or found a latch/problem ($B/yosys_$f.log)"; fi
 done

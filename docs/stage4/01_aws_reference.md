@@ -1,7 +1,8 @@
 # AWS F2 FPGA on ChipInventor: the ground truth (Stage 4)
 
 **Read this first in any Stage 4 session.** It replaces `STAGE3_AWS_FPGA_REFERENCE.md` (kept
-locally for history, now superseded) and the notes in `stage4-aws/README.md`. Every fact is
+locally for history, now superseded) and the notes of our pre-`top.sv` wrapper (archived locally in
+`archive/stage4-aws-pre-topsv/`). Every fact is
 tagged with its source; anything untagged is a design consequence, and the reasoning is next to it.
 
 | Tag | Source (precedence: PDF > REPO > EMU > older notes) |
@@ -176,7 +177,7 @@ by naming our hierarchy to match: an instance `e_PROCESSOR` inside `RISCV` holdi
 | R6 | **Boot must be robust to the emu start-up window**: pin 0 floats and pins 7–1 hold stale values for ~100 ms after reset release, until the line's own `-d` | A phantom vehicle would put a stray record in the 8-byte window and shift every `-r` |
 | R7 | At most 8 bytes from the chip per `emu` run, or the bytes that matter must be the last 8 | §3.5, §4 |
 | R8 | Our UART divider = our core clock / 115,200 (2,170 at 250 MHz; another value if the core runs slower) | Both ends at 115,200 bps |
-| R9 | Timing must close at the clock our core actually runs at | 250 MHz is given; our core was estimated at 80–140 MHz [OLD §14.9a]. **Resolved:** MMCM ÷16 → 15.625 MHz inside `RISCV`, > 3× margin (`04_fpga_plan.md` As built, `06_verification.md` G6) |
+| R9 | Timing must close at the clock our core actually runs at | 250 MHz is given; our core was estimated at 80–140 MHz [OLD §14.9a]. **Resolved:** MMCM ÷8 → 31.25 MHz inside `RISCV` (the ASIC's operating point); estimated path 11–18 ns of 32 ns (`04_fpga_plan.md` §2, `06_verification.md` G6) |
 
 ## 7. Open points (answer on the first hardware session, or ask the organisers)
 

@@ -59,7 +59,7 @@ so the assembly in `out/lane/asm/` is the whole program. The core has no divider
 
 **The build is reproducible.** xPack GCC 13.2.0 on Windows and Ubuntu's GCC 13.2 RISC-V
 toolchain give the same `firmware.bin` and `firmware.txt`, byte for byte; the organisers'
-test firmware rebuilds identically too. The LaneX image: 2,722 instructions in 2,774
+test firmware rebuilds identically too. The LaneX image (protocol v4): 2,741 instructions in 2,793
 words, 2,892 bytes of static data.
 
 `make APP=selftest` builds the firmware self-test (`selftest/main.c`): 1,545 instructions in

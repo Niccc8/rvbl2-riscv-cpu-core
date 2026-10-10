@@ -116,7 +116,7 @@ var LaneCore = (function () {
   }
 
   // A transcript: the platform's simulation log (REC / PINS lines), the F2
-  // host tool's --json lines, or bare 16-hex-digit records. Several logs may
+  // JSON record lines ({"kind", "rec"}), or bare 16-hex-digit records. Several logs may
   // be pasted one after another: each LANE header starts a new run, and every
   // record and pin sample carries its run's index.
   function parseTranscript(text) {

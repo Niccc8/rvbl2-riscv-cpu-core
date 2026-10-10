@@ -47,8 +47,8 @@ static uint32_t rssi_min, guard_ms = 500, dedup_ms = 3000, vmax_kmh = 250;
 /* Exit hold-off, in main-loop iterations: a car's decision waits until the
  * UART has been quiet this long after it left, so reads still in flight - a
  * reader reporting late, or a host that queued the frame before lowering P0 -
- * are counted. An idle iteration is ~170 cycles, so 64 is ~10,900 cycles: 2.5
- * byte-times at 50 MHz, 4.1 at 30.3 MHz. The next car arriving decides the
+ * are counted. An idle iteration is ~170 cycles, so 64 is ~10,900 cycles: 4.0
+ * byte-times at 31.25 MHz (AWS F2), 4.1 at 30.3 MHz. The next car arriving decides the
  * previous one at once. */
 static uint32_t hold = 64;
 /* Frame timeout, in main-loop iterations of silence (~170 cycles each): a

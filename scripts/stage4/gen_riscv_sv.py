@@ -22,13 +22,15 @@ What the generator does (docs/stage4/04_fpga_plan.md section 3.2):
         inferring block RAM);
       - imem becomes a literal case ROM equal to firmware.hex word for word;
   * the shell module RISCV (ports exactly as top.sv instantiates it) divides
-    clk_main_a0 by 16 with an MMCM (15.625 MHz), synchronises reset, and runs the
+    clk_main_a0 by 8 with an MMCM (31.25 MHz, the ASIC's own operating point),
+    synchronises reset, and runs the
     chip as instance e_PROCESSOR; Transmitter and Receiver are the modules top.sv
     instantiates, with the behaviour emu needs (sticky o_Tx_Done, one-cycle
     o_Rx_Done).
 
---clock bufgce_div swaps the MMCM for a BUFGCE_DIV /8; --core-hz and --mutate exist
-for the pre-flight gate's mutation tests only.
+--clock mmcm_slow divides by 16 (15.625 MHz: the timing backup) and --clock
+bufgce_div swaps the MMCM for a BUFGCE_DIV /8 (the primitive backup); --core-hz and
+--mutate exist for the pre-flight gate's mutation tests only.
 """
 import argparse
 import hashlib
@@ -42,7 +44,8 @@ RTL = os.path.join(ROOT, "rtl")
 HEX = os.path.join(ROOT, "application", "firmware", "out", "lane", "firmware.hex")
 OUT = os.path.join(ROOT, "stage4", "riscv.sv")
 PREFIX = "rvbl2_"
-CORE_HZ = {"mmcm": 15625000, "bufgce_div": 31250000}   # 250 MHz / 16 (MMCM) or / 8 (BUFGCE_DIV)
+CORE_HZ = {"mmcm": 31250000, "mmcm_slow": 15625000, "bufgce_div": 31250000}   # 250 MHz / 8, / 16, / 8
+MMCM_DIV = {"mmcm": 32, "mmcm_slow": 64}   # CLKOUT0 = 1000 MHz VCO / this
 SV_RESERVED_MODULES = {"top", "tick_gen", "Transmitter", "Receiver", "RISCV", "sh_ddr"}
 
 
@@ -131,14 +134,14 @@ def imem_module(words):
 
 
 SHELL_MMCM = """\
-    // 250 MHz -> 15.625 MHz. MMCME4_BASE: VCO = 250 x 4 = 1000 MHz (legal 800-1600),
-    // CLKOUT0 = 1000 / 64. Internal feedback; LOCKED holds the core in reset.
+    // 250 MHz -> CORE_MHZ MHz. MMCME4_BASE: VCO = 250 x 4 = 1000 MHz (legal 800-1600),
+    // CLKOUT0 = 1000 / MMCMDIV. Internal feedback; LOCKED holds the core in reset.
     wire clk_fb, clk_div, clk_locked;
     MMCME4_BASE #(
         .CLKIN1_PERIOD    (4.000),
         .DIVCLK_DIVIDE    (1),
         .CLKFBOUT_MULT_F  (4.000),
-        .CLKOUT0_DIVIDE_F (64.000)
+        .CLKOUT0_DIVIDE_F (MMCMDIV.000)
     ) u_mmcm (
         .CLKIN1   (i_Clk),
         .RST      (1'b0),
@@ -164,9 +167,9 @@ SHELL = """\
 // RISCV - the module top.sv instantiates as `riscvtop`. FPGA-only shell around
 // the RVBL-2 chip (instance e_PROCESSOR, exactly as verified), so top.sv is used
 // unchanged:
-//   * the clock: our multicycle core was signed off at 33 ns (Sky130). Here it
-//     runs from clk_main_a0 divided by 16 (15.625 MHz, 64 ns); a pessimistic
-//     estimate of its longest path is 17-20 ns, so the margin is over 3x;
+//   * the clock: our multicycle core was signed off at 33 ns (Sky130) and cannot
+//     run at 250 MHz; it runs from clk_main_a0 divided down (CORE_MHZ MHz). Our
+//     estimate of its longest path on this FPGA: 11 ns typical, 18 ns pessimistic;
 //   * the reset: i_Nrst is top.sv's riscv_nreset (active low, 250 MHz domain);
 //     it is synchronised into the core clock (asynchronous assert, synchronous
 //     release) and also held while the clock is not yet locked;
@@ -386,7 +389,9 @@ def build(args):
                        flags=re.M)
         body.append("// ---- from rtl/%s " % f + "-" * max(0, 70 - len(f)) + "\n" + t.strip() + "\n")
     body.append(imem_module(words))
-    shell = SHELL.replace("CLOCK", SHELL_MMCM if args.clock == "mmcm" else SHELL_BUFGCE_DIV)
+    shell = SHELL.replace("CLOCK", SHELL_BUFGCE_DIV if args.clock == "bufgce_div" else
+                          SHELL_MMCM.replace("MMCMDIV", str(MMCM_DIV[args.clock])))
+    shell = shell.replace("CORE_MHZ", ("%.3f" % (args.core_hz / 1e6)).rstrip("0").rstrip("."))
     shell = shell.replace("PREFIXtop", PREFIX + "top").replace("CORE_HZ", str(args.core_hz))
     shell = shell.replace("i_Nrst", "i_nRst")
     if args.mutate == "reset":
@@ -415,7 +420,7 @@ def build(args):
         "//   ROM: %d words; the 'I' record must report rom_words %d, rom_crc 0x%04X" % (
             len(words), len(words), rom_crc(words)),
         "//   core clock %d Hz (%s); UART %d clocks/bit at 115,200 bps" % (
-            args.core_hz, "MMCM" if args.clock == "mmcm" else "BUFGCE_DIV",
+            args.core_hz, "BUFGCE_DIV" if args.clock == "bufgce_div" else "MMCM",
             (args.core_hz + 57600) // 115200),
         "//   modules: RISCV, Transmitter, Receiver, and rvbl2_* (no other names)",
         "// ============================================================================",
@@ -433,7 +438,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--out", default=OUT)
     ap.add_argument("--check", action="store_true", help="fail if --out differs from a fresh build")
-    ap.add_argument("--clock", choices=("mmcm", "bufgce_div"), default="mmcm")
+    ap.add_argument("--clock", choices=("mmcm", "mmcm_slow", "bufgce_div"), default="mmcm")
     ap.add_argument("--core-hz", type=int, default=None,
                     help="the core clock the UART divider assumes (mutation tests only)")
     ap.add_argument("--mutate", choices=("reset", "txdone", "rxdone", "pins"), default=None)

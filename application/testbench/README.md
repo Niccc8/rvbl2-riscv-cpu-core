@@ -31,11 +31,11 @@ and its pins after every vehicle, with the model.
 
 | Scenario | What it covers | Result |
 |---|---|---|
-| `directed` | Every rule at its limit: each decision; dedup and guard windows at and past their limits; clone speed exactly at the limit and 1 ms over; the signal floor; table overflows; all 5 error kinds and their suppression; the key loaded, cleared and replaced; the ROM check | 78/78 |
+| `directed` | Every rule at its limit: each decision; dedup and guard windows at and past their limits; clone speed exactly at the limit and 1 ms over; the signal floor; table overflows; all 7 error kinds and their suppression; the key loaded, then locked (an empty or new key refused); the ROM check, keyed; the lane clock across the 32-bit wrap | 103/103 |
 | `showcase` | Every outcome once, authenticated; the demonstration run. Also at 921,600 bps | 30/30, 30/30 |
 | `fuzz` | Random bytes, start-byte storms, flipped bits, unknown types, wrong lengths, cut-off frames, among 60 vehicles | 262/262 |
-| `random` | 127 mixed vehicles, authenticated, with a signal floor | 396/396 |
-| coverage | Every outcome, every error and its suppression, every table limit, every parameter boundary, key on and off, identity | 34/34 bins |
+| `random` | 127 mixed vehicles, authenticated from a counter start just below 2^32 (so the counter wraps), with a signal floor | 396/396 |
+| coverage | Every outcome, every error and its suppression, every table limit, every parameter boundary, key loaded / with counter start / change refused, identity plain and keyed, the clock wrap | 40/40 bins |
 
 `tb_app.v` also measures the timing the firmware must meet: the longest time a received byte
 waits before the firmware reads it (it must be less than one byte-time, or a byte is lost),

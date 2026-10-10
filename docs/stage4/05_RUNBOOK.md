@@ -13,14 +13,17 @@ Source of every fact: `01_aws_reference.md`. Evidence that it works: `06_verific
       (needs WSL for Verilator/Yosys). Do **not** start a build on anything else.
 - [ ] Open `stage4/riscv.sv`. Its header must say:
       `ROM: 2793 words; the 'I' record must report rom_words 2793, rom_crc 0x56DE` and
-      `core clock 15625000 Hz (MMCM); UART 136 clocks/bit`. 4,315 lines; last line `endmodule`.
+      `core clock 31250000 Hz (MMCM); UART 271 clocks/bit`. 4,315 lines; last line `endmodule`.
 - [ ] Have the organisers' `top.sv` ready **unchanged** (532 lines): from
       `github.com/championchip-experience-community/CCX_Malaysia_Edition_Stage_4/src/top.sv`
       (sha256 `0fd7391018a38aee…`). We need **no edit** to it: our module is called `RISCV`,
       its ports are `i_Rx_Serial, i_Clk, i_nRst, o_Tx_Serial, io_Pins`, and
       `riscvtop.e_PROCESSOR.w_PC_Output` exists in our design.
-- [ ] Have the fallback file ready too: `stage4/riscv_bufgce_div.sv` (same design, the clock
-      divided by a BUFGCE_DIV instead of an MMCM; pre-verified the same way). Only for §6.
+- [ ] Know the two backups (pre-verified the same way; only for §6, never first):
+      `stage4/riscv_15mhz.sv` (same design at 15.625 MHz: if the core clock misses timing) and
+      `stage4/riscv_bufgce_div.sv` (31.25 MHz from a BUFGCE_DIV: if the MMCM is refused).
+- [ ] Optional but recommended: ask the organisers that a clock divider inside `riscv.sv` is
+      fine (their README describes the core on `clk_main_a0` but does not forbid it).
 - [ ] Copy the 12 command lines of §4 into a text file you can paste from.
 
 ## 1. Upload (VM offline, free)
@@ -42,7 +45,7 @@ Source of every fact: `01_aws_reference.md`. Evidence that it works: `06_verific
 | 2.2 | Watch the log for the first ~5 min: elaboration errors appear early | No `ERROR:` lines. Warnings `[Synth 8-5799] ... tri-state ... converted to logic` are **expected** (top.sv's and our `io_Pins` tri-states) |
 | 2.3 | Wait (~40 min in the guide's run) | Ends with *"Finished building design checkpoints for customer design top"* and a JSON block with `"FpgaImageId": "afi-…"`, `"FpgaImageGlobalId": "agfi-…"` |
 | 2.4 | **Copy both IDs** into your notes now | — |
-| 2.5 | If the log shows a timing summary, note `WNS` for each clock. Our core clock path has >3× margin by our estimate; the 250 MHz paths are the organisers' and the short UART/pin synchronisers | `WNS ≥ 0` expected. A small negative WNS on a 250 MHz path is not a reason to stop: load and test (§3) |
+| 2.5 | Search the log for the timing summary (`WNS`, `Timing constraints are met`/`not met`); note WNS per clock. The core clock (from `u_mmcm`, 32 ns) has 43 % slack in our pessimistic estimate; the 250 MHz paths are the organisers' and our short synchronisers | `WNS ≥ 0` expected. **Negative WNS on the core clock:** load and test anyway (§3); if any ladder step or line misbehaves, rebuild with `riscv_15mhz.sv` (§6). A small negative WNS on a 250 MHz path: load and test |
 
 ## 3. Load and bring-up ladder (FPGA console)
 
@@ -121,9 +124,11 @@ Lamps (`-o`): `0x10` charged, `0x20` camera, `0x40` alarm, `0x80` lane closed.
 ## 6. Rebuild or not? (each rebuild = ~45 min of credit)
 
 ```text
-Synthesis failed? ──yes──► fix per §5 (paste/duplicate/PC line/MMCM→fallback) ──► rebuild
+Synthesis failed? ──yes──► fix per §5 (paste/duplicate/PC line/MMCM→riscv_bufgce_div.sv) ──► rebuild
       │no
 L0/L1 fail after a manual reset? ──yes──► rebuild with riscv_bufgce_div.sv
+      │no
+Core-clock WNS < 0 AND a ladder step or line misbehaves? ──yes──► rebuild with riscv_15mhz.sv
       │no
 L2 (identify) wrong CRC? ──yes──► wrong file was built ──► rebuild with the right one
       │no

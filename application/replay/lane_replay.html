@@ -553,7 +553,7 @@ $("src-true").addEventListener("click", () => choose("true"));
 $("src-pasted").addEventListener("click", () => choose("pasted"));
 $("load").addEventListener("click", () => {
   const p = C.parseTranscript($("paste").value);
-  if (!p.recs.length) { $("pmsg").textContent = "No records found. Paste lines starting REC, JSON lines from rvbl2 --json, or 16-hex-digit records."; return; }
+  if (!p.recs.length) { $("pmsg").textContent = "No records found. Paste lines starting REC, JSON record lines, or 16-hex-digit records."; return; }
   pasted = $("paste").value; $("src-pasted").disabled = false; choose("pasted");
   $("pmsg").textContent = `Loaded ${p.recs.length} records` + (p.pins.length ? ` and ${p.pins.length} pin samples.` : ".");
   $("road").scrollIntoView({behavior: reduce ? "auto" : "smooth", block: "center"});
