@@ -1,0 +1,12 @@
+endpoints checked: 3620
+longest path estimate: 17.20 ns into $auto$ff.cc:266:slice$50117.D
+  cells on it: CARRY4 x9, FDRE x1, INV x2, LUT2 x6, LUT3 x5, LUT4 x2, LUT5 x2, LUT6 x2, MUXF7 x6, MUXF8 x6, MUXF9 x3
+  from: $auto$ff.cc:266:slice$41154
+  next: 17.20 ns into $auto$ff.cc:266:slice$50116.D
+  next: 17.20 ns into $auto$ff.cc:266:slice$50113.D
+  next: 17.20 ns into $auto$ff.cc:266:slice$50111.D
+  next: 17.20 ns into $auto$ff.cc:266:slice$47940.D
+  next: 17.20 ns into $auto$ff.cc:266:slice$47939.D
+core clock 32.00 ns (31.25 MHz): slack 14.80 ns, path uses 54 % of the period
+model: pessimistic
+VERDICT: GO (GO needs slack >= 25 % of the period)

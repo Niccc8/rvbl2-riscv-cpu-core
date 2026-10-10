@@ -1,0 +1,257 @@
+============================================================
+ Stage 4 system simulation: organisers' emu.c -> top.sv -> riscv.sv
+ clk_main_a0 250 MHz; emu waits simulated at 1.00 x real
+============================================================
+
+-- 0. bring-up: RST reads 1; PC reads 0x00401F5C then 0x00401ED0: running in ROM
+PASS bring-up
+
+-- 1. valid tag, class matches -> CHARGED RM 2.50, P4 on
+$ ./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x00 -r4 0x11000056 -r4 0x7B3C00FA -o 0x10
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x80511930 to UART RX
+[ok] Written 0xDCA583F3 to UART RX
+[ok] Written 0x39E21AF3 to UART RX
+[ok] Written 0x5A6ECCE5 to UART RX
+[ok] Written 0xF592 to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x11000056 from UART TX
+[ok] Read 0x7B3C00FA from UART TX
+[ok] Read 0x00000010 from OUTPUT PINS
+PASS line 1 (3400.0 ms simulated)
+
+-- 2. car tag on a lorry -> CLASS MISMATCH, charged at the lorry fare, P4+P5
+$ ./emu -d 0xF0 -i 0x05 -t4 0x301552A5 -t4 0x00000075 -t4 0x8E9F9930 -t4 0x8C92C86B -t4 0xC4C6BBD7 -t4 0x5A96577D -t2 0x69D0 -i 0x00 -r4 0x31020056 -r4 0xFF6702EE -o 0x30
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000005 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x8E9F9930 to UART RX
+[ok] Written 0x8C92C86B to UART RX
+[ok] Written 0xC4C6BBD7 to UART RX
+[ok] Written 0x5A96577D to UART RX
+[ok] Written 0x69D0 to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x31020056 from UART TX
+[ok] Read 0xFF6702EE from UART TX
+[ok] Read 0x00000030 from OUTPUT PINS
+PASS line 2 (3400.0 ms simulated)
+
+-- 3. taxi tag -> CHARGED at the taxi fare RM 1.30
+$ ./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x96C5C430 -t4 0x9D003D70 -t4 0xD1491C14 -t4 0x5AF48B19 -t2 0xB12C -i 0x00 -r4 0x14000056 -r4 0x113C0082 -o 0x10
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x96C5C430 to UART RX
+[ok] Written 0x9D003D70 to UART RX
+[ok] Written 0xD1491C14 to UART RX
+[ok] Written 0x5AF48B19 to UART RX
+[ok] Written 0xB12C to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x14000056 from UART TX
+[ok] Read 0x113C0082 from UART TX
+[ok] Read 0x00000010 from OUTPUT PINS
+PASS line 3 (3400.0 ms simulated)
+
+-- 4. no tag read -> NO TAG, camera P5
+$ ./emu -d 0xF0 -i 0x01 -i 0x00 -r4 0x17010056 -r4 0x43220000 -o 0x20
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x17010056 from UART TX
+[ok] Read 0x43220000 from UART TX
+[ok] Read 0x00000020 from OUTPUT PINS
+PASS line 4 (800.0 ms simulated)
+
+-- 5. motorcycle, no tag -> FREE, no lamp
+$ ./emu -d 0xF0 -i 0x07 -i 0x00 -r4 0x07050056 -r4 0xCAB00000 -o 0x00
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000007 to INPUT PINS
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x07050056 from UART TX
+[ok] Read 0xCAB00000 from UART TX
+[ok] Read 0x00000000 from OUTPUT PINS
+PASS line 5 (800.0 ms simulated)
+
+-- 6. stolen car on the hotlist -> HOTLIST, camera + alarm P5+P6
+$ ./emu -d 0xF0 -t4 0x710D48A5 -t4 0xAFE4D002 -t4 0x3550AD7D -t4 0x01594065 -t2 0xDC97 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0xD0027130 -t4 0xAD7DAFE4 -t4 0x40653550 -t4 0x5A5E2559 -t2 0xA128 -i 0x00 -r4 0x11030056 -r4 0x1CEA0000 -o 0x60
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x710D48A5 to UART RX
+[ok] Written 0xAFE4D002 to UART RX
+[ok] Written 0x3550AD7D to UART RX
+[ok] Written 0x01594065 to UART RX
+[ok] Written 0xDC97 to UART RX
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0xD0027130 to UART RX
+[ok] Written 0xAD7DAFE4 to UART RX
+[ok] Written 0x40653550 to UART RX
+[ok] Written 0x5A5E2559 to UART RX
+[ok] Written 0xA128 to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x11030056 from UART TX
+[ok] Read 0x1CEA0000 from UART TX
+[ok] Read 0x00000060 from OUTPUT PINS
+PASS line 6 (5200.0 ms simulated)
+
+-- 7. cloned tag: seen 40 km away 30 s ago -> CLONE, camera + alarm
+$ ./emu -d 0xF0 -t4 0x020347A5 -t4 0x9AC60190 -t4 0xF91153A5 -t4 0xCE5BEDFF -t4 0x83BEFF60 -t4 0x02B913A3 -t4 0x00000000 -t2 0x380D -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0xEDFFF930 -t4 0xFF60CE5B -t4 0x13A383BE -t4 0x5AFC67B9 -t2 0x11AB -i 0x00 -r4 0x11040056 -r4 0x4DC70000 -o 0x60
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x020347A5 to UART RX
+[ok] Written 0x9AC60190 to UART RX
+[ok] Written 0xF91153A5 to UART RX
+[ok] Written 0xCE5BEDFF to UART RX
+[ok] Written 0x83BEFF60 to UART RX
+[ok] Written 0x02B913A3 to UART RX
+[ok] Written 0x00000000 to UART RX
+[ok] Written 0x380D to UART RX
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0xEDFFF930 to UART RX
+[ok] Written 0xFF60CE5B to UART RX
+[ok] Written 0x13A383BE to UART RX
+[ok] Written 0x5AFC67B9 to UART RX
+[ok] Written 0x11AB to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x11040056 from UART TX
+[ok] Read 0x4DC70000 from UART TX
+[ok] Read 0x00000060 from OUTPUT PINS
+PASS line 7 (6400.0 ms simulated)
+
+-- 8. radio-corrupted tag (bad Gen2 CRC) -> NO TAG, camera
+$ ./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x8E165130 -t4 0x75494A89 -t4 0xB4A5E024 -t4 0x5A207FB7 -t2 0x063C -i 0x00 -r4 0x17010056 -r4 0x43220000 -o 0x20
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x8E165130 to UART RX
+[ok] Written 0x75494A89 to UART RX
+[ok] Written 0xB4A5E024 to UART RX
+[ok] Written 0x5A207FB7 to UART RX
+[ok] Written 0x063C to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x17010056 from UART TX
+[ok] Read 0x43220000 from UART TX
+[ok] Read 0x00000020 from OUTPUT PINS
+PASS line 8 (3400.0 ms simulated)
+
+-- 9. adjacent lane's weak read below the RSSI floor -> NO TAG
+$ ./emu -d 0xF0 -t4 0x1E0A50A5 -t4 0x0BB801F4 -t4 0x004000FA -t2 0xCD00 -t1 0xC8 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x064F9130 -t4 0x5D5EB5D9 -t4 0x66176C76 -t4 0x145724E4 -t2 0x282A -i 0x00 -r4 0x17010056 -r4 0x43220000 -o 0x20
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x1E0A50A5 to UART RX
+[ok] Written 0x0BB801F4 to UART RX
+[ok] Written 0x004000FA to UART RX
+[ok] Written 0xCD00 to UART RX
+[ok] Written 0xC8 to UART RX
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x064F9130 to UART RX
+[ok] Written 0x5D5EB5D9 to UART RX
+[ok] Written 0x66176C76 to UART RX
+[ok] Written 0x145724E4 to UART RX
+[ok] Written 0x282A to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x17010056 from UART TX
+[ok] Read 0x43220000 from UART TX
+[ok] Read 0x00000020 from OUTPUT PINS
+PASS line 9 (4900.0 ms simulated)
+
+-- 10. lane closed (P3) -> LANE CLOSED, P7 stays on while closed
+$ ./emu -d 0xF0 -i 0x09 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x08 -r4 0x17060056 -r4 0x120F0000 -o 0x80
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000009 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x80511930 to UART RX
+[ok] Written 0xDCA583F3 to UART RX
+[ok] Written 0x39E21AF3 to UART RX
+[ok] Written 0x5A6ECCE5 to UART RX
+[ok] Written 0xF592 to UART RX
+[ok] Written 0x00000008 to INPUT PINS
+[ok] Read 0x17060056 from UART TX
+[ok] Read 0x120F0000 from UART TX
+[ok] Read 0x00000080 from OUTPUT PINS
+PASS line 10 (3400.0 ms simulated)
+
+-- 11. authenticated: key + counter start 1000, one car -> the 'A' record (Chaskey-12 tag)
+$ ./emu -d 0xF0 -t4 0x52144BA5 -t4 0x2D4C4256 -t4 0x616C2032 -t4 0x6B20656E -t4 0xE8217965 -t4 0x51000003 -t1 0x14 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x00 -r4 0xCEC30041 -r4 0xF241EFCB -o 0x10
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x52144BA5 to UART RX
+[ok] Written 0x2D4C4256 to UART RX
+[ok] Written 0x616C2032 to UART RX
+[ok] Written 0x6B20656E to UART RX
+[ok] Written 0xE8217965 to UART RX
+[ok] Written 0x51000003 to UART RX
+[ok] Written 0x14 to UART RX
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x80511930 to UART RX
+[ok] Written 0xDCA583F3 to UART RX
+[ok] Written 0x39E21AF3 to UART RX
+[ok] Written 0x5A6ECCE5 to UART RX
+[ok] Written 0xF592 to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0xCEC30041 from UART TX
+[ok] Read 0xF241EFCB from UART TX
+[ok] Read 0x00000010 from OUTPUT PINS
+PASS line 11 (5900.0 ms simulated)
+
+-- 12. identify: the chip reads its own ROM and reports its size and CRC
+$ ./emu -d 0xF0 -t4 0x5B0049A5 -t1 0xAA -r4 0x0AE90449 -r4 0x19A356DE
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x5B0049A5 to UART RX
+[ok] Written 0xAA to UART RX
+[ok] Read 0x0AE90449 from UART TX
+[ok] Read 0x19A356DE from UART TX
+PASS line 12 (1050.0 ms simulated)
+
+-- 13. NEGATIVE: valid tag, class matches -> CHARGED RM 2.50, P4 on (lamp value corrupted)
+$ ./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x00 -r4 0x11000056 -r4 0x7B3C00FA -o 0x00
+[error] OUT read error. Expected 0x00000000. Got 0x00000010
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x80511930 to UART RX
+[ok] Written 0xDCA583F3 to UART RX
+[ok] Written 0x39E21AF3 to UART RX
+[ok] Written 0x5A6ECCE5 to UART RX
+[ok] Written 0xF592 to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x11000056 from UART TX
+[ok] Read 0x7B3C00FA from UART TX
+PASS line 13: emu reports the error, as it must (3400.0 ms simulated)
+
+-- 14. NEGATIVE: identify: the chip reads its own ROM and reports its size and CRC (record byte corrupted)
+$ ./emu -d 0xF0 -t4 0x5B0049A5 -t1 0xAA -r4 0x0AE90449 -r4 0x18A356DE
+[error] UART read error. Expected 0x18A356DE. Got 0x19A356DE
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x5B0049A5 to UART RX
+[ok] Written 0xAA to UART RX
+[ok] Read 0x0AE90449 from UART TX
+PASS line 14: emu reports the error, as it must (1050.0 ms simulated)
+
+==== emu_sys: 15 passed, 0 failed, 46.503 s simulated ====
+EMU_SYS: ALL TESTS PASSED

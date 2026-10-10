@@ -1,0 +1,35 @@
+
+8. Printing statistics.
+
+=== RISCV ===
+
+   Number of wires:               5488
+   Number of wire bits:          21002
+   Number of public wires:         396
+   Number of public wire bits:    5144
+   Number of memories:               0
+   Number of memory bits:            0
+   Number of processes:              0
+   Number of cells:               9654
+     BUFG                            1
+     CARRY4                        121
+     DSP48E2                        10
+     FDPE                            2
+     FDRE                         1215
+     FDSE                            9
+     IBUF                            3
+     INV                            69
+     IOBUF                           8
+     LUT1                          304
+     LUT2                         1110
+     LUT3                          876
+     LUT4                          640
+     LUT5                          519
+     LUT6                         2782
+     MMCME4_BASE                     1
+     MUXF7                        1405
+     MUXF8                         437
+     MUXF9                         139
+     OBUF                            1
+     RAMB36E2                        2
+

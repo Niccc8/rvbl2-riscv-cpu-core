@@ -6,7 +6,7 @@ locally for history, now superseded) and the notes of our pre-`top.sv` wrapper (
 tagged with its source; anything untagged is a design consequence, and the reasoning is next to it.
 
 | Tag | Source (precedence: PDF > REPO > EMU > older notes) |
-|---|---|
+| --- | --- |
 | **[PDF]** | `AWS Guide.pdf`, 15 slides, given by the organisers (local only, not in git), plus the "Commands" text file it links to |
 | **[REPO]** | Organisers' Stage 4 repo `CCX_Malaysia_Edition_Stage_4` @ `b748304` (2026-10-08): `README.md`, `src/top.sv` (sha256 `0fd73910…68551`) |
 | **[EMU]** | Organisers' `RVBL-Emulator/src/emu.c` from `CCX_Malaysia_Edition_Stage_3` @ `560947c` (sha256 `31e4ca7c…cda4`): the source of `./emu` |
@@ -21,7 +21,7 @@ our *older notes*). One open point needs a hardware answer: §7.
 ## 1. The flow, step by step [PDF]
 
 | # | Where | Action | Evidence of success |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | ChipInventor, left bar | **AWS FPGA** | The AWS FPGA page: status pill **VM Offline**, buttons **Start Synthesis · Start FPGA · Terminate VM** |
 | 2 | File tree | Create a file (icon at the top of the tree) and paste code into it. **`cl_ports.vh` is provided by AWS: never modify it.** The example tree is `cl_ports.vh`, `riscv.sv`, `tick_gen.sv`, `top.sv` | Files listed |
 | 3 | `top.sv` | Adapt only the `RISCV riscvtop (...)` instance (module name, port names on the left) and, if needed, the PC read line (§3) | — |
@@ -44,7 +44,7 @@ way to load it [PDF, REPO; §6 discusses a loadable IMEM].
 ## 2. The files we provide [REPO]
 
 | File | Content | Rule |
-|---|---|---|
+| --- | --- | --- |
 | `top.sv` | The organisers' file, **unchanged except the `RISCV riscvtop` instance and the `3'b111` PC line** | *"All other sections of `top.sv` must remain unchanged."* |
 | `riscv.sv` | **Our whole processor and every module it uses, plus `Transmitter` and `Receiver`** (top.sv instantiates them but does not define them) | One file is fine: *"as long as every required module is declared in `riscv.sv`"* |
 | `cl_ports.vh` | AWS Shell ports | Provided; do not modify |
@@ -82,14 +82,14 @@ RISCV riscvtop (                 // module name ours; instance name riscvtop is 
 ### 3.2 `Transmitter` and `Receiver`: we write them, top.sv fixes their ports
 
 | Module | Ports (exact names) | Behaviour top.sv and `emu` require |
-|---|---|---|
+| --- | --- | --- |
 | `Transmitter #(p_CLKS_PER_BIT)` | `i_Clk, i_Rst, i_Tx_Transmit, i_Tx_Byte[7:0], o_Tx_Serial, o_Tx_Done` | Starts a frame on the **one-cycle** `i_Tx_Transmit` pulse. `o_Tx_Serial` **idles high, including in reset** (it drives our `i_Rx_Serial`). **`o_Tx_Done` must be a level that stays 1 once the byte is sent**: `emu` polls bit 8 of `0x0C` 50 ms later and loops until it reads 1 (emu.c:211–216). A one-cycle pulse would hang `emu` forever |
 | `Receiver #(p_CLKS_PER_BIT)` | `i_Clk, i_Rst, i_Rx_Serial, o_Rx_Done, o_Rx_Byte[7:0]` | **`o_Rx_Done` must be a one-cycle pulse per byte**: every cycle it is high, the FIFO walker advances by 8 (top.sv:270–274). `i_Rx_Serial` comes from our core, so it needs a synchroniser if our core runs in another clock domain |
 
 ### 3.3 The register map (OCL AXI4-Lite, BAR0), exactly as coded
 
 | Offset | Read returns | A write does |
-|---|---|---|
+| --- | --- | --- |
 | `0x00` RST | `{31'b0, riscv_nreset}` | bit 0 → `riscv_nreset` (0 = hold core **and both wrapper UARTs** in reset, and **clear the RX FIFO and walker**) |
 | `0x04` IN | `{16'b0, input_en, input_pins}` | `[7:0]` → `input_pins`, `[15:8]` → `input_en`. **Not cleared by `riscv_nreset`**: it keeps its value between `emu` runs |
 | `0x08` OUT | `{24'b0, output_pins}` | nothing (no write case) |
@@ -108,7 +108,7 @@ assign output_pins[n] =  input_en[n] ? io_Pins[n]    : 1'bz;   // host observes 
 ```
 
 | `input_en[n]` (`IN[8+n]`, `emu -d` bit) | Host | Our chip must | `OUT` bit *n* |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **0** | **drives** `input_pins[n]` | treat pin *n* as an **input** (DATADIR = 0) | `'z` in RTL; **reads 0 on hardware** (below) |
 | **1** | releases and observes | **drive** pin *n* (DATADIR = 1) | our pin level |
 
@@ -139,7 +139,7 @@ by naming our hierarchy to match: an instance `e_PROCESSOR` inside `RISCV` holdi
 ## 4. `./emu` exactly [EMU]
 
 | Behaviour | Line | Consequence |
-|---|---|---|
+| --- | --- | --- |
 | **50 ms sleep before every register access** (`DELAY_AXI`) | 16–17, 43, 55 | One byte sent = write + ≥1 poll = ~100 ms. A 26-byte tag-read frame takes ~2.6 s. Nothing in our firmware may time out between bytes (the frame timeout is off by default ✓) |
 | **Start of every run:** `-d 0x01` (read-modify-write), then RST `1, 0, 1` | 141–167 | Between reset release and the line's own `-d`, **pin 0 is released (floats)** and pins 7–1 are **driven with the previous run's `input_pins`**. See §6, R6 |
 | `-d DIR`: `IN = (IN & 0x00FF) \| DIR << 8` | 97–118 | Not inverted |
@@ -168,7 +168,7 @@ by naming our hierarchy to match: an instance `e_PROCESSOR` inside `RISCV` holdi
 ## 6. Requirements on our `riscv.sv`, derived from §1–§5
 
 | # | Requirement | Why |
-|---|---|---|
+| --- | --- | --- |
 | R1 | One file `riscv.sv`: module `RISCV` with ports `i_Rx_Serial, i_Clk, i_nRst, o_Tx_Serial, io_Pins[7:0]`, an instance `e_PROCESSOR` with wire `w_PC_Output` → `top.sv` used **byte-for-byte unchanged** | Zero-edit integration removes a whole class of paste mistakes |
 | R2 | `Transmitter` / `Receiver` with the exact ports and the semantics of §3.2 | `emu -t` hangs otherwise; the FIFO fills with garbage otherwise |
 | R3 | **No module may be named `top`** (ours is), `tick_gen`, or anything in the HDK; prefix every module (`rvbl2_…`) | Duplicate-module errors in synthesis |
@@ -182,7 +182,7 @@ by naming our hierarchy to match: an instance `e_PROCESSOR` inside `RISCV` holdi
 ## 7. Open points (answer on the first hardware session, or ask the organisers)
 
 | # | Question | Current best evidence | Risk if wrong |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Q1 | May a CL instantiate an **MMCM / BUFGCE_DIV** inside `riscv.sv` to run the core slower than 250 MHz? | AWS's own CL examples instantiate clock generators inside the CL; nothing in the PDF or repo forbids it | Decides whether R9 is solved by a slower clock or by a faster core (`04_fpga_plan.md`) |
 | Q2 | What does Vivado's tri-state conversion produce for a pin **nobody** drives (pin 0 during emu's start-up window)? | A disabled single driver reads 0 (§3.4) | **Closed by design:** all 12 lines pass with the pin read as 0 and as 1 (`06_verification.md` G4), after the firmware arms its detector only once the lane is seen empty |
 | Q3 | Does the web editor accept a ~400 kB file? | The example `riscv.sv` was 16 kB | Fallback: split into several `.sv` files (the build compiles every file in the tree [OLD]) |
@@ -191,7 +191,7 @@ by naming our hierarchy to match: an instance `e_PROCESSOR` inside `RISCV` holdi
 ## 8. Discrepancies with our older notes
 
 | # | Old claim (where) | New truth | Source | Impact |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | 1 | *"The Stage 3 wrapper is not provided … the DUT clock and baud are our choice"* (old ref §14.9a; `stage4-aws/`) | The organisers provide a **frozen `top.sv`**; the processor gets `clk_main_a0` directly; the wrapper UARTs run at 2,170 clocks per bit | REPO | Our own wrapper (`stage4-aws/rtl/rvbl2_cl.sv`, its MMCM, 256-deep TX queue, registers `0x20`–`0x3C`, loadable IMEM, host tool `rvbl2_f2.c`) **cannot be used as is**. Only what fits inside `RISCV` survives. Archive it |
 | 2 | `emu` writes `IN[15:8] = ~DIR`; *"bits 15:8 = 1 means the host drives"* (old ref §14.3, §14.6; our `rvbl2_cl.sv`, `tb_cl.sv`) | `emu` writes `DIR` unchanged; `input_en = 1` means the host **releases** the pin | EMU 108, REPO | Our old wrapper and its testbench had the polarity backwards (already flagged in `stage4-aws/README.md`). Moot with the organisers' `top.sv`; the new testbench uses their RTL and emu's real code |
 | 3 | `0x18` = *"the most recent byte"* (old ref §14.3) | `0x18` = the FIFO write pointer, in bits (0–56) | REPO | Cosmetic; emu never reads it |

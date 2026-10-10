@@ -1,0 +1,136 @@
+built /tmp/rvbl2_mut_reset/sim_emu
+============================================================
+ Stage 4 system simulation: organisers' emu.c -> top.sv -> riscv.sv
+ clk_main_a0 250 MHz; emu waits simulated at 0.10 x real
+============================================================
+
+-- 0. bring-up: RST reads 1; PC reads 0x00400000 then 0x00400000: NOT RUNNING
+FAIL bring-up
+
+-- 1. valid tag, class matches -> CHARGED RM 2.50, P4 on
+$ ./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x00 -r4 0x11000056 -r4 0x7B3C00FA -o 0x10
+[error] UART read error. Expected 0x11000056. Got 0x00000000
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x80511930 to UART RX
+[ok] Written 0xDCA583F3 to UART RX
+[ok] Written 0x39E21AF3 to UART RX
+[ok] Written 0x5A6ECCE5 to UART RX
+[ok] Written 0xF592 to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+FAIL line 1 (325.0 ms simulated)
+
+==== emu_sys: 0 passed, 2 failed, 0.325 s simulated ====
+EMU_SYS: FAILURES PRESENT
+MUTANT reset: CAUGHT ([error] UART read error. Expected 0x11000056. Got 0x00000000)
+built /tmp/rvbl2_mut_divider/sim_emu
+============================================================
+ Stage 4 system simulation: organisers' emu.c -> top.sv -> riscv.sv
+ clk_main_a0 250 MHz; emu waits simulated at 0.10 x real
+============================================================
+
+-- 0. bring-up: RST reads 1; PC reads 0x00401F70 then 0x00401DB4: running in ROM
+PASS bring-up
+
+-- 1. valid tag, class matches -> CHARGED RM 2.50, P4 on
+$ ./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x00 -r4 0x11000056 -r4 0x7B3C00FA -o 0x10
+[error] UART read error. Expected 0x11000056. Got 0x00E000F0
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x80511930 to UART RX
+[ok] Written 0xDCA583F3 to UART RX
+[ok] Written 0x39E21AF3 to UART RX
+[ok] Written 0x5A6ECCE5 to UART RX
+[ok] Written 0xF592 to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+FAIL line 1 (325.0 ms simulated)
+
+==== emu_sys: 1 passed, 1 failed, 0.325 s simulated ====
+EMU_SYS: FAILURES PRESENT
+MUTANT divider: CAUGHT ([error] UART read error. Expected 0x11000056. Got 0x00E000F0)
+built /tmp/rvbl2_mut_txdone/sim_emu
+============================================================
+ Stage 4 system simulation: organisers' emu.c -> top.sv -> riscv.sv
+ clk_main_a0 250 MHz; emu waits simulated at 0.10 x real
+============================================================
+
+-- 0. bring-up: RST reads 1; PC reads 0x00401F70 then 0x00401DB4: running in ROM
+PASS bring-up
+
+-- 1. valid tag, class matches -> CHARGED RM 2.50, P4 on
+$ ./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x00 -r4 0x11000056 -r4 0x7B3C00FA -o 0x10
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000001 to INPUT PINS
+HANG: more than 400 register accesses
+FAIL line 1 (2005.0 ms simulated)
+
+==== emu_sys: 1 passed, 1 failed, 2.005 s simulated ====
+EMU_SYS: FAILURES PRESENT
+MUTANT txdone: CAUGHT (HANG: more than 400 register accesses)
+built /tmp/rvbl2_mut_rxdone/sim_emu
+============================================================
+ Stage 4 system simulation: organisers' emu.c -> top.sv -> riscv.sv
+ clk_main_a0 250 MHz; emu waits simulated at 0.10 x real
+============================================================
+
+-- 0. bring-up: RST reads 1; PC reads 0x00401F70 then 0x00401DB4: running in ROM
+PASS bring-up
+
+-- 1. valid tag, class matches -> CHARGED RM 2.50, P4 on
+$ ./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x00 -r4 0x11000056 -r4 0x7B3C00FA -o 0x10
+[error] UART read error. Expected 0x11000056. Got 0x7B7B7B7B
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x80511930 to UART RX
+[ok] Written 0xDCA583F3 to UART RX
+[ok] Written 0x39E21AF3 to UART RX
+[ok] Written 0x5A6ECCE5 to UART RX
+[ok] Written 0xF592 to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+FAIL line 1 (325.0 ms simulated)
+
+==== emu_sys: 1 passed, 1 failed, 0.325 s simulated ====
+EMU_SYS: FAILURES PRESENT
+MUTANT rxdone: CAUGHT ([error] UART read error. Expected 0x11000056. Got 0x7B7B7B7B)
+built /tmp/rvbl2_mut_pins/sim_emu
+============================================================
+ Stage 4 system simulation: organisers' emu.c -> top.sv -> riscv.sv
+ clk_main_a0 250 MHz; emu waits simulated at 0.10 x real
+============================================================
+
+-- 0. bring-up: RST reads 1; PC reads 0x00401F70 then 0x00401DB4: running in ROM
+PASS bring-up
+
+-- 1. valid tag, class matches -> CHARGED RM 2.50, P4 on
+$ ./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x00 -r4 0x11000056 -r4 0x7B3C00FA -o 0x10
+[error] OUT read error. Expected 0x00000010. Got 0x00000000
+[ok] RISC-V started!
+[ok] Written 0x000000F0 to DIRECTION
+[ok] Written 0x00000001 to INPUT PINS
+[ok] Written 0x301552A5 to UART RX
+[ok] Written 0x00000075 to UART RX
+[ok] Written 0x80511930 to UART RX
+[ok] Written 0xDCA583F3 to UART RX
+[ok] Written 0x39E21AF3 to UART RX
+[ok] Written 0x5A6ECCE5 to UART RX
+[ok] Written 0xF592 to UART RX
+[ok] Written 0x00000000 to INPUT PINS
+[ok] Read 0x11000056 from UART TX
+[ok] Read 0x7B3C00FA from UART TX
+FAIL line 1 (340.0 ms simulated)
+
+==== emu_sys: 1 passed, 1 failed, 0.340 s simulated ====
+EMU_SYS: FAILURES PRESENT
+MUTANT pins: CAUGHT ([error] OUT read error. Expected 0x00000010. Got 0x00000000)
+==== mutants: 5 caught, 0 missed ====
+MUTANTS: ALL CAUGHT

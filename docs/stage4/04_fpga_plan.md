@@ -15,7 +15,7 @@ v4) is a literal ROM equal to `firmware.hex` bit for bit. The shell also provide
 `Transmitter`/`Receiver` that `top.sv` instantiates.
 
 | File | Clock | Use |
-|---|---|---|
+| --- | --- | --- |
 | `stage4/riscv.sv` | MMCM ÷8 → **31.25 MHz**, UART 271 clocks/bit | **The build** |
 | `stage4/riscv_15mhz.sv` | MMCM ÷16 → 15.625 MHz, UART 136 | Timing backup (only if the build log shows negative slack on the core clock) |
 | `stage4/riscv_bufgce_div.sv` | BUFGCE_DIV ÷8 → 31.25 MHz, UART 271 | Primitive backup (only if the MMCM is refused) |
@@ -68,7 +68,7 @@ RISCV                      ports exactly as top.sv instantiates it: i_Rx_Serial,
 ### 3.1 The diff against the organisers' `top.sv`: none
 
 | `top.sv` line | Allowed change | Ours | Why no edit is needed |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `RISCV riscvtop (` | module name | `RISCV` | Our shell module is named `RISCV` |
 | `.i_Rx_Serial (w_Rx),` … `.io_Pins (io_Pins)` | left names | same | Our ports carry exactly these names |
 | `3'b111: … riscvtop.e_PROCESSOR.w_PC_Output;` | path or `32'b0` | same | Our instance is `e_PROCESSOR` and holds a wire `w_PC_Output` |
@@ -104,7 +104,7 @@ RISCV                      ports exactly as top.sv instantiates it: i_Rx_Serial,
 ### 4.1 Bring-up ladder (runbook §3)
 
 | Step | Command | Proves |
-|---|---|---|
+| --- | --- | --- |
 | L0 | `./axil_rw read 0 0x00` → 1 | Core out of reset |
 | L1 | `./axil_rw read 0 0x1C` twice → different values in `0x00400000–0x00402BA4` | MMCM locked, core running our ROM |
 | L2 | `./emu` identify line → CRC `0x56DE` | UART both ways; this exact build |
@@ -114,7 +114,7 @@ RISCV                      ports exactly as top.sv instantiates it: i_Rx_Serial,
 ## 5. Clock-domain crossings (all between related clocks; Vivado times them)
 
 | Crossing | From → to | Handling |
-|---|---|---|
+| --- | --- | --- |
 | `i_Rx_Serial` | `top.sv` Transmitter FF (250) → our UART | 2-FF synchroniser in `uart.v` |
 | `o_Tx_Serial` | our UART FF (31.25) → `Receiver` | 2-FF synchroniser in our `Receiver` |
 | `io_Pins` in | `input_pins` (250) → our GPIO | 2-FF synchroniser in the FPGA chip top |
@@ -125,7 +125,7 @@ RISCV                      ports exactly as top.sv instantiates it: i_Rx_Serial,
 ## 6. Pre-flight gate (`scripts/stage4/preflight.sh`; evidence in `06_verification.md`)
 
 | # | Check | Pass criterion |
-|---|---|---|
+| --- | --- | --- |
 | G1 | The three files regenerate identically; ROM = `firmware.hex`; no directive, file I/O or `initial` in code; safe module names; vendor hashes | all |
 | G2 | Verilator 5.020 `-sv -Wall` with the **real** `top.sv` | 0 errors; warnings only from `rtl/`, listed and explained in `stage4/sim/lint_waivers.txt` |
 | G3 | **The organisers' `emu.c`, unmodified**, driving the real `top.sv` + our file (Verilator; `fpga_pci_peek/poke` → AXI-Lite; `usleep` → simulated time; a fresh emu per line) | all 12 lines, the bring-up, and 2 corrupted lines reported |
@@ -137,7 +137,7 @@ RISCV                      ports exactly as top.sv instantiates it: i_Rx_Serial,
 ## 7. Risk register
 
 | # | Risk | L | I | Mitigation |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | R1 | Organisers require the core itself at 250 MHz | L–M | H | Ask before building (Q1) |
 | R2 | MMCM fed by `clk_main_a0` refused in the CL partition | L | H | AWS's own AWS_CLK_GEN puts MMCMs in the CL fed by a shell clock; LOCKED gates reset; L1 detects "no lock"; `riscv_bufgce_div.sv` |
 | R3 | Hierarchical PC reference refused | L | H | Same depth as the organisers' working build; one-line `32'b0` fallback |
@@ -149,7 +149,7 @@ RISCV                      ports exactly as top.sv instantiates it: i_Rx_Serial,
 ## 8. Options considered and not taken
 
 | Option | Verdict |
-|---|---|
+| --- | --- |
 | UART-loadable IMEM (a bootloader loads firmware into a RAM IMEM) | Not now: emu sends ~10 bytes/s (an 11 kB image ≈ 19 min, lost at every emu reset), and it changes the verified IMEM and boot path. Roadmap item ("field-updatable firmware") |
 | Two images in one ROM (ours + an echo mode for the organisers' test line) | Not needed (GATE 2) |
 | Core at 250 MHz with a clock enable on every register | Rewrites every always block; Vivado would report thousands of false violations with no XDC |

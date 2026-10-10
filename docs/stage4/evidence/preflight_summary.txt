@@ -1,0 +1,22 @@
+Stage 4 pre-flight, 2026-10-10 17:43, commit 30bc470
+
+PASS  G1  riscv.sv, riscv_15mhz.sv and riscv_bufgce_div.sv are current (regenerated from rtl/ + firmware.hex)
+PASS  G1  ROM bit-identical to firmware.hex; no $readmemh/`timescale/`define/initial; module names safe
+PASS  G1  organisers' top.sv (0fd7391018a38aeeaef7...) and emu.c (31e4ca7c3d4c4f08dd89...) unchanged
+PASS  G2  Verilator -sv -Wall, riscv.sv + real top.sv: 0 errors, only waived rtl/ warnings
+PASS  G2  Verilator -sv -Wall, riscv_15mhz.sv + real top.sv: 0 errors, only waived rtl/ warnings
+PASS  G2  Verilator -sv -Wall, riscv_bufgce_div.sv + real top.sv: 0 errors, only waived rtl/ warnings
+PASS  G3  riscv.sv: organisers' emu.c on top.sv, 12 lines + bring-up + 2 negatives at 0.1x emu waits: ==== emu_sys: 15 passed, 0 failed, 4.650 s simulated ====
+PASS  G3  riscv_15mhz.sv: organisers' emu.c on top.sv, 12 lines + bring-up + 2 negatives at 0.1x emu waits: ==== emu_sys: 15 passed, 0 failed, 4.650 s simulated ====
+PASS  G3  riscv_bufgce_div.sv: organisers' emu.c on top.sv, 12 lines + bring-up + 2 negatives at 0.1x emu waits: ==== emu_sys: 15 passed, 0 failed, 4.650 s simulated ====
+PASS  G4  emu start-up window, undriven pin 0 reads 0, stale pins 7-1: ==== tb_emu_preview: 12 passed, 0 failed ====
+PASS  G4  emu start-up window, undriven pin 0 reads 1, stale pins 7-1: ==== tb_emu_preview: 12 passed, 0 failed ====
+PASS  G5  riscv.sv: Yosys synth_xilinx xcup: no latch, check clean; RAMB36E2 2 (DMEM), DSP48E2 10, LUT 6231, FF 1226
+PASS  G6  riscv.sv @ 32 ns: longest path estimate: 17.20 ns, uses 54 % of the period (pessimistic; typical 11.07 ns): GO
+PASS  G5  riscv_15mhz.sv: Yosys synth_xilinx xcup: no latch, check clean; RAMB36E2 2 (DMEM), DSP48E2 10, LUT 6249, FF 1224
+PASS  G6  riscv_15mhz.sv @ 64 ns: longest path estimate: 17.80 ns, uses 28 % of the period (pessimistic; typical 11.31 ns): GO
+PASS  G5  riscv_bufgce_div.sv: Yosys synth_xilinx xcup: no latch, check clean; RAMB36E2 2 (DMEM), DSP48E2 10, LUT 6452, FF 1226
+PASS  G6  riscv_bufgce_div.sv @ 32 ns: longest path estimate: 18.10 ns, uses 57 % of the period (pessimistic; typical 11.43 ns): GO
+PASS  G7  ==== mutants: 5 caught, 0 missed ==== (reset polarity, UART divider, o_Tx_Done, o_Rx_Done, pin direction)
+
+PREFLIGHT: GO

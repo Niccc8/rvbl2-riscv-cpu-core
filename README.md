@@ -18,17 +18,15 @@ golden model on every byte it sends and every pin it drives, on the design expor
 platform itself. See [How the chip is proven](#how-the-chip-is-proven).
 
 | | |
-|---|---|
+| --- | --- |
 | **Official firmware testbench** | **PASS**: 34/34 checks, on the canvas design, the platform's exported netlist, and the ChipInventor simulator |
-| **Application testbench** | **PASS**: directed 78/78 · showcase 30/30 (also at 921,600 bps) · fuzz 262/262 · random 396/396 · coverage 34/34 bins |
-| **Emulator preview** | **PASS**: 11/11 `./emu` command lines of the application, 4/4 of the official firmware, played on the chip |
+| **Application testbench** | **PASS**: directed 103/103 · showcase 30/30 (also at 921,600 bps) · fuzz 262/262 · random 396/396 · coverage 40/40 bins |
+| **Emulator preview** | **PASS**: 12/12 `./emu` command lines of the application (with emu's start-up window, an undriven pin read as 0 and as 1), 4/4 of the official firmware, played on the chip |
 | **On ChipInventor** | application SCEN 0, 1, 2: 13/13, 8/8, 6/6 · the full chip suite: 15,517 checks |
 | **GPIO and UART, alone** | `tb_gpio` 42 · `tb_uart` 243 · `tb_periph_soc` 25 · the chip suite's SUITE 4 (Stage 3 peripherals): 219 |
-| **Firmware** | C → assembly ([`main.s`](application/firmware/out/lane/asm/main.s)) → the organisers' Firmware Builder: 2,722 instructions in a 2,774-word image, 2,892 B of static data; rebuilt byte-identical with Ubuntu's GCC 13.2 |
-| **Timing** | boot 1,758 cycles · a received byte waits at most 199 cycles (one byte lasts 2,630) · decision at most 0.62 ms after the vehicle leaves |
+| **Firmware** | C → assembly ([`main.s`](application/firmware/out/lane/asm/main.s)) → the organisers' Firmware Builder: LaneX protocol v4, 2,741 instructions in a 2,793-word image, 2,892 B of static data; rebuilt byte-identical with Ubuntu's GCC 13.2 |
+| **Timing** | boot 1,758 cycles · a received byte waits at most 199 cycles (one byte lasts 2,630) · decision at most 18,873 cycles (0.62 ms) after the vehicle leaves |
 | **Equivalence** | the ChipInventor design runs in lockstep with the reference RTL: 1,238,859 comparisons, 0 mismatches |
-
-*(The table above is the Stage 3 record. Stage 4 numbers are below.)*
 
 ---
 
@@ -41,7 +39,7 @@ edits**. Inside, a thin FPGA shell divides the clock to 31.25 MHz (MMCM), our AS
 verified core, and provides the `Transmitter`/`Receiver` that `top.sv` instantiates.
 
 | | |
-|---|---|
+| --- | --- |
 | **LaneX protocol v4** | the Stage 4 audit's fixes: lane clock survives the 32-bit wrap (49.7 days) · a full hotlist is reported · the key locks once loaded · a counter start stops replays across reboots · the identity record is MAC-signed when keyed · the vehicle detector arms once the lane is seen empty ([`PROTOCOL.md`](application/PROTOCOL.md)) |
 | **Application regression** | directed 103/103 · random 396/396 · fuzz 262/262 · showcase 30/30 (and at 921,600 bps) · coverage 40/40 bins · platform netlist 26/26 · firmware 2,793 words, rebuilt byte-identical |
 | **Full-system simulation** | **the organisers' own `emu.c`, unmodified**, drives their real `top.sv` and our `riscv.sv`: all 12 command lines, the PC readback, and negative lines caught |
@@ -56,7 +54,7 @@ Everything Submission Guide §9 asks for, linked directly. The report PDF is sub
 ChampionCHIP platform and the video is on YouTube; **everything else is in this repository**.
 
 | Guide §9 requires | Where it is |
-|---|---|
+| --- | --- |
 | Technical report (PDF) | submitted on the ChampionCHIP platform (8 pages: 7 plus 1 of the 2 extra pages the organisers allow; 1.6 MB); its figures are in [`report-stage3/figures/`](report-stage3/figures/) |
 | GitHub link | this repository, branch **`stage3`** |
 | Video demo (YouTube) | **[https://youtu.be/OZdPSbZZKvU](https://youtu.be/OZdPSbZZKvU)** (also on the report's first page) |
@@ -104,7 +102,7 @@ wrapper on the FPGA), and a new program is one pasted `imem` block. **Click to o
 The Stage 3 Submission Guide's workflow, and where each step is.
 
 | Brief | Step | Folder | Start with |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | §2 | GPIO & UART integration | [`rtl/`](rtl/) (`gpio.v`, `uart.v`, `address_decoder.v`), [`chipinventor/`](chipinventor/) | [`docs/GPIO_UART_INTEGRATION.md`](docs/GPIO_UART_INTEGRATION.md) |
 | §3 | Official firmware testbench | [`official-firmware-testbench/`](official-firmware-testbench/) | its [README](official-firmware-testbench/README.md) |
 | §4 | Application definition | [`application/`](application/) | its [README](application/README.md), then [`PROTOCOL.md`](application/PROTOCOL.md) |
@@ -120,7 +118,7 @@ All three folders of the organisers'
 are used as they are:
 
 | Their folder | Here | How |
-|---|---|---|
+| --- | --- | --- |
 | `RVBL-GPIO-UART-Test-Firmware` | [`official-firmware-testbench/firmware/`](official-firmware-testbench/firmware/) | `main.s` and `firmware.txt`, unchanged; the `firmware.txt` lines go into our `imem` as their README says ([`gen_imem.py`](official-firmware-testbench/gen_imem.py)) |
 | `RVBL-Firmware-Builder` | [`tools/rvbl-firmware-builder/`](tools/rvbl-firmware-builder/) | an unchanged copy. It rebuilds their `firmware.txt` byte for byte, and builds our application: [`application/firmware/Makefile`](application/firmware/Makefile) calls it with `make -f` |
 | `RVBL-Emulator` | [`application/emulator-preview/`](application/emulator-preview/) | our `./emu` command lines use its options (`-d -i -o -t1/2/4 -r1/2/4`), and the preview plays them on the chip the way `emu.c` does: reset first, bytes least-significant first, `-o` over the whole OUT register |
@@ -148,6 +146,11 @@ bash scripts/run_all.sh
 
 # The ChipInventor design, including the checks of the platform's exported netlist
 bash chipinventor/scripts/run_ci.sh
+
+# Stage 4: regenerate the AWS F2 build files, then the pre-flight gate (Verilator and Yosys
+# through WSL or on Linux; the organisers' files in stage4/vendor/, see stage4/README.md)
+python scripts/stage4/gen_riscv_sv.py
+bash scripts/stage4/preflight.sh            # or: RUN_STAGE4=1 bash scripts/run_all.sh
 ```
 
 All are self-checking and exit non-zero on any failure. The application runs simulate every
@@ -155,13 +158,14 @@ UART bit at the chip's real 115,200 bps, so they are the slow part: `run_all.sh`
 10 minutes (about 55 with `RUN_LONG=1`), `run_ci.sh` about a minute.
 
 `run_ci.sh` checks the export whichever of our ROMs its `imem` holds (the validation ROM, the
-application's, or the official test firmware's; it names which), and runs each suite with the
-ROM that suite needs swapped in. Nothing else in the export changes.
+application's, the official test firmware's, or the Stage 3 submission's v3 application ROM, which
+the platform still holds; it names which), and runs each suite with the ROM that suite needs
+swapped in. Nothing else in the export changes.
 
 **On the ChipInventor platform** (project `top`):
 
 | To run | In the `imem` block's Code | As the testbench |
-|---|---|---|
+| --- | --- | --- |
 | The organisers' test firmware | `official-firmware-testbench/imem_official.v` | `official-firmware-testbench/tb_official_firmware.v` |
 | Its waveform (0.39 ms: one echo, one pin change) | the same | `official-firmware-testbench/tb_wave_official.v` |
 | The application | `chipinventor/app/imem_app.v` | `chipinventor/build/tb_app_platform.v` (written by `run_ci.sh`), with `SCEN` = 0, 1, 2 |
@@ -202,6 +206,11 @@ application/                  brief §4-6: LaneX
 tools/rvbl-firmware-builder/  the organisers' Firmware Builder, an unchanged copy
 report-stage3/figures/        the Stage 3 report's figures, and our architecture drawings (SVG, PNG)
 docs/demo/                    the demonstration page, as GitHub Pages serves it
+docs/stage4/                  Stage 4: AWS ground truth, audit, market, FPGA design, runbook,
+                              verification, MAX 10 prototype scope, pitch kit
+stage4/                       Stage 4: the AWS F2 build file riscv.sv (generated) and its backups,
+                              the system simulator (the organisers' emu.c on their top.sv), stubs
+scripts/stage4/               Stage 4: the riscv.sv generator and the pre-flight gate
 docs/, scripts/, tests/       specifications and reports; regression drivers; test programs
 report-stage2/figures/        Stage 2: the report's figures (the report itself is on the main branch)
 macros/, synth/               Stage 2: optional SRAM macro, synthesis reports
@@ -211,8 +220,14 @@ macros/, synth/               Stage 2: optional SRAM macro, synthesis reports
 
 ## Honest limitations
 
-- **Not yet on hardware.** The emulator preview plays the `./emu` lines on the chip in
-  simulation, with `emu.c`'s semantics. The AWS F2 run is Stage 4.
+- **Hardware: the AWS F2 run is pending.** The organisers' own `emu.c` drives the full F2 design
+  (their `top.sv` + our `riscv.sv`) in simulation, and every pre-flight check passes
+  ([`docs/stage4/06_verification.md`](docs/stage4/06_verification.md)); the board run itself is
+  the next step ([runbook](docs/stage4/05_RUNBOOK.md)).
+- **Configuration frames are not authenticated.** Records are (Chaskey-12, a locked key, a
+  replay-proof counter); commands that change fares or lists are a roadmap item.
+- **Not certified, and not alone.** No roadside-equipment certification; lane controllers such
+  as SIDRA's PARSEC already run in Malaysian MLFF pilots. LaneX is the chip-level core.
 - **The platform runs the application at 921,600 bps.** The ChipInventor simulator stops a
   run after a fixed wall-clock time, so its three application runs use a faster UART. The
   runs at the chip's real 115,200 bps are local (Icarus Verilog), on the platform's export.
@@ -225,7 +240,7 @@ macros/, synth/               Stage 2: optional SRAM macro, synthesis reports
 ## Stage 2: the processor and the chip
 
 | | |
-|---|---|
+| --- | --- |
 | **ISA** | RV32I (37) + Zmmul (4) + Xicrc (3) = 47 instructions |
 | **Microarchitecture** | 6-state multicycle FSM, 3–5 cycles per instruction |
 | **Official validation firmware** | PASS: `x4 = 0x00000000` after 991 cycles |

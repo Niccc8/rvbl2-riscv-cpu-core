@@ -15,7 +15,7 @@ Severity: **Critical** (the FPGA demo fails), **High**, **Medium**, **Low**.
 ## A. FPGA blockers (from the AWS contract)
 
 | # | Finding | Sev. | Evidence | Fix | Pri. |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | A1 | **Our core cannot be assumed to close timing at 250 MHz.** `top.sv` clocks `RISCV` from `clk_main_a0` (250 MHz, 4 ns). The multicycle core has no ALU-result register: register read → 32×32 multiply (DSP + adder chain) → register write happens in one cycle; estimated 80–140 MHz | Critical | `01` §3.1; old estimate (Yosys, 36-cell path) | Run the unchanged core from a divided clock generated **inside `RISCV`** (MMCM or `BUFGCE_DIV`, both auto-constrained by Vivado, no XDC needed). Alternative (pipeline the core to 250 MHz) touches verified RTL: rejected unless the clock divider is disallowed (`01` Q1) | P0 |
 | A2 | **emu's start-up window**: after reset release, pin 0 is released and undriven, and pins 7–1 carry the *previous* run's `input_pins`, for ~100 ms until the line's own `-d`. A spurious P0 edge would create a phantom vehicle record and shift every `-r` | High | `01` §4, emu.c 141–167 | Model it exactly in the system simulation (both resolutions of an undriven pin); fix only if a run fails | P0 (verify) |
 | A3 | Our chip module is named **`top`** (collides with AWS `top`); generic module names (`alu`, `uart`, `imem`…) may collide with HDK sources | High | `rtl/*.v` | Generator prefixes every module (`rvbl2_`) | P0 |
@@ -28,7 +28,7 @@ Severity: **Critical** (the FPGA demo fails), **High**, **Medium**, **Low**.
 ## B. Correctness
 
 | # | Finding | Sev. | Evidence | Fix | Pri. |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | B1 | **The lane clock freezes after a 32-bit wrap.** `now` advances only if `t > now` (`main.c` on_read, `T`). After the host's millisecond clock wraps (2³² ms = **49.7 days** if it counts from its own boot), every new time is "smaller", `now` never moves again, and the guard and dedup windows silently stop working. The dedup test also uses signed 64-bit differences, which is wrong across the wrap | High | `main.c:500–501, 563–565, 400` | Serial-number arithmetic (RFC 1982): accept `t` when `(int32_t)(t - now) > 0`; all window tests as `uint32_t` differences, the same rule `too_fast` already uses. Model + directed test at the wrap | P1 |
 | B2 | **A full hotlist drops a stolen tag silently.** `hot_add` gives up when its 8-slot probe window is full; the back office never learns the tag is not being watched | High (for an operator) | `main.c:286–301`; coverage bin "probe window full 8" | Report it: an `E` record with a new reason 6 (table full, `type` = `H`), counted in `bad_frame` | P1 |
 | B3 | Sightings evict the oldest in the window silently | Low | `seen_put` | Expected behaviour (a cache); document | P2 |
@@ -39,7 +39,7 @@ Severity: **Critical** (the FPGA demo fails), **High**, **Medium**, **Low**.
 ## C. Security (pragmatic, no invented PKI)
 
 | # | Finding | Sev. | Fix | Pri. |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | C1 | **Silent downgrade**: an empty `K` frame turns authentication off, and anyone on the UART can do it | High | **Key lock**: once a key is loaded, `K` is refused until reset (`E` reason 7). Rotation = reset + reload, which the back office controls | P1 |
 | C2 | **Replay across reboots**: the `A` counter restarts at 0 at every key load, so after a reboot old `V`+`A` pairs verify again | High | `K` may carry a 4-byte **counter start** (payload 20 bytes): the back office sets it above every counter it has seen. 16-byte `K` keeps today's behaviour | P1 |
 | C3 | **`I` is integrity, not attestation**: a CRC detects a wrong or corrupted build; it proves nothing against a malicious firmware, which can report any CRC | Medium | Say so everywhere ("build fingerprint"). Optional: when a key is loaded, follow `I` with an `A` (MAC over the identity record), so the answer is authenticated | P0 (wording), P1 (MAC) |
@@ -50,7 +50,7 @@ Severity: **Critical** (the FPGA demo fails), **High**, **Medium**, **Low**.
 ## D. Operator reality
 
 | # | Finding | Fix | Pri. |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | D1 | Registered class = `epc[0] & 7` is **our assumption**; the Touch 'n Go tag layout is not public | Keep, and say it; in a deployment the class comes from the back office's account lookup | P2 |
 | D2 | Back office silent: the lane keeps deciding with its last lists and fares (fail-operational), but nobody can see how stale they are | `Q` could carry a configuration fingerprint (CRC of gantry, fares, parameters) so the back office can check the lane runs the intended configuration | P2 |
 | D3 | No heartbeat | The host polls with `Q` today; a periodic unsolicited record would break emu's 8-byte window | P2 |
@@ -59,7 +59,7 @@ Severity: **Critical** (the FPGA demo fails), **High**, **Medium**, **Low**.
 ## E. Lean
 
 | Metric | Value |
-|---|---|
+| --- | --- |
 | Code | 2,722 instructions, 2,774 of 4,096 IMEM words (68 %) |
 | Data | 2,892 B static + 4 KB stack of 8 KB DMEM |
 | Main loop | ~170 cycles per turn; a received byte waits ≤ 199 cycles (budget 2,630 at 30.3 MHz) |
@@ -70,7 +70,7 @@ Severity: **Critical** (the FPGA demo fails), **High**, **Medium**, **Low**.
 ## F. Standards: what is real
 
 | Claim | Status |
-|---|---|
+| --- | --- |
 | EPC Gen2 / ISO 18000-63 tag CRC (CRC-16/EPC-C1G2) | **Real**: the chip recomputes it; check value `0xD64E` verified on the RTL |
 | Chaskey-12, ISO/IEC 29192-6:2019 | **Real**: all 64 reference vectors in Python, six on the RTL, and the page's JS |
 | MLFF architecture (reader, classifier, ANPR, back office) | Concept-level alignment only; no certification claimed |
@@ -85,7 +85,7 @@ Stage 4 section is P0.
 ## H. The ten things a sceptic will attack
 
 | # | Attack | Our honest answer |
-|---|---|---|
+| --- | --- | --- |
 | 1 | "It's a student prototype." | Yes: an **FPGA-validated prototype** with a signed-off ASIC layout and a golden-model-checked firmware. What we sell today is a verified design and the team that built it |
 | 2 | "Any off-the-shelf MCU can run this." | True for the function. Our chip adds one-instruction CRC (Xicrc) and a design small enough (0.4 mm² in Sky130) to sit inside a reader; the point is owning the silicon path, not beating an MCU today |
 | 3 | "Kapsch and TransCore already sell lane controllers." | We are a component and IP for integrators, not a replacement for a tolling system |
@@ -106,7 +106,7 @@ Stage 4 section is P0.
 ## J. Outcome (closed 2026-10-10)
 
 | Item | Outcome | Evidence |
-|---|---|---|
+| --- | --- | --- |
 | A1 clock | MMCM ÷8 → 31.25 MHz inside `RISCV`; `top.sv` unchanged | `04` §2; `06` G6 |
 | A2 start-up window | Found real (a floating pin read as 1 made phantom vehicles); fixed in firmware: the detector arms once the lane is seen empty | `06` G4 |
 | A3–A7 | Generator: `rvbl2_` prefix, SV-clean, no `(* keep *)` on DMEM, literal ROM, `Transmitter`/`Receiver` with emu's semantics | `06` G1–G3, G5 |

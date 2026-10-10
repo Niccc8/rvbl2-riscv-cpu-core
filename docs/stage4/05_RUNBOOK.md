@@ -1,6 +1,7 @@
 # Stage 4 runbook: RVBL-2 + LaneX on the AWS F2 (ChipInventor "AWS FPGA")
 
-Use this every time you touch the AWS feature. Every step says what you should see. VM time
+**On the day, this is the only document you need.** Use it every time you touch the AWS feature.
+Every step says what you should see. VM time
 costs credit from **Start Synthesis** until **Terminate VM**: do the preparation first.
 Source of every fact: `01_aws_reference.md`. Evidence that it works: `06_verification.md`.
 
@@ -29,7 +30,7 @@ Source of every fact: `01_aws_reference.md`. Evidence that it works: `06_verific
 ## 1. Upload (VM offline, free)
 
 | # | Do | You should see |
-|---|---|---|
+| --- | --- | --- |
 | 1.1 | ChipInventor → left bar → **AWS FPGA** | Page with *VM Offline*, buttons Start Synthesis · Start FPGA · Terminate VM |
 | 1.2 | File tree: **do not touch `cl_ports.vh`**. If an old `riscv.sv` exists, replace its whole content; otherwise create `riscv.sv` | — |
 | 1.3 | Paste **all** of `stage4/riscv.sv` | Editor ends with `endmodule`; scroll to the top: the header lines of §0 |
@@ -40,12 +41,12 @@ Source of every fact: `01_aws_reference.md`. Evidence that it works: `06_verific
 ## 2. Build (~45 min of VM time)
 
 | # | Do | You should see |
-|---|---|---|
+| --- | --- | --- |
 | 2.1 | **Start Synthesis** | Pill *VM Online hh:mm:ss*; Logs: Vivado starts (`build_all.tcl`, recipe `A1 B2 C0 H2`) |
 | 2.2 | Watch the log for the first ~5 min: elaboration errors appear early | No `ERROR:` lines. Warnings `[Synth 8-5799] ... tri-state ... converted to logic` are **expected** (top.sv's and our `io_Pins` tri-states) |
 | 2.3 | Wait (~40 min in the guide's run) | Ends with *"Finished building design checkpoints for customer design top"* and a JSON block with `"FpgaImageId": "afi-…"`, `"FpgaImageGlobalId": "agfi-…"` |
 | 2.4 | **Copy both IDs** into your notes now | — |
-| 2.5 | Search the log for the timing summary (`WNS`, `Timing constraints are met`/`not met`); note WNS per clock. The core clock (from `u_mmcm`, 32 ns) has 43 % slack in our pessimistic estimate; the 250 MHz paths are the organisers' and our short synchronisers | `WNS ≥ 0` expected. **Negative WNS on the core clock:** load and test anyway (§3); if any ladder step or line misbehaves, rebuild with `riscv_15mhz.sv` (§6). A small negative WNS on a 250 MHz path: load and test |
+| 2.5 | Search the log for the timing summary (`WNS`, `Timing constraints are met`/`not met`); note WNS per clock. The core clock (from `u_mmcm`, 32 ns) has 46 % slack in our pessimistic estimate (17.2 ns path); the 250 MHz paths are the organisers' and our short synchronisers | `WNS ≥ 0` expected. **Negative WNS on the core clock:** load and test anyway (§3); if any ladder step or line misbehaves, rebuild with `riscv_15mhz.sv` (§6). A small negative WNS on a 250 MHz path: load and test |
 
 ## 3. Load and bring-up ladder (FPGA console)
 
@@ -59,9 +60,9 @@ sudo fpga-load-local-image -S 0 -I agfi-XXXXXXXX
 ```
 
 | Step | Command | Expected | Proves |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | L0 | `./axil_rw read 0 0x00` | `Read 0x00000001 @ 0x00000000` | Core out of reset |
-| L1 | `./axil_rw read 0 0x1C`, again 1 s later | Two **different** values, each between `0x00400000` and `0x00402BA4` | MMCM locked, core running our ROM, PC readback wired |
+| L1 | `./axil_rw read 0 0x1C`, again 1 s later | Two **different** values, each between `0x00400000` and `0x00402BA4` (the main loop is short: if two reads happen to match, read a third time) | MMCM locked, core running our ROM, PC readback wired |
 | L2 | §4 line **12 (identify)** | Ends `[ok] Read 0x0AE90449 …` `[ok] Read 0x19A356DE …` | UART both ways at 115,200; **the ROM on the FPGA is exactly this build** (2,793 words, CRC `0x56DE`) |
 | L3 | §4 line **1 (charged)** | `Read 0x11000056`, `Read 0x7B3C00FA`, `Read 0x00000010 from OUTPUT PINS` | Pins in/out, tag CRC, decision, record |
 | L4 | §4 lines 2–11 | Every line ends with `[ok] Read … from OUTPUT PINS` (or the second `-r4`) and no `[error]` | Every outcome, authentication |
@@ -107,14 +108,14 @@ Lamps (`-o`): `0x10` charged, `0x20` camera, `0x40` alarm, `0x80` lane closed.
 ## 5. When something is wrong: symptom → cause → fix
 
 | Symptom | Likely cause | Fix (no rebuild unless it says so) |
-|---|---|---|
+| --- | --- | --- |
 | Synthesis log: `module 'RISCV' not found` / `Transmitter` not found | `riscv.sv` not saved, or pasted partially | Re-paste, check last line `endmodule`, Save, restart synthesis |
 | `duplicate module` / `already declared` | An old `riscv.sv` or a second copy in the tree | Keep exactly one file defining `RISCV`; restart |
 | Error on `riscvtop.e_PROCESSOR.w_PC_Output` | Hierarchical reference not accepted (not expected: the organisers' own build uses it) | Change that one `top.sv` line to `3'b111: cl_ocl_rdata <= 32'b0;` (the README allows it); rebuild. L1 is then skipped |
 | A DRC/placement error naming `MMCME4_BASE` / `u_mmcm` | MMCM placement in the CL region refused | Rebuild with `stage4/riscv_bufgce_div.sv` (pre-verified fallback, 31.25 MHz) |
 | describe-fpga-images: `failed` | Build problem on the AWS side | Read the state message; rebuild only if it points at the design |
 | L0 reads `0x00000000` | Reset left low | `./axil_rw write 0 0x00 1` |
-| L1: PC frozen (same value twice) or `0x00000000` | Clock not locked / core held in reset | Repeat the manual reset; if still frozen, rebuild with the BUFGCE_DIV fallback |
+| L1: PC frozen (the same value three times) or `0x00000000` | Clock not locked / core held in reset | Repeat the manual reset; if still frozen, rebuild with the BUFGCE_DIV fallback |
 | emu stops after `[ok] Written … to UART RX` and never returns | `o_Tx_Done` not seen (should not happen: verified) | Ctrl-C; manual reset; retry L2 once |
 | `-r` reads `0x00000000` | The chip sent nothing: core not running or UART mismatch | Check L1; run L2. If L1 passes and L2 reads 0, report it (do not rebuild blindly) |
 | `-r` reads a valid `V` record but with seq `01` | A stray vehicle before the line's car (stale pins from an aborted line) | Run `./emu -d 0xF0 -i 0x00` once, then the line again |
@@ -149,15 +150,15 @@ A line fails? ──► rerun it once after `./emu -d 0xF0 -i 0x00` ──► st
 ## 8. Demo-day card (one page; at most six lines on stage)
 
 | # | Say | Run | The audience sees |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | "This is our chip, and it can prove which firmware it runs." | line 12 | `0x56DE`: the chip measured its own ROM; matches the build |
 | 2 | "A normal car with a valid tag." | line 1 | `56 … FA 00`: RM 2.50 charged, green lamp `0x10` |
 | 3 | "A car tag on a lorry: the classic toll fraud." | line 2 | CLASS MISMATCH, charged the lorry fare, camera `0x30` |
 | 4 | "A stolen car on the hotlist." | line 6 | HOTLIST, camera + alarm `0x60` |
 | 5 | "The same tag 40 km away 30 s ago: a clone." | line 7 | CLONE (impossible speed), alarm `0x60` |
-| 6 | "Every record is signed: a court-grade evidence trail." | line 11 | The `A` record: a Chaskey-12 (ISO/IEC 29192-6) tag, counter from 1,000 |
+| 6 | "Every record is signed: a tamper-evident evidence trail." | line 11 | The `A` record: a Chaskey-12 (ISO/IEC 29192-6) tag, counter from 1,000 |
 
 **If the live FPGA is unavailable or a line fails on stage:** say so plainly, then switch to the
 recorded run (screen capture of §3/§4 taken during bring-up), the system-simulation transcript
-(`build/stage4/emu_sys_full.log`: the organisers' own `emu.c` on our design), and the offline
+(`docs/stage4/evidence/emu_sys_full.log`: the organisers' own `emu.c` on our design), and the offline
 replay page (`docs/demo/index.html`, no network needed).

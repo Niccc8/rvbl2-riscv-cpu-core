@@ -59,6 +59,10 @@ KNOWN_ROMS = [
     ("the application ROM", os.path.join(ROOT, "app", "imem_app.v")),
     ("the official test firmware's ROM",
      os.path.join(os.path.dirname(ROOT), "official-firmware-testbench", "imem_official.v")),
+    # What the Stage 3 submission pasted on the platform (LaneX protocol v3); the
+    # current application ROM (v4, app/imem_app.v) is the Stage 4 image and is run
+    # on this export by step 16 with the ROM swapped in.
+    ("the Stage 3 submission's application ROM (protocol v3)", os.path.join(ROOT, "app", "imem_app_stage3.v")),
 ]
 
 # Resolved value every instance of these blocks must have (explicit or default).
