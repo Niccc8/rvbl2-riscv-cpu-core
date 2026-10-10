@@ -14,6 +14,7 @@ var LaneCore = (function () {
   var STATUS = ["CHARGED", "NO TAG", "CLASS MISMATCH", "HOTLIST", "CLONE", "FREE", "LANE CLOSED"];
   var FARES = [0, 250, 500, 750, 130, 380];                 // sen, classes 0..5
   var DEMO_KEY = bytes("RVBL-2 lane key!");
+  var PROTO = 4;   // protocol version: byte 7 of every authenticated message
   var CODE_TO_CLASS = [1, 2, 3, 0];
   var CODE_FOR = { 1: 0, 2: 1, 3: 2, 0: 3 };
 
@@ -68,11 +69,15 @@ var LaneCore = (function () {
     for (j = 0; j < 4; j++) out = out.concat(le32((v[j] ^ l[j]) >>> 0));
     return out.slice(0, taglen || 8);
   }
-  function authMessage(vrec, gantry, ctr) { return vrec.slice(0, 6).concat([gantry, 3]).concat(le32(ctr)); }
+  // The 12 bytes an 'A' authenticates: the record's first six, the gantry, the
+  // protocol version (3 for Stage 3 transcripts, 4 now), the counter.
+  function authMessage(rec, gantry, ctr, ver) {
+    return rec.slice(0, 6).concat([gantry, ver === undefined ? PROTO : ver]).concat(le32(ctr));
+  }
 
   // ---- records ------------------------------------------------------------
   var WHY = ["?", "frame CRC wrong", "length over 32", "unknown frame type", "wrong length for its type",
-             "frame cut off mid-way"];
+             "frame cut off mid-way", "table full: not stored", "key locked: refused"];
   function decode(r) {
     var d = { raw: r, kind: String.fromCharCode(r[0]), crcOk: crc16(r.slice(0, 6)) === (r[6] | r[7] << 8) };
     if (r[0] === 0x56) {
@@ -84,22 +89,27 @@ var LaneCore = (function () {
     else if (r[0] === 0x49) { d.proto = r[1]; d.romWords = r[2] | r[3] << 8; d.romCrc = r[4] | r[5] << 8; }
     return d;
   }
-  // Check every record: CRC, and each 'A' against its 'V' with the key and
-  // counter a toll back end would hold (counter from 0 at the first 'A').
-  // runOf[i], when given, is record i's run: every run starts from reset, so
-  // the counter starts again at 0 where the run changes.
-  function verify(recs, key, gantry, runOf) {
-    var ctr = 0, lastV = null, run = null;
+  // Check every record: CRC, and each 'A' against the 'V' or 'I' before it
+  // with the key and counter a toll back end would hold (counter from ctr0,
+  // default 0, at the first 'A'). The version in the message is the one the
+  // run's own 'I' record reports, else PROTO. runOf[i], when given, is record
+  // i's run: every run starts from reset, so the counter starts again where
+  // the run changes.
+  function verify(recs, key, gantry, runOf, ctr0) {
+    var ctr = ctr0 || 0, last = null, run = null, ver = PROTO;
     key = key || DEMO_KEY; gantry = gantry || 1;
     return recs.map(function (r, i) {
       var d = decode(r);
-      if (runOf && runOf[i] !== run) { run = runOf[i]; ctr = 0; lastV = null; }
-      if (d.kind === "V") lastV = r;
+      if (runOf && runOf[i] !== run) { run = runOf[i]; ctr = ctr0 || 0; last = null; ver = PROTO; }
+      if (d.kind === "I") ver = r[1];
+      if (d.kind === "V" || d.kind === "I") last = r;
       if (d.kind === "A") {
-        var want = lastV ? chaskey12(key, authMessage(lastV, gantry, ctr), 4) : null;
-        d.authOk = !!(want && lastV[1] === r[1] && hex(want) === hex(r.slice(2, 6)));
-        d.counter = ctr++;
-        d.forSeq = lastV ? lastV[1] : null;
+        var want = last ? chaskey12(key, authMessage(last, gantry, ctr, ver), 4) : null;
+        d.authOk = !!(want && last[1] === r[1] && hex(want) === hex(r.slice(2, 6)));
+        d.counter = ctr;
+        ctr = (ctr + 1) >>> 0;
+        d.forSeq = last ? last[1] : null;
+        d.forKind = last ? String.fromCharCode(last[0]) : null;
       }
       return d;
     });
@@ -343,7 +353,7 @@ var LaneCore = (function () {
     return L.join("\n") + "\n";
   }
 
-  return { STATUS: STATUS, FARES: FARES, DEMO_KEY: DEMO_KEY, KINDS: KINDS, CODE_TO_CLASS: CODE_TO_CLASS,
+  return { STATUS: STATUS, FARES: FARES, DEMO_KEY: DEMO_KEY, PROTO: PROTO, KINDS: KINDS, CODE_TO_CLASS: CODE_TO_CLASS,
            hex: hex, unhex: unhex, crc16: crc16, gen2Crc: gen2Crc, chaskey12: chaskey12,
            authMessage: authMessage, decode: decode, verify: verify, parseTranscript: parseTranscript,
            makeBlind: makeBlind, blindTestbench: blindTestbench, blindCycles: blindCycles,

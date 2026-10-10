@@ -21,7 +21,7 @@
 #include <stdint.h>
 #include "hal.h"
 
-#define PROTO      3
+#define PROTO      4
 #define SOF        0xA5
 #define MAX_LEN    32
 #define PENDING    8
@@ -145,8 +145,10 @@ static void seal(uint8_t r[8], uint32_t kind, const uint8_t body[5])
 /* ---- Chaskey-12 record authentication ------------------------------------
  * Chaskey-12 (Mouha, 2015; ISO/IEC 29192-6:2019): an ARX permutation on four
  * 32-bit words, twelve rounds, built for 32-bit microcontrollers. Each 'V'
- * record is followed by an 'A' record carrying the first 4 bytes of the tag
- * over V[0..5] | gantry | PROTO | counter, one 12-byte (padded) block. The
+ * (and 'I') record is followed by an 'A' record carrying the first 4 bytes of
+ * the tag over R[0..5] | gantry | PROTO | counter, one 12-byte (padded) block,
+ * the counter starting where 'K' says (so a reboot cannot replay old records)
+ * and the key locked until reset once loaded (no silent downgrade). The
  * rounds run MAC_ROUNDS_PER_STEP per main-loop iteration; anything that
  * emits a record first completes a pending MAC, so records keep the model's
  * order. The round and the subkeys are the HAL's (lib/hal.c), which
@@ -206,6 +208,19 @@ static void record(uint32_t kind, const uint8_t body[5])
     push8(r);
 }
 
+/* A record the key vouches for ('V', 'I'): while a key is loaded, the record
+ * and its 'A' leave together once the MAC job finishes. */
+static void signed_record(uint32_t kind, const uint8_t body[5])
+{
+    uint8_t r[8];
+    mac_flush();
+    seal(r, kind, body);
+    if (auth_on)
+        mac_start(r);
+    else
+        push8(r);
+}
+
 /* ---- ROM measurement ('I') ------------------------------------------------
  * The CRC-16 of the firmware image, word 0 to the end of .data's initial
  * values, one crcw per word. It runs ATTEST_WORDS_PER_STEP words per
@@ -241,7 +256,7 @@ static void att_step(void)
         uint8_t body[5] = {PROTO, (uint8_t)words, (uint8_t)(words >> 8),
                            (uint8_t)att_crc, (uint8_t)(att_crc >> 8)};
         att_busy = 0;
-        record(0x49, body);
+        signed_record(0x49, body);
     }
 }
 
@@ -283,10 +298,11 @@ static int hot_find(const epc_t *e)
     return -1;
 }
 
-static void hot_add(const epc_t *e)
+/* 1 = the tag is on the hotlist, 0 = no free slot in its probe window. */
+static int hot_add(const epc_t *e)
 {
     if (hot_find(e) >= 0)
-        return;
+        return 1;
     uint32_t h = epc_hash(e);
     for (uint32_t i = 0; i < PROBES; i++) {
         uint32_t k = (h + i) & (HOT_SLOTS - 1);
@@ -295,9 +311,10 @@ static void hot_add(const epc_t *e)
             hot[k] = *e;
             hot_state[k] = 1;
             hot_n++;
-            return;
+            return 1;
         }
     }
+    return 0;
 }
 
 static void hot_del(const epc_t *e)
@@ -334,7 +351,7 @@ static void seen_put(const epc_t *e, uint32_t g, uint32_t t)
             victim = k;
             goto put;
         }
-        if (!have || seen[k].t < vtime) {
+        if (!have || (int32_t)(seen[k].t - vtime) < 0) {
             victim = k;
             vtime = seen[k].t;
             have = 1;
@@ -398,7 +415,7 @@ static void finalize(void)
     for (uint32_t i = 0; i < vt_n; i++) {
         uart_service();
         int s = seen_get(&vt[i].e);
-        if (s >= 0 && seen[s].g == gantry && (int64_t)now - (int64_t)seen[s].t < (int64_t)dedup_ms)
+        if (s >= 0 && seen[s].g == gantry && (int32_t)(now - seen[s].t) < (int32_t)dedup_ms)
             continue;                                   /* charged here moments ago */
         if (best < 0 || vt[i].count > vt[best].count ||
             (vt[i].count == vt[best].count && vt[i].rssi > vt[best].rssi))
@@ -432,13 +449,7 @@ static void finalize(void)
     uart_service();
     uint8_t body[5] = {(uint8_t)seq, (uint8_t)st, (uint8_t)(phys << 4 | tagc),
                        (uint8_t)fare, (uint8_t)(fare >> 8)};
-    uint8_t v[8];
-    mac_flush();
-    seal(v, 0x56, body);
-    if (auth_on)
-        mac_start(v);                               /* 'V' and 'A' leave together */
-    else
-        push8(v);
+    signed_record(0x56, body);
     seq = (seq + 1) & 0xFF;
 
     uint32_t charged = st == ST_CHARGED || st == ST_MISMATCH;
@@ -476,6 +487,16 @@ static void on_gpio(uint32_t v)
 static uint32_t rd16(const uint8_t *p) { return p[0] | (uint32_t)p[1] << 8; }
 static uint32_t rd32(const uint8_t *p) { return rd16(p) | rd16(p + 2) << 16; }
 
+/* The lane clock follows the host's millisecond time, and only moves forward.
+ * "Forward" is serial-number arithmetic (RFC 1982): t is later than now when
+ * it lies less than 2^31 ms ahead, modulo 2^32, so the clock keeps running
+ * through the 32-bit wrap (49.7 days) instead of freezing at its top. */
+static void advance(uint32_t t)
+{
+    if ((int32_t)(t - now) > 0)
+        now = t;
+}
+
 static void get_epc(epc_t *e, const uint8_t *p)
 {
     e->w[0] = rd32(p);
@@ -498,8 +519,7 @@ static void on_read(const uint8_t *p)
 {
     uint32_t t = rd32(p), pc = rd16(p + 4), stored = rd16(p + 18), rssi = p[20];
     epc_t e;
-    if (t > now)
-        now = t;
+    advance(t);
     uint32_t crc = xicrc_b(0xFFFF, pc >> 8);
     crc = xicrc_b(crc, pc & 0xFF);
     for (int i = 0; i < 12; i++)
@@ -529,7 +549,7 @@ static void on_read(const uint8_t *p)
     }
 }
 
-/* Payload length each type takes; -1 = unknown type. 'K' takes 16 or 0. */
+/* Payload length each type takes; -1 = unknown type. 'K' takes 16, 20 or 0. */
 static int frame_len_ok(uint32_t type, uint32_t n)
 {
     switch (type) {
@@ -542,7 +562,7 @@ static int frame_len_ok(uint32_t type, uint32_t n)
     case 0x53: return n == 17;
     case 0x51: return n == 0;
     case 0x50: return n == 10;
-    case 0x4B: return n == 16 || n == 0;
+    case 0x4B: return n == 16 || n == 20 || n == 0;
     case 0x49: return n == 0;
     default:   return -1;
     }
@@ -564,9 +584,7 @@ static void on_frame(uint32_t type, const uint8_t *p, uint32_t n)
     if (type == 0x52) {
         on_read(p);
     } else if (type == 0x54) {
-        uint32_t t = rd32(p);
-        if (t > now)
-            now = t;
+        advance(rd32(p));
     } else if (type == 0x43) {
         gantry = p[0] & 7;
         closed_cfg = p[1] & 1;
@@ -577,7 +595,8 @@ static void on_frame(uint32_t type, const uint8_t *p, uint32_t n)
         pos[p[0] & 7] = (uint16_t)rd16(p + 1);
     } else if (type == 0x48) {
         get_epc(&e, p);
-        hot_add(&e);
+        if (!hot_add(&e))
+            error(6, type);                             /* not stored: say so */
     } else if (type == 0x68) {
         get_epc(&e, p);
         hot_del(&e);
@@ -596,14 +615,15 @@ static void on_frame(uint32_t type, const uint8_t *p, uint32_t n)
         hold = p[7] ? p[7] : 1;
         frame_timeout = rd16(p + 8);
     } else if (type == 0x4B) {
-        mac_flush();                                    /* finish under the old key */
-        auth_on = n != 0;
-        auth_ctr = 0;
-        if (auth_on) {
+        if (auth_on) {                                  /* locked until reset */
+            error(7, type);
+        } else if (n) {
             uint32_t k1[4];
             for (int i = 0; i < 4; i++)
                 kk[i] = rd32(p + 4 * i);
             chaskey12_subkeys(k1, k2, kk);
+            auth_ctr = n == 20 ? rd32(p + 16) : 0;
+            auth_on = 1;
         }
     } else if (type == 0x49) {
         att_p = ROM_BASE;                               /* (re)start the measurement */

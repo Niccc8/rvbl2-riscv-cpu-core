@@ -25,8 +25,12 @@ Protocol (every multi-byte field little-endian unless stated):
                            iterations; 0 counts as 1), timeout u16 (frame
                            timeout, loop iterations; 0 = never, the
                            default)                                       (10)
-    'K' 0x4B record key    key[16]: Chaskey-12 key, authentication on and
-                           the record counter reset to 0; len 0: off      (16|0)
+    'K' 0x4B record key    key[16] [, counter_start u32]: Chaskey-12 key;
+                           authentication on, the record counter starts at
+                           counter_start (0 if absent). Once a key is loaded
+                           it is locked until reset: any later 'K' is
+                           refused ('E' 7). len 0 with no key: no effect
+                                                                   (16|20|0)
     'I' 0x49 identify      -: the chip measures its own ROM              (0)
 
   Chip -> host record  always 8 bytes, last two = crc16 over bytes 0..5
@@ -34,15 +38,19 @@ Protocol (every multi-byte field little-endian unless stated):
     'A' 0x41 authenticator seq u8, tag[4]: follows every 'V' while a key is
                            loaded. tag = the first 4 bytes of Chaskey-12
                            (ISO/IEC 29192-6) over the 12-byte message
-                           V[0..5] | gantry | 0x03 | counter u32; the counter
-                           counts 'A' records since the key was loaded
+                           V[0..5] | gantry | 0x04 | counter u32; the counter
+                           counts 'A' records from counter_start. While a key
+                           is loaded the 'I' record is followed by an 'A'
+                           too (seq = byte 1 of 'I', the version)
     'Q' 0x51 stats         vehicles u16, bad_tag u8, bad_frame u8, hotlist u8
     'E' 0x45 error         reason u8, type u8, bad_frame u8, 0, 0. Reasons:
                            1 frame CRC, 2 len > 32, 3 unknown type, 4 wrong
                            length for the type, 5 frame cut off (the line
-                           went quiet mid-frame). One 'E' per burst: after an
+                           went quiet mid-frame), 6 table full (type 'H': the
+                           hotlist entry was NOT stored), 7 key locked (type
+                           'K': a key is already loaded). One 'E' per burst: after an
                            'E', errors are only counted until a good frame
-    'I' 0x49 identity      version u8 (3), rom_words u16, rom_crc u16: the
+    'I' 0x49 identity      version u8 (4), rom_words u16, rom_crc u16: the
                            Xicrc CRC-16 (seed FFFF, each word MSB first) of
                            the ROM image from word 0, computed on the chip in
                            the background (answered within a few ms; records
@@ -55,6 +63,13 @@ Protocol (every multi-byte field little-endian unless stated):
   classifier (00 class 1, 01 class 2, 10 class 3, 11 class 0 motorcycle),
   P3 lane closed. Outputs, held until the next vehicle: P4 charged,
   P5 camera fired, P6 security alarm; P7 = lane closed (live).
+
+  Time: the lane clock 'now' follows the host's millisecond times ('R', 'T')
+  and only moves forward, in serial-number arithmetic (RFC 1982): t is later
+  than now when 0 < (t - now) mod 2^32 < 2^31. It keeps running through the
+  32-bit wrap (49.7 days); a host jump of 2^31 ms (24.8 days) or more forward
+  is taken as a step back and ignored. Every window (guard, dedup, clone
+  speed) is a modular difference.
 
 Decision for a vehicle, made when P0 falls:
   lane closed                         -> LANE_CLOSED  (6)
@@ -72,7 +87,7 @@ import os
 import random
 import struct
 
-PROTO = 3               # protocol version, reported by 'I'
+PROTO = 4               # protocol version, reported by 'I'
 SOF = 0xA5
 MAX_LEN = 32
 GUARD_MS = 500          # reads up to this long before P0 rises belong to the car
@@ -169,6 +184,12 @@ CHASKEY_VECTORS = {
 }
 
 
+def sdiff(a, b):
+    """a - b as a signed 32-bit number: serial-number time (RFC 1982)."""
+    d = (a - b) & M32
+    return d - (1 << 32) if d & 0x80000000 else d
+
+
 def auth_message(vrec, gantry, ctr):
     """The 12 bytes an 'A' record authenticates."""
     return bytes(vrec[:6]) + bytes([gantry, PROTO]) + struct.pack("<I", ctr & M32)
@@ -240,6 +261,7 @@ class LaneModel:
         self.vehicles = self.bad_tag = self.bad_frame = 0
         self.rssi_min, self.guard, self.dedup, self.vmax, self.hold = 0, GUARD_MS, DEDUP_MS, VMAX_KMH, 64
         self.timeout = 0                    # frame timeout off until 'P' sets it
+        self._last_now = 0
         self.key, self.ctr = None, 0     # Chaskey-12 key while authentication is on
         self.err_armed = True            # the next rejected frame gets an 'E'
         self.rom = rom
@@ -301,7 +323,23 @@ class LaneModel:
             self.cov["E suppressed"] += 1
 
     LENGTHS = {0x52: (21,), 0x54: (4,), 0x43: (14,), 0x47: (3,), 0x48: (13,), 0x68: (12,),
-               0x53: (17,), 0x51: (0,), 0x50: (10,), 0x4B: (16, 0), 0x49: (0,)}
+               0x53: (17,), 0x51: (0,), 0x50: (10,), 0x4B: (16, 20, 0), 0x49: (0,)}
+
+    def _advance(self, t):
+        if sdiff(t, self.now) > 0:
+            self.now = t
+            if t < 0x80000000 <= self._last_now:
+                self.cov["lane clock wrapped"] += 1
+        self._last_now = self.now
+
+    def _signed(self, rec):
+        """Emit a record the key authenticates ('V', 'I'): with a key, its 'A' follows."""
+        self.out += rec
+        if self.key is not None:
+            tag = chaskey12(self.key, auth_message(rec, self.gantry, self.ctr))[:4]
+            self.out += record(0x41, bytes([rec[1]]) + tag)
+            self.ctr = (self.ctr + 1) & M32
+            self.cov["record authenticated"] += 1
 
     def _frame(self, t, p):
         n = len(p)
@@ -314,7 +352,7 @@ class LaneModel:
             tm, pc = struct.unpack_from("<IH", p, 0)
             epc = bytes(p[6:18])
             stored, rssi = struct.unpack_from("<HB", p, 18)
-            self.now = max(self.now, tm)
+            self._advance(tm)
             if gen2_crc(pc, epc) != stored:
                 self.bad_tag = min(self.bad_tag + 1, 255)
                 self.cov["tag CRC bad"] += 1
@@ -328,7 +366,7 @@ class LaneModel:
                     self.cov["pending reads full"] += 1
                 self.pend.append((epc, rssi, tm))
         elif t == 0x54:
-            self.now = max(self.now, struct.unpack("<I", p)[0])
+            self._advance(struct.unpack("<I", p)[0])
         elif t == 0x43:
             self.gantry, self.closed_cfg = p[0] & 7, p[1] & 1
             self.fares = list(struct.unpack_from("<6H", p, 2))
@@ -336,7 +374,8 @@ class LaneModel:
         elif t == 0x47:
             self.pos[p[0] & 7] = p[1] | p[2] << 8
         elif t == 0x48:
-            self._hot_add(bytes(p[:12]))
+            if not self._hot_add(bytes(p[:12])):
+                self._error(6, t)           # not stored: the back office must know
         elif t == 0x68:
             self._hot_del(bytes(p[:12]))
         elif t == 0x53:
@@ -350,13 +389,20 @@ class LaneModel:
             self.hold = self.hold or 1
             self.cov["parameters set"] += 1
         elif t == 0x4B:
-            self.key, self.ctr = (bytes(p), 0) if n else (None, 0)
-            self.cov["key loaded" if n else "key cleared"] += 1
+            if self.key is not None:
+                self.cov["key change refused"] += 1
+                return self._error(7, t)
+            if n:
+                self.key = bytes(p[:16])
+                self.ctr = struct.unpack_from("<I", p, 16)[0] if n == 20 else 0
+                self.cov["key loaded" if n == 16 else "key loaded with counter start"] += 1
+            else:
+                self.cov["empty key with no key loaded: no effect"] += 1
         elif t == 0x49:
             if self.rom is None:
                 raise ValueError("'I' needs LaneModel(rom=...)")
-            self.out += record(0x49, struct.pack("<BHH", PROTO, len(self.rom), rom_crc(self.rom)))
-            self.cov["identify"] += 1
+            self.cov["identify" if self.key is None else "identify authenticated"] += 1
+            self._signed(record(0x49, struct.pack("<BHH", PROTO, len(self.rom), rom_crc(self.rom))))
 
     # ---- tables ----------------------------------------------------------
     def _hot_find(self, epc):
@@ -371,7 +417,7 @@ class LaneModel:
 
     def _hot_add(self, epc):
         if self._hot_find(epc) >= 0:
-            return
+            return True
         h = epc_hash(epc)
         for i in range(PROBES):
             k = (h + i) & (HOT_SLOTS - 1)
@@ -379,8 +425,9 @@ class LaneModel:
                 self.cov["hotlist slot reused" if self.hot[k] == b"" else "hotlist add"] += 1
                 self.hot[k] = epc
                 self.hot_n += 1
-                return
+                return True
         self.cov["hotlist probe window full"] += 1
+        return False
 
     def _hot_del(self, epc):
         k = self._hot_find(epc)
@@ -407,7 +454,7 @@ class LaneModel:
             if s is None or s[0] == epc:
                 self.seen[k] = (epc, g, t)
                 return
-            if vt is None or s[2] < vt:
+            if vt is None or sdiff(s[2], vt) < 0:
                 victim, vt = k, s[2]
         self.seen[victim] = (epc, g, t)  # evict the oldest in the probe window
         self.cov["sighting evicted"] += 1
@@ -437,8 +484,9 @@ class LaneModel:
         if not was and v & 1:
             self.active, self.vt = True, []
             for epc, rssi, tm in self.pend:
-                if tm + self.guard >= self.now:
-                    self.cov["read kept by the guard" if tm + self.guard > self.now
+                age = (self.now - tm) & M32
+                if age <= self.guard:
+                    self.cov["read kept by the guard" if age < self.guard
                              else "guard boundary (kept)"] += 1
                     self._vt_add(epc, rssi)
                 else:
@@ -457,10 +505,10 @@ class LaneModel:
             self.cov["several tags in one vehicle"] += 1
         for e in self.vt:
             s = self._seen_get(e[0])
-            if s and s[1] == self.gantry and self.now - s[2] < self.dedup:
+            if s and s[1] == self.gantry and sdiff(self.now, s[2]) < self.dedup:
                 self.cov["tag excluded: charged here moments ago"] += 1
                 continue                  # charged here moments ago (tailgating)
-            if s and s[1] == self.gantry and self.now - s[2] == self.dedup:
+            if s and s[1] == self.gantry and sdiff(self.now, s[2]) == self.dedup:
                 self.cov["dedup boundary (charged again)"] += 1
             if best is not None and e[1] == best[1] and e[2] > best[2]:
                 self.cov["tie broken by RSSI"] += 1
@@ -486,13 +534,7 @@ class LaneModel:
             self._seen_put(epc, self.gantry, self.now)
         self.vehicles += 1
         self.cov[STATUS_NAMES[st]] += 1
-        v = record(0x56, struct.pack("<BBBH", self.seq, st, (phys << 4) | tagc, fare))
-        self.out += v
-        if self.key is not None:
-            tag = chaskey12(self.key, auth_message(v, self.gantry, self.ctr))[:4]
-            self.out += record(0x41, bytes([self.seq]) + tag)
-            self.ctr += 1
-            self.cov["record authenticated"] += 1
+        self._signed(record(0x56, struct.pack("<BBBH", self.seq, st, (phys << 4) | tagc, fare)))
         self.seq = (self.seq + 1) & 0xFF
         charged = st in (ST_CHARGED, ST_MISMATCH)
         camera = st in (ST_NO_TAG, ST_MISMATCH, ST_HOTLIST, ST_CLONE)
@@ -653,6 +695,7 @@ def f_identify():
 # replay page and the host tool verify 'A' records with it).
 DEMO_KEY = b"RVBL-2 lane key!"
 ATTEST_WAIT = 70000     # cycles to leave after 'I': the measurement takes ~61k (tb_app reports it)
+CTR_START_NEAR_WRAP = 0xFFFFFFC0   # random traffic's 'A' counter crosses 2^32 after 64 records
 
 
 def build_scenario(seed, n_vehicles, auth=True):
@@ -665,7 +708,7 @@ def build_scenario(seed, n_vehicles, auth=True):
     if auth:
         sc.send(f_identify())
         sc.wait(ATTEST_WAIT)
-        sc.send(f_key(DEMO_KEY))
+        sc.send(f_key(DEMO_KEY + struct.pack("<I", CTR_START_NEAR_WRAP)))
         sc.send(f_params(rssi_min=25))
     sc.send(f_config(1, 0, DEFAULT_FARES))
     for g, p in ((1, 0), (2, 400), (3, 1250)):        # gantries at 0, 40.0, 125.0 km
@@ -883,18 +926,37 @@ def directed_v3(sc, rng):
     sc.send(f_read(2000003, make_epc(rng, 1), 70))
     sc.send(f_time(2000004)[:5])                        # re-armed by the read; cut off
     sc.pins(0)
-    # 22 authenticated records: key on -> 'V' + 'A' (counter 0, 1); key off -> 'V'
+    # 22 authenticated records: an empty 'K' with no key does nothing; key on ->
+    #    'V' + 'A' (counter 0, 1). The key is then locked until reset: an empty
+    #    'K' (the old way to switch authentication off) and a new 20-byte key
+    #    are both refused ('E' 7), and the records stay authenticated (2, 3)
+    sc.send(f_key(b""))
     sc.send(f_key(DEMO_KEY))
     for k in range(2):
         tt = 2100000 + 10000 * k
         sc.send(f_time(tt)); sc.pins(1); sc.send(f_read(tt, make_epc(rng, 1), 70)); sc.pins(0)
     sc.send(f_key(b""))
     sc.pins(1); sc.pins(0)
-    sc.send(f_key(bytes(range(16))))                    # a second key restarts the counter
+    sc.send(f_key(bytes(range(16)) + struct.pack("<I", 5)))
     sc.pins(1 | 3 << 1); sc.pins(0)
-    # 23 the chip measures its own ROM
+    # 23 the chip measures its own ROM; with the key on, 'I' is followed by its 'A'
     sc.send(f_identify())
     sc.wait(ATTEST_WAIT)
+    sc.send(f_query())
+    # 24 the lane clock across the 32-bit wrap (49.7 days of host time): the
+    #    host's clock steps through 2^31 and the wrap, and the guard and dedup
+    #    windows keep working on the far side
+    sc.send(f_time(0x80000000)); sc.send(f_time(0xFFFFFF00))
+    car, car2 = make_epc(rng, 1), make_epc(rng, 1)
+    sc.pins(1); sc.send(f_read(0xFFFFFF00, car, 80)); sc.pins(0)          # CHARGED
+    sc.send(f_read(0xFFFFFFC0, car2, 80))                                  # waits for its car
+    sc.send(f_time(0x00000100))                                            # 320 ms later: wrapped
+    sc.pins(1); sc.pins(0)                                                 # kept by the guard
+    sc.send(f_time(0x00000110))                                            # 528 ms after the charge
+    sc.pins(1); sc.send(f_read(0x00000110, car, 80)); sc.pins(0)           # excluded -> NO_TAG
+    sc.send(f_time(0x00000AB8))                                            # exactly dedup_ms later
+    sc.pins(1); sc.send(f_read(0x00000AB8, car, 80)); sc.pins(0)           # charged again
+    sc.send(f_time(0x00000005))                                            # a step back: ignored
     sc.send(f_query())
 
 
@@ -1115,6 +1177,23 @@ def emu_commands():
             tok += ["-i", "0x%02X" % v] if kind == "G" else emu_tokens(list(v), "t")
         tok += emu_tokens(list(m.out), "r") + ["-o", "0x%02X" % m.pins]
         out.append((title, tok))
+    # authentication: the back office loads the key with a counter start above
+    # every counter it has already seen (so records from before a reboot cannot
+    # be replayed); the car's 'V' and its 'A' leave together, and emu's 8-byte
+    # window keeps the last 8 bytes: the 'A' record
+    sc = Scenario()
+    key = f_key(DEMO_KEY + struct.pack("<I", 1000))
+    sc.send(key)
+    sc.pins(1)
+    sc.send(f_read(t, car, 90))
+    sc.pins(0)
+    m = sc.run()
+    assert len(m.out) == 16 and m.out[8] == 0x41
+    tok = ["-d", "0xF0"]
+    for kind, v in sc.ev:
+        tok += ["-i", "0x%02X" % v] if kind == "G" else emu_tokens(list(v), "t")
+    tok += emu_tokens(list(m.out[8:]), "r") + ["-o", "0x%02X" % m.pins]
+    out.append(("authenticated: key + counter start 1000, one car -> the 'A' record (Chaskey-12 tag)", tok))
     # the chip measures its own ROM: size and CRC, compared with the build
     sc = Scenario()
     sc.send(f_identify())
@@ -1165,14 +1244,16 @@ def write_host_files(scens, root):
 # Every bin the combined scenarios must reach: each outcome, each rejection,
 # each table limit and each parameter boundary. The run fails if one is 0.
 REQUIRED_BINS = STATUS_NAMES + [
-    "E1", "E2", "E3", "E4", "E5", "E suppressed",
+    "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E suppressed",
     "tag CRC bad", "read below RSSI floor", "pending reads full", "tags per vehicle full",
     "several tags in one vehicle", "tie broken by RSSI",
     "read kept by the guard", "guard boundary (kept)", "read dropped by the guard",
     "tag excluded: charged here moments ago", "dedup boundary (charged again)",
     "clone speed boundary (exactly vmax)",
     "hotlist add", "hotlist slot reused", "hotlist probe window full", "sighting evicted",
-    "parameters set", "key loaded", "key cleared", "record authenticated", "identify",
+    "parameters set", "key loaded", "key loaded with counter start", "key change refused",
+    "empty key with no key loaded: no effect", "record authenticated", "identify",
+    "identify authenticated", "lane clock wrapped",
 ]
 
 

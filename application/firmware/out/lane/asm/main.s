@@ -366,17 +366,9 @@ seen_put:
 	addi	t2,t2,4
 	li	s0,63
 	j	.L32
-.L30:
-	add	a4,a4,a6
-	slli	a4,a4,2
-	add	a4,a7,a4
-	lw	a4,844(a4)
-	beq	t4,zero,.L36
-	bgeu	a4,t6,.L31
-.L36:
-	mv	t6,a4
-	mv	t5,a6
-.L31:
+.L43:
+	sub	a3,a4,t6
+	blt	a3,zero,.L36
 	addi	a5,a5,1
 	li	t4,1
 	beq	a5,t0,.L29
@@ -406,15 +398,19 @@ seen_put:
 	add	a3,a7,a3
 	lw	s1,832(a3)
 	lw	s2,0(a0)
-	bne	s1,s2,.L30
-	lw	s1,4(a0)
-	lw	s2,836(a3)
-	bne	s2,s1,.L30
-	lw	s1,840(a3)
-	lw	a3,8(a0)
-	bne	s1,a3,.L30
-.L34:
+	beq	s1,s2,.L42
+.L30:
+	add	a4,a4,a6
+	slli	a4,a4,2
+	add	a4,a7,a4
+	lw	a4,844(a4)
+	bne	t4,zero,.L43
+.L36:
+	addi	a5,a5,1
+	mv	t6,a4
 	mv	t5,a6
+	li	t4,1
+	bne	a5,t0,.L32
 .L29:
 	slli	a5,t5,2
 	add	a5,a5,t5
@@ -436,6 +432,16 @@ seen_put:
 	lw	s2,4(sp)
 	addi	sp,sp,16
 	jr	ra
+.L42:
+	lw	s1,4(a0)
+	lw	s2,836(a3)
+	bne	s2,s1,.L30
+	lw	s1,840(a3)
+	lw	a3,8(a0)
+	bne	s1,a3,.L30
+.L34:
+	mv	t5,a6
+	j	.L29
 .L28:
 	lw	a4,8(t1)
 	addi	a4,a4,1
@@ -449,31 +455,31 @@ vt_add:
 	lw	a4,8(a5)
 	addi	a5,a5,8
 	andi	a4,a4,2
-	bne	a4,zero,.L56
+	bne	a4,zero,.L58
 	lui	t3,%hi(.LANCHOR0)
 	addi	t3,t3,%lo(.LANCHOR0)
-.L43:
+.L45:
 	lw	a2,140(t3)
-	beq	a2,zero,.L58
+	beq	a2,zero,.L60
 	lui	a7,%hi(.LANCHOR2)
 	addi	a7,a7,%lo(.LANCHOR2)
 	lw	a6,0(a0)
 	addi	a5,a7,-1984
 	li	a4,0
-	j	.L50
-.L47:
+	j	.L52
+.L49:
 	addi	a4,a4,1
 	addi	a5,a5,20
-	beq	a2,a4,.L59
-.L50:
+	beq	a2,a4,.L61
+.L52:
 	lw	a3,0(a5)
-	bne	a3,a6,.L47
+	bne	a3,a6,.L49
 	lw	t1,4(a5)
 	lw	a3,4(a0)
-	bne	t1,a3,.L47
+	bne	t1,a3,.L49
 	lw	t1,8(a5)
 	lw	a3,8(a0)
-	bne	t1,a3,.L47
+	bne	t1,a3,.L49
 	slli	a5,a4,2
 	add	a5,a5,a4
 	slli	a5,a5,2
@@ -482,13 +488,13 @@ vt_add:
 	lw	a4,-1968(a7)
 	addi	a5,a5,1
 	sw	a5,-1972(a7)
-	bltu	a4,a1,.L48
+	bltu	a4,a1,.L50
 	ret
-.L59:
+.L61:
 	li	a5,4
-	beq	a2,a5,.L42
+	beq	a2,a5,.L44
 	addi	a4,a2,1
-.L46:
+.L48:
 	slli	a5,a2,2
 	lw	a3,0(a0)
 	add	a5,a5,a2
@@ -503,9 +509,9 @@ vt_add:
 	sw	a4,-1972(a7)
 	sw	a1,-1968(a7)
 	sw	a5,-1976(a7)
-.L42:
+.L44:
 	ret
-.L56:
+.L58:
 	li	a3,-251658240
 	lui	t3,%hi(.LANCHOR0)
 	addi	t3,t3,%lo(.LANCHOR0)
@@ -515,7 +521,7 @@ vt_add:
 	lw	a4,4(t3)
 	li	a2,63
 	sub	a4,a5,a4
-	bgtu	a4,a2,.L44
+	bgtu	a4,a2,.L46
 	lui	a4,%hi(.LANCHOR1)
 	andi	a3,a5,63
 	addi	a4,a4,%lo(.LANCHOR1)
@@ -523,20 +529,20 @@ vt_add:
 	add	a4,a4,a3
 	sw	a5,0(t3)
 	sb	a6,0(a4)
-	j	.L43
-.L44:
+	j	.L45
+.L46:
 	lw	a5,8(t3)
 	addi	a5,a5,1
 	sw	a5,8(t3)
-	j	.L43
-.L48:
+	j	.L45
+.L50:
 	sw	a1,-1968(a7)
 	ret
-.L58:
+.L60:
 	lui	a7,%hi(.LANCHOR2)
 	li	a4,1
 	addi	a7,a7,%lo(.LANCHOR2)
-	j	.L46
+	j	.L48
 	.size	vt_add, .-vt_add
 	.align	2
 	.type	get_epc, @function
@@ -570,7 +576,7 @@ push8.part.0:
 	li	t1,3
 	li	t3,8
 	addi	t4,t4,8
-.L67:
+.L69:
 	lw	a3,144(a2)
 	add	a4,a0,a5
 	lbu	a6,0(a4)
@@ -579,15 +585,15 @@ push8.part.0:
 	add	a4,a7,a4
 	sw	a1,144(a2)
 	sb	a6,-1904(a4)
-	beq	a5,t1,.L74
-.L62:
+	beq	a5,t1,.L76
+.L64:
 	addi	a5,a5,1
-	bne	a5,t3,.L67
+	bne	a5,t3,.L69
 	li	a5,-251658240
 	lw	a4,8(a5)
 	addi	a5,a5,8
 	andi	a4,a4,2
-	beq	a4,zero,.L61
+	beq	a4,zero,.L63
 	li	a4,-251658240
 	lw	a0,4(a4)
 	sw	zero,0(a5)
@@ -595,7 +601,7 @@ push8.part.0:
 	lw	a5,4(a2)
 	li	a1,63
 	sub	a5,a3,a5
-	bgtu	a5,a1,.L69
+	bgtu	a5,a1,.L71
 	lui	a5,%hi(.LANCHOR1)
 	andi	a4,a3,63
 	addi	a5,a5,%lo(.LANCHOR1)
@@ -604,7 +610,7 @@ push8.part.0:
 	sw	a3,0(a2)
 	sb	a0,0(a5)
 	ret
-.L74:
+.L76:
 	lw	a5,0(t4)
 	li	a4,-251658240
 	andi	a1,a1,127
@@ -613,15 +619,15 @@ push8.part.0:
 	li	a6,63
 	addi	a3,a3,2
 	add	a1,a7,a1
-	bne	a5,zero,.L63
+	bne	a5,zero,.L65
 	lbu	a4,4(a0)
 	sw	a3,144(a2)
 	li	a5,4
 	sb	a4,-1904(a1)
-	j	.L62
-.L61:
-	ret
+	j	.L64
 .L63:
+	ret
+.L65:
 	lw	t5,0(a4)
 	sw	zero,0(t4)
 	lw	a5,0(a2)
@@ -632,18 +638,18 @@ push8.part.0:
 	lui	a5,%hi(.LANCHOR1)
 	addi	a5,a5,%lo(.LANCHOR1)
 	add	a5,a5,a1
-	bgtu	a3,a6,.L64
+	bgtu	a3,a6,.L66
 	sb	t5,0(a5)
 	sw	a4,0(a2)
 	li	a5,4
-	j	.L67
-.L64:
+	j	.L69
+.L66:
 	lw	a5,8(a2)
 	addi	a5,a5,1
 	sw	a5,8(a2)
 	li	a5,4
-	j	.L67
-.L69:
+	j	.L69
+.L71:
 	lw	a5,8(a2)
 	addi	a5,a5,1
 	sw	a5,8(a2)
@@ -674,19 +680,19 @@ mac_step:
 	addi	s5,s5,%lo(.LANCHOR1)
 	addi	s4,s4,-1
 	addi	s3,s3,-1
-	j	.L76
-.L79:
+	j	.L78
+.L81:
 	addi	s6,s6,-1
 	li	a5,-1
-	beq	s6,a5,.L75
-.L76:
+	beq	s6,a5,.L77
+.L78:
 	lw	a5,164(s0)
-	beq	a5,zero,.L75
+	beq	a5,zero,.L77
 	mv	a0,s2
 	call	chaskey12_round
 	lw	a5,0(s1)
 	andi	a5,a5,2
-	beq	a5,zero,.L77
+	beq	a5,zero,.L79
 	li	a3,-251658240
 	lw	a1,4(a3)
 	sw	zero,0(s1)
@@ -694,17 +700,17 @@ mac_step:
 	lw	a4,4(s0)
 	li	a2,63
 	sub	a4,a5,a4
-	bgtu	a4,a2,.L78
+	bgtu	a4,a2,.L80
 	andi	a4,a5,63
 	add	a4,s5,a4
 	addi	a5,a5,1
 	sw	a5,0(s0)
 	sb	a1,0(a4)
-.L77:
+.L79:
 	lw	a5,164(s0)
 	addi	a5,a5,-1
 	sw	a5,164(s0)
-	bne	a5,zero,.L79
+	bne	a5,zero,.L81
 	lw	a4,184(s0)
 	lw	a5,144(s0)
 	lw	s7,148(s0)
@@ -712,13 +718,13 @@ mac_step:
 	sub	a5,a5,a4
 	li	a4,120
 	xor	s7,s7,a3
-	bgtu	a5,a4,.L103
+	bgtu	a5,a4,.L105
 	addi	a0,s0,192
 	call	push8.part.0
-.L81:
+.L83:
 	lw	a5,0(s1)
 	andi	a5,a5,2
-	beq	a5,zero,.L82
+	beq	a5,zero,.L84
 	li	a4,-251658240
 	lw	a1,4(a4)
 	sw	zero,0(s1)
@@ -726,7 +732,7 @@ mac_step:
 	lw	a5,4(s0)
 	li	a2,63
 	sub	a5,a3,a5
-	bgtu	a5,a2,.L83
+	bgtu	a5,a2,.L85
 	lui	a5,%hi(.LANCHOR1)
 	andi	a4,a3,63
 	addi	a5,a5,%lo(.LANCHOR1)
@@ -734,7 +740,7 @@ mac_step:
 	add	a5,a5,a4
 	sw	a3,0(s0)
 	sb	a1,0(a5)
-.L82:
+.L84:
 	lbu	a5,193(s0)
 	andi	a3,s7,0xff
 	srli	a4,s7,8
@@ -760,7 +766,7 @@ mac_step:
 	mv	a4,sp
 	addi	a5,sp,9
 	addi	a1,sp,14
-.L84:
+.L86:
 	lbu	a3,0(a4)
 	sb	a3,0(a5)
  #APP
@@ -770,11 +776,11 @@ mac_step:
  #NO_APP
 	addi	a5,a5,1
 	addi	a4,a4,1
-	bne	a1,a5,.L84
+	bne	a1,a5,.L86
 	sh	a2,14(sp)
 	lw	a5,0(s1)
 	andi	a5,a5,2
-	beq	a5,zero,.L85
+	beq	a5,zero,.L87
 	li	a4,-251658240
 	lw	a1,4(a4)
 	sw	zero,0(s1)
@@ -782,7 +788,7 @@ mac_step:
 	lw	a5,4(s0)
 	li	a2,63
 	sub	a5,a3,a5
-	bgtu	a5,a2,.L86
+	bgtu	a5,a2,.L88
 	lui	a5,%hi(.LANCHOR1)
 	andi	a4,a3,63
 	addi	a5,a5,%lo(.LANCHOR1)
@@ -790,22 +796,22 @@ mac_step:
 	add	a5,a5,a4
 	sw	a3,0(s0)
 	sb	a1,0(a5)
-.L85:
+.L87:
 	lw	a5,144(s0)
 	lw	a3,184(s0)
 	li	a4,120
 	sub	a5,a5,a3
-	bgtu	a5,a4,.L104
+	bgtu	a5,a4,.L106
 	addi	a0,sp,8
 	call	push8.part.0
-.L88:
+.L90:
 	lw	a5,200(s0)
 	addi	s6,s6,-1
 	addi	a5,a5,1
 	sw	a5,200(s0)
 	li	a5,-1
-	bne	s6,a5,.L76
-.L75:
+	bne	s6,a5,.L78
+.L77:
 	lw	ra,60(sp)
 	lw	s0,56(sp)
 	lw	s1,52(sp)
@@ -817,435 +823,32 @@ mac_step:
 	lw	s7,28(sp)
 	addi	sp,sp,64
 	jr	ra
-.L78:
+.L80:
 	lw	a5,8(s0)
 	addi	a5,a5,1
 	sw	a5,8(s0)
-	j	.L77
-.L104:
-	lw	a5,188(s0)
-	addi	a5,a5,1
-	sw	a5,188(s0)
-	j	.L88
-.L103:
-	lw	a5,188(s0)
-	addi	a5,a5,1
-	sw	a5,188(s0)
-	j	.L81
-.L86:
-	lw	a5,8(s0)
-	addi	a5,a5,1
-	sw	a5,8(s0)
-	j	.L85
-.L83:
-	lw	a5,8(s0)
-	addi	a5,a5,1
-	sw	a5,8(s0)
-	j	.L82
-	.size	mac_step, .-mac_step
-	.align	2
-	.type	finalize, @function
-finalize:
-	addi	sp,sp,-80
-	sw	s0,72(sp)
-	lui	s0,%hi(.LANCHOR0)
-	addi	s0,s0,%lo(.LANCHOR0)
-	lw	a4,204(s0)
-	lui	a5,%hi(.LANCHOR3)
-	addi	a5,a5,%lo(.LANCHOR3)
-	add	a5,a5,a4
-	sw	s4,56(sp)
-	lbu	s4,0(a5)
-	lw	a5,140(s0)
-	sw	s5,52(sp)
-	sw	s7,44(sp)
-	sw	ra,76(sp)
-	sw	s2,64(sp)
-	sw	s3,60(sp)
-	sw	s6,48(sp)
-	sw	zero,212(s0)
-	sw	zero,216(s0)
-	lw	s7,208(s0)
-	mv	s5,s4
-	beq	a5,zero,.L106
-	sw	s1,68(sp)
-	sw	s8,40(sp)
-	lui	s1,%hi(.LANCHOR2)
-	li	s8,-251658240
-	li	s6,-251658240
-	lui	a5,%hi(.LANCHOR2-1984)
-	lui	s2,%hi(.LANCHOR1)
-	lui	s3,%hi(.LANCHOR4)
-	sw	s9,36(sp)
-	sw	s10,32(sp)
-	sw	s11,28(sp)
-	addi	s1,s1,%lo(.LANCHOR2)
-	addi	s11,a5,%lo(.LANCHOR2-1984)
-	li	s10,0
-	li	s9,-1
-	addi	s8,s8,8
-	addi	s6,s6,4
-	addi	s2,s2,%lo(.LANCHOR1)
-	addi	s3,s3,%lo(.LANCHOR4)
-.L113:
-	lw	a5,0(s8)
-	andi	a5,a5,2
-	beq	a5,zero,.L107
-	lw	a1,0(s6)
-	sw	zero,0(s8)
-	lw	a2,0(s0)
-	lw	a5,4(s0)
-	li	a4,63
-	sub	a5,a2,a5
-	bgtu	a5,a4,.L108
-	andi	a5,a2,63
-	add	a5,s2,a5
-	addi	a2,a2,1
-	sw	a2,0(s0)
-	sb	a1,0(a5)
-.L107:
-	mv	a0,s11
-	call	seen_get
-	blt	a0,zero,.L109
-	slli	a5,a0,2
-	add	a5,a5,a0
-	slli	a5,a5,2
-	add	a5,s2,a5
-	lw	a1,848(a5)
-	lw	a2,0(s3)
-	beq	a1,a2,.L148
-.L109:
-	blt	s9,zero,.L112
-.L151:
-	slli	a5,s9,2
-	add	a5,a5,s9
-	slli	a5,a5,2
-	add	a5,s1,a5
-	lw	a1,12(s11)
-	lw	a2,-1972(a5)
-	bgtu	a1,a2,.L112
-	beq	a1,a2,.L149
-.L110:
-	lw	a5,140(s0)
-	addi	s10,s10,1
-	addi	s11,s11,20
-	bgtu	a5,s10,.L113
-	beq	s7,zero,.L150
-	lw	s1,68(sp)
-	lw	s8,40(sp)
-	lw	s9,36(sp)
-	lw	s10,32(sp)
-	lw	s11,28(sp)
-.L115:
-	li	s7,0
-	li	s5,0
-	li	s6,0
-	li	s2,0
-	li	a5,7
-	li	s3,6
-.L116:
-	lw	a3,240(s0)
-	li	a4,-251658240
-	addi	a4,a4,8
-	addi	a3,a3,1
-	sw	a3,240(s0)
-	lw	a3,0(a4)
-	andi	a3,a3,2
-	beq	a3,zero,.L126
-	li	a3,-251658240
-	lw	a0,4(a3)
-	sw	zero,0(a4)
-	lw	a2,0(s0)
-	lw	a4,4(s0)
-	li	a1,63
-	sub	a4,a2,a4
-	bgtu	a4,a1,.L127
-	lui	a4,%hi(.LANCHOR1)
-	andi	a3,a2,63
-	addi	a4,a4,%lo(.LANCHOR1)
-	addi	a2,a2,1
-	add	a4,a4,a3
-	sw	a2,0(s0)
-	sb	a0,0(a4)
-.L126:
-	lbu	a4,244(s0)
-	slli	s4,s4,4
-	or	a5,a5,s4
-	slli	a3,s3,8
-	andi	a5,a5,0xff
-	or	a4,a4,a3
-	slli	a5,a5,16
-	slli	a3,s2,24
-	or	a5,a4,a5
-	or	a5,a5,a3
-	li	a0,12
-	sw	a5,0(sp)
-	sb	s6,4(sp)
-	call	mac_step
-	li	a3,65536
-	li	a5,86
-	addi	a3,a3,-1
- #APP
-# 51 "include/rvbl2.h" 1
-	.insn r 0x33, 0, 0x40, a3, a5, a3
-# 0 "" 2
- #NO_APP
-	sb	a5,8(sp)
-	mv	a4,sp
-	addi	a5,sp,9
-	addi	a1,sp,14
-.L128:
-	lbu	a2,0(a4)
-	sb	a2,0(a5)
- #APP
-# 51 "include/rvbl2.h" 1
-	.insn r 0x33, 0, 0x40, a3, a2, a3
-# 0 "" 2
- #NO_APP
-	addi	a5,a5,1
-	addi	a4,a4,1
-	bne	a1,a5,.L128
-	lw	a5,248(s0)
-	sh	a3,14(sp)
-	beq	a5,zero,.L129
-	lui	a5,%hi(.LANCHOR4)
-	lw	a5,%lo(.LANCHOR4)(a5)
-	lw	t4,168(s0)
-	lhu	t5,12(sp)
-	lw	a2,252(s0)
-	lw	a1,256(s0)
-	lw	t3,172(s0)
-	slli	a5,a5,16
-	xor	a2,a2,t4
-	lw	a3,260(s0)
-	lw	t1,176(s0)
-	lw	a4,264(s0)
-	lw	a7,180(s0)
-	or	a5,a5,t5
-	li	t4,50331648
-	lw	a0,8(sp)
-	xor	a1,a1,t3
-	lw	a6,200(s0)
-	or	a5,a5,t4
-	xor	a5,a5,a1
-	lw	a1,12(sp)
-	xor	a3,a3,t1
-	xor	a4,a4,a7
-	xor	a2,a2,a0
-	xor	a3,a3,a6
-	xori	a4,a4,1
-	sw	a5,152(s0)
-	li	a5,12
-	sw	a0,192(s0)
-	sw	a1,196(s0)
-	sw	a2,148(s0)
-	sw	a3,156(s0)
-	sw	a4,160(s0)
-	sw	a5,164(s0)
-.L130:
-	lw	a4,244(s0)
-	lw	a5,268(s0)
-	or	s5,s5,s7
-	addi	a4,a4,1
-	andi	a5,a5,128
-	or	a5,a5,s5
-	andi	a4,a4,255
-	sw	a4,244(s0)
-	sw	a5,268(s0)
-	lw	ra,76(sp)
-	lw	s0,72(sp)
-	li	a4,-268435456
-	sw	a5,0(a4)
-	lw	s2,64(sp)
-	lw	s3,60(sp)
-	lw	s4,56(sp)
-	lw	s5,52(sp)
-	lw	s6,48(sp)
-	lw	s7,44(sp)
-	addi	sp,sp,80
-	jr	ra
-.L148:
-	lw	a2,220(s0)
-	lw	a1,844(a5)
-	lw	a0,4(s3)
-	sub	a1,a2,a1
-	sgtu	a5,a1,a2
-	neg	a2,a5
-	bne	a5,zero,.L110
-	bne	a2,zero,.L109
-	bgtu	a0,a1,.L110
-	bge	s9,zero,.L151
-.L112:
-	mv	s9,s10
-	j	.L110
-.L108:
-	lw	a5,8(s0)
-	addi	a5,a5,1
-	sw	a5,8(s0)
-	j	.L107
-.L150:
-	blt	s9,zero,.L147
-	slli	s2,s9,2
-	add	s2,s2,s9
-	lui	a5,%hi(.LANCHOR2-1984)
-	slli	s2,s2,2
-	addi	a5,a5,%lo(.LANCHOR2-1984)
-	add	s9,a5,s2
-	mv	a0,s9
-	call	seen_get
-	add	s1,s1,s2
-	lw	a5,-1984(s1)
-	mv	a4,a0
-	mv	a0,s9
-	andi	s1,a5,7
-	mv	s2,a4
-	call	hot_find
-	lui	a5,%hi(.LANCHOR4)
-	addi	a5,a5,%lo(.LANCHOR4)
-	lw	a1,0(a5)
-	lw	a2,220(s0)
-	blt	a0,zero,.L152
-	li	s5,96
-	li	s6,0
-	li	s2,0
-	li	s3,3
-.L118:
-	mv	a0,s9
-	call	seen_put
-	andi	a5,s1,0xff
-	lw	s8,40(sp)
-	lw	s1,68(sp)
-	lw	s9,36(sp)
-	lw	s10,32(sp)
-	lw	s11,28(sp)
-	j	.L116
-.L129:
-	lw	a5,144(s0)
-	lw	a3,184(s0)
-	li	a4,120
-	sub	a5,a5,a3
-	bgtu	a5,a4,.L153
-	addi	a0,sp,8
-	call	push8.part.0
-	j	.L130
-.L149:
-	lw	a2,16(s11)
-	lw	a5,-1968(a5)
-	bleu	a2,a5,.L110
-	mv	s9,s10
-	j	.L110
-.L127:
-	lw	a4,8(s0)
-	addi	a4,a4,1
-	sw	a4,8(s0)
-	j	.L126
+	j	.L79
 .L106:
-	bne	s7,zero,.L115
-	li	s7,0
-	bne	s4,zero,.L132
-.L157:
-	li	s6,0
-	li	s2,0
-	li	a5,7
-	li	s3,5
-	j	.L116
-.L132:
-	li	s5,32
-	li	s6,0
-	li	s2,0
-	li	a5,7
-	li	s3,1
-	j	.L116
-.L152:
-	blt	s2,zero,.L119
-	slli	a3,s2,2
-	add	a3,a3,s2
-	lui	a4,%hi(.LANCHOR1)
-	slli	a3,a3,2
-	addi	a4,a4,%lo(.LANCHOR1)
-	add	a4,a4,a3
-	lw	a3,848(a4)
-	beq	a3,a1,.L119
-	lw	a0,844(a4)
-	slli	a3,a3,1
-	slli	a4,a1,1
-	add	a4,s0,a4
-	add	a3,s0,a3
-	sub	a0,a2,a0
-	lhu	a4,224(a4)
-	lhu	a3,224(a3)
-	ble	a0,zero,.L154
-	sub	a4,a4,a3
-	srai	a7,a4,31
-	lw	a6,8(a5)
-	xor	a4,a7,a4
-	li	a3,360448
-	sub	a4,a4,a7
-	addi	a3,a3,-448
-	mulh	t1,a4,a3
-	mulhu	a7,a0,a6
-	mul	a4,a4,a3
-	mul	a0,a0,a6
-	bgtu	t1,a7,.L135
-	bne	t1,a7,.L119
-	bleu	a4,a0,.L119
-.L135:
-	li	s5,96
-	li	s6,0
-	li	s2,0
-	li	s3,4
-	j	.L118
-.L154:
-	bne	a4,a3,.L135
-.L119:
-	li	a4,4
-	beq	s1,a4,.L155
-	li	a4,5
-	beq	s1,a4,.L156
-	beq	s4,s1,.L124
-.L123:
-	slli	a4,s4,1
-	add	a5,a5,a4
-	lhu	s6,12(a5)
-	li	s5,32
-	li	s7,16
-	andi	s2,s6,0xff
-	li	s3,2
-	srli	s6,s6,8
-	j	.L118
-.L147:
-	lw	s1,68(sp)
-	lw	s8,40(sp)
-	lw	s9,36(sp)
-	lw	s10,32(sp)
-	lw	s11,28(sp)
-	li	s7,0
-	bne	s4,zero,.L132
-	j	.L157
-.L153:
 	lw	a5,188(s0)
 	addi	a5,a5,1
 	sw	a5,188(s0)
-	j	.L130
-.L156:
-	addi	a4,s4,-2
-	li	a3,1
-	bgtu	a4,a3,.L123
-.L124:
-	slli	a4,s1,1
-	add	a5,a5,a4
-	lhu	s6,12(a5)
-	li	s5,0
-	li	s7,16
-	andi	s2,s6,0xff
-	li	s3,0
-	srli	s6,s6,8
-	j	.L118
-.L155:
-	li	a4,1
-	bne	s4,a4,.L123
-	j	.L124
-	.size	finalize, .-finalize
+	j	.L90
+.L105:
+	lw	a5,188(s0)
+	addi	a5,a5,1
+	sw	a5,188(s0)
+	j	.L83
+.L88:
+	lw	a5,8(s0)
+	addi	a5,a5,1
+	sw	a5,8(s0)
+	j	.L87
+.L85:
+	lw	a5,8(s0)
+	addi	a5,a5,1
+	sw	a5,8(s0)
+	j	.L84
+	.size	mac_step, .-mac_step
 	.align	2
 	.type	error.part.0, @function
 error.part.0:
@@ -1253,7 +856,7 @@ error.part.0:
 	sw	s0,24(sp)
 	lui	s0,%hi(.LANCHOR0)
 	addi	s0,s0,%lo(.LANCHOR0)
-	lw	a4,272(s0)
+	lw	a4,204(s0)
 	andi	a1,a1,0xff
 	slli	a1,a1,8
 	andi	a0,a0,0xff
@@ -1277,7 +880,7 @@ error.part.0:
 	mv	a4,sp
 	addi	a5,sp,9
 	addi	a1,sp,14
-.L159:
+.L108:
 	lbu	a2,0(a4)
 	sb	a2,0(a5)
  #APP
@@ -1287,32 +890,457 @@ error.part.0:
  #NO_APP
 	addi	a5,a5,1
 	addi	a4,a4,1
-	bne	a5,a1,.L159
+	bne	a5,a1,.L108
 	lw	a5,144(s0)
 	lw	a2,184(s0)
 	sh	a3,14(sp)
 	li	a4,120
 	sub	a5,a5,a2
-	bgtu	a5,a4,.L164
+	bgtu	a5,a4,.L113
 	addi	a0,sp,8
 	call	push8.part.0
 	lw	ra,28(sp)
 	lw	s0,24(sp)
-	lui	a5,%hi(.LANCHOR4+24)
-	sw	zero,%lo(.LANCHOR4+24)(a5)
+	lui	a5,%hi(.LANCHOR3)
+	sw	zero,%lo(.LANCHOR3)(a5)
 	addi	sp,sp,32
 	jr	ra
-.L164:
+.L113:
 	lw	a5,188(s0)
 	lw	ra,28(sp)
 	addi	a5,a5,1
 	sw	a5,188(s0)
 	lw	s0,24(sp)
-	lui	a5,%hi(.LANCHOR4+24)
-	sw	zero,%lo(.LANCHOR4+24)(a5)
+	lui	a5,%hi(.LANCHOR3)
+	sw	zero,%lo(.LANCHOR3)(a5)
 	addi	sp,sp,32
 	jr	ra
 	.size	error.part.0, .-error.part.0
+	.align	2
+	.type	signed_record, @function
+signed_record:
+	addi	sp,sp,-32
+	sw	s1,20(sp)
+	mv	s1,a0
+	li	a0,12
+	sw	s0,24(sp)
+	sw	ra,28(sp)
+	mv	s0,a1
+	call	mac_step
+	li	a4,65536
+	addi	a4,a4,-1
+ #APP
+# 51 "include/rvbl2.h" 1
+	.insn r 0x33, 0, 0x40, a4, s1, a4
+# 0 "" 2
+ #NO_APP
+	mv	a1,s0
+	sb	s1,8(sp)
+	addi	a5,sp,9
+	addi	a2,s0,5
+.L115:
+	lbu	a3,0(a1)
+	sb	a3,0(a5)
+ #APP
+# 51 "include/rvbl2.h" 1
+	.insn r 0x33, 0, 0x40, a4, a3, a4
+# 0 "" 2
+ #NO_APP
+	addi	a1,a1,1
+	addi	a5,a5,1
+	bne	a2,a1,.L115
+	lui	a5,%hi(.LANCHOR0)
+	addi	a5,a5,%lo(.LANCHOR0)
+	lw	a3,208(a5)
+	sh	a4,14(sp)
+	beq	a3,zero,.L116
+	lui	a4,%hi(.LANCHOR3+4)
+	lw	a4,%lo(.LANCHOR3+4)(a4)
+	lhu	t6,12(sp)
+	lw	t5,168(a5)
+	lw	a1,212(a5)
+	lw	a0,216(a5)
+	lw	t4,172(a5)
+	slli	a4,a4,16
+	xor	a1,a1,t5
+	or	a4,a4,t6
+	li	t5,67108864
+	xor	a0,a0,t4
+	or	a4,a4,t5
+	lw	a6,8(sp)
+	xor	a4,a4,a0
+	lw	a0,12(sp)
+	lw	a2,220(a5)
+	lw	t3,176(a5)
+	lw	a3,224(a5)
+	lw	t1,180(a5)
+	lw	a7,200(a5)
+	sw	a6,192(a5)
+	sw	a0,196(a5)
+	lw	ra,28(sp)
+	lw	s0,24(sp)
+	xor	a2,a2,t3
+	xor	a3,a3,t1
+	sw	a4,152(a5)
+	xor	a1,a1,a6
+	xor	a2,a2,a7
+	xori	a3,a3,1
+	li	a4,12
+	sw	a1,148(a5)
+	sw	a2,156(a5)
+	sw	a3,160(a5)
+	sw	a4,164(a5)
+	lw	s1,20(sp)
+	addi	sp,sp,32
+	jr	ra
+.L116:
+	lw	a4,144(a5)
+	lw	a2,184(a5)
+	li	a3,120
+	sub	a4,a4,a2
+	bgtu	a4,a3,.L121
+	addi	a0,sp,8
+	call	push8.part.0
+	lw	ra,28(sp)
+	lw	s0,24(sp)
+	lw	s1,20(sp)
+	addi	sp,sp,32
+	jr	ra
+.L121:
+	lw	a4,188(a5)
+	lw	ra,28(sp)
+	lw	s0,24(sp)
+	addi	a4,a4,1
+	sw	a4,188(a5)
+	lw	s1,20(sp)
+	addi	sp,sp,32
+	jr	ra
+	.size	signed_record, .-signed_record
+	.align	2
+	.type	finalize, @function
+finalize:
+	addi	sp,sp,-80
+	sw	s0,72(sp)
+	lui	s0,%hi(.LANCHOR0)
+	addi	s0,s0,%lo(.LANCHOR0)
+	lw	a4,228(s0)
+	lui	a5,%hi(.LANCHOR4)
+	addi	a5,a5,%lo(.LANCHOR4)
+	add	a5,a5,a4
+	sw	s5,52(sp)
+	lbu	s5,0(a5)
+	lw	a5,140(s0)
+	sw	s2,64(sp)
+	sw	s7,44(sp)
+	sw	ra,76(sp)
+	sw	s3,60(sp)
+	sw	s4,56(sp)
+	sw	s6,48(sp)
+	sw	zero,236(s0)
+	sw	zero,240(s0)
+	lw	s2,232(s0)
+	mv	s7,s5
+	beq	a5,zero,.L123
+	sw	s1,68(sp)
+	sw	s8,40(sp)
+	lui	s1,%hi(.LANCHOR2)
+	li	s8,-251658240
+	li	s6,-251658240
+	lui	a5,%hi(.LANCHOR2-1984)
+	lui	s3,%hi(.LANCHOR1)
+	lui	s4,%hi(.LANCHOR3)
+	sw	s9,36(sp)
+	sw	s10,32(sp)
+	sw	s11,28(sp)
+	addi	s1,s1,%lo(.LANCHOR2)
+	addi	s11,a5,%lo(.LANCHOR2-1984)
+	li	s10,0
+	li	s9,-1
+	addi	s8,s8,8
+	addi	s6,s6,4
+	addi	s3,s3,%lo(.LANCHOR1)
+	addi	s4,s4,%lo(.LANCHOR3)
+.L129:
+	lw	a5,0(s8)
+	andi	a5,a5,2
+	beq	a5,zero,.L124
+	lw	a1,0(s6)
+	sw	zero,0(s8)
+	lw	a5,0(s0)
+	lw	a2,4(s0)
+	li	a4,63
+	sub	a2,a5,a2
+	bgtu	a2,a4,.L125
+	andi	a2,a5,63
+	add	a2,s3,a2
+	addi	a5,a5,1
+	sw	a5,0(s0)
+	sb	a1,0(a2)
+.L124:
+	mv	a0,s11
+	call	seen_get
+	blt	a0,zero,.L126
+	slli	a5,a0,2
+	add	a5,a5,a0
+	slli	a5,a5,2
+	add	a5,s3,a5
+	lw	a1,848(a5)
+	lw	a2,4(s4)
+	beq	a1,a2,.L159
+.L126:
+	blt	s9,zero,.L128
+.L162:
+	slli	a5,s9,2
+	add	a5,a5,s9
+	slli	a5,a5,2
+	add	a5,s1,a5
+	lw	a1,12(s11)
+	lw	a2,-1972(a5)
+	bgtu	a1,a2,.L128
+	beq	a1,a2,.L160
+.L127:
+	lw	a5,140(s0)
+	addi	s10,s10,1
+	addi	s11,s11,20
+	bgtu	a5,s10,.L129
+	beq	s2,zero,.L161
+	lw	s1,68(sp)
+	lw	s8,40(sp)
+	lw	s9,36(sp)
+	lw	s10,32(sp)
+	lw	s11,28(sp)
+.L131:
+	li	s7,0
+	li	s6,0
+	li	s3,0
+	li	a5,7
+	li	s4,6
+	li	s2,0
+.L132:
+	lw	a3,264(s0)
+	li	a4,-251658240
+	addi	a4,a4,8
+	addi	a3,a3,1
+	sw	a3,264(s0)
+	lw	a3,0(a4)
+	andi	a3,a3,2
+	beq	a3,zero,.L142
+	li	a2,-251658240
+	lw	a0,4(a2)
+	sw	zero,0(a4)
+	lw	a4,0(s0)
+	lw	a3,4(s0)
+	li	a1,63
+	sub	a3,a4,a3
+	bgtu	a3,a1,.L143
+	lui	a3,%hi(.LANCHOR1)
+	andi	a2,a4,63
+	addi	a3,a3,%lo(.LANCHOR1)
+	addi	a4,a4,1
+	add	a3,a3,a2
+	sw	a4,0(s0)
+	sb	a0,0(a3)
+.L142:
+	lbu	a4,268(s0)
+	slli	s5,s5,4
+	or	a5,a5,s5
+	slli	a3,s4,8
+	andi	a5,a5,0xff
+	or	a4,a4,a3
+	slli	a5,a5,16
+	slli	a3,s3,24
+	or	a5,a4,a5
+	or	a5,a5,a3
+	addi	a1,sp,8
+	li	a0,86
+	sw	a5,8(sp)
+	sb	s6,12(sp)
+	call	signed_record
+	lw	a4,268(s0)
+	lw	a5,272(s0)
+	or	s2,s2,s7
+	addi	a4,a4,1
+	andi	a5,a5,128
+	or	a5,a5,s2
+	andi	a4,a4,255
+	sw	a4,268(s0)
+	sw	a5,272(s0)
+	lw	ra,76(sp)
+	lw	s0,72(sp)
+	li	a4,-268435456
+	sw	a5,0(a4)
+	lw	s2,64(sp)
+	lw	s3,60(sp)
+	lw	s4,56(sp)
+	lw	s5,52(sp)
+	lw	s6,48(sp)
+	lw	s7,44(sp)
+	addi	sp,sp,80
+	jr	ra
+.L159:
+	lw	a2,244(s0)
+	lw	a5,844(a5)
+	lw	a1,8(s4)
+	sub	a5,a2,a5
+	blt	a5,a1,.L127
+	bge	s9,zero,.L162
+.L128:
+	mv	s9,s10
+	j	.L127
+.L125:
+	lw	a5,8(s0)
+	addi	a5,a5,1
+	sw	a5,8(s0)
+	j	.L124
+.L161:
+	blt	s9,zero,.L158
+	slli	s3,s9,2
+	add	s3,s3,s9
+	lui	a5,%hi(.LANCHOR2-1984)
+	slli	s3,s3,2
+	addi	a5,a5,%lo(.LANCHOR2-1984)
+	add	s9,a5,s3
+	mv	a0,s9
+	call	seen_get
+	add	s1,s1,s3
+	lw	a5,-1984(s1)
+	mv	a4,a0
+	mv	a0,s9
+	andi	s1,a5,7
+	mv	s3,a4
+	call	hot_find
+	lui	a5,%hi(.LANCHOR3)
+	addi	a5,a5,%lo(.LANCHOR3)
+	lw	a1,4(a5)
+	lw	a2,244(s0)
+	blt	a0,zero,.L163
+	li	s7,96
+	li	s6,0
+	li	s3,0
+	li	s4,3
+.L134:
+	mv	a0,s9
+	call	seen_put
+	andi	a5,s1,0xff
+	lw	s8,40(sp)
+	lw	s1,68(sp)
+	lw	s9,36(sp)
+	lw	s10,32(sp)
+	lw	s11,28(sp)
+	j	.L132
+.L160:
+	lw	a2,16(s11)
+	lw	a5,-1968(a5)
+	bleu	a2,a5,.L127
+	mv	s9,s10
+	j	.L127
+.L143:
+	lw	a4,8(s0)
+	addi	a4,a4,1
+	sw	a4,8(s0)
+	j	.L142
+.L123:
+	bne	s2,zero,.L131
+	bne	s5,zero,.L144
+.L167:
+	li	s2,0
+	li	s6,0
+	li	s3,0
+	li	a5,7
+	li	s4,5
+	j	.L132
+.L144:
+	li	s7,32
+	li	s6,0
+	li	s3,0
+	li	a5,7
+	li	s4,1
+	li	s2,0
+	j	.L132
+.L163:
+	blt	s3,zero,.L135
+	slli	a3,s3,2
+	add	a3,a3,s3
+	lui	a4,%hi(.LANCHOR1)
+	slli	a3,a3,2
+	addi	a4,a4,%lo(.LANCHOR1)
+	add	a4,a4,a3
+	lw	a3,848(a4)
+	beq	a3,a1,.L135
+	lw	a0,844(a4)
+	slli	a6,a1,1
+	slli	a4,a3,1
+	add	a4,s0,a4
+	add	a3,s0,a6
+	sub	a0,a2,a0
+	lhu	a3,248(a3)
+	lhu	a4,248(a4)
+	ble	a0,zero,.L164
+	sub	a4,a3,a4
+	srai	a7,a4,31
+	lw	a6,12(a5)
+	xor	a4,a7,a4
+	li	a3,360448
+	sub	a4,a4,a7
+	addi	a3,a3,-448
+	mulh	t1,a4,a3
+	mulhu	a7,a0,a6
+	mul	a4,a4,a3
+	mul	a0,a0,a6
+	bgtu	t1,a7,.L147
+	bne	t1,a7,.L135
+	bleu	a4,a0,.L135
+.L147:
+	li	s7,96
+	li	s6,0
+	li	s3,0
+	li	s4,4
+	j	.L134
+.L164:
+	bne	a3,a4,.L147
+.L135:
+	li	a4,4
+	beq	s1,a4,.L165
+	li	a4,5
+	beq	s1,a4,.L166
+	beq	s5,s1,.L140
+.L139:
+	slli	a4,s5,1
+	add	a5,a5,a4
+	lhu	s6,16(a5)
+	li	s7,32
+	li	s2,16
+	andi	s3,s6,0xff
+	li	s4,2
+	srli	s6,s6,8
+	j	.L134
+.L158:
+	lw	s1,68(sp)
+	lw	s8,40(sp)
+	lw	s9,36(sp)
+	lw	s10,32(sp)
+	lw	s11,28(sp)
+	bne	s5,zero,.L144
+	j	.L167
+.L166:
+	addi	a4,s5,-2
+	li	a3,1
+	bgtu	a4,a3,.L139
+.L140:
+	slli	a4,s1,1
+	add	a5,a5,a4
+	lhu	s6,16(a5)
+	li	s7,0
+	li	s2,16
+	andi	s3,s6,0xff
+	li	s4,0
+	srli	s6,s6,8
+	j	.L134
+.L165:
+	li	a4,1
+	bne	s5,a4,.L139
+	j	.L140
+	.size	finalize, .-finalize
 	.section	.text.startup,"ax",@progbits
 	.align	2
 	.globl	main
@@ -1339,105 +1367,105 @@ main:
 	lw	a5,4(a4)
 	lui	s0,%hi(.LANCHOR0)
 	andi	a4,a5,1
-	bne	a4,zero,.L332
+	bne	a4,zero,.L341
 	addi	s0,s0,%lo(.LANCHOR0)
-.L166:
+.L169:
 	lw	a2,280(s0)
-	lw	a3,268(s0)
+	lw	a3,272(s0)
 	andi	a4,a5,14
 	srli	a5,a4,3
 	or	a5,a5,a2
 	lui	a6,%hi(__rom_end)
 	andi	a3,a3,112
-	addi	s9,a6,%lo(__rom_end)
+	addi	s10,a6,%lo(__rom_end)
 	slli	a5,a5,7
-	li	s10,-4194304
+	li	s8,-4194304
 	or	a5,a5,a3
-	add	s10,s9,s10
-	srai	s10,s10,2
+	add	s8,s10,s8
+	srai	s8,s8,2
 	sw	a4,276(s0)
-	sw	a5,268(s0)
+	sw	a5,272(s0)
 	li	a4,-268435456
 	sw	a5,0(a4)
-	srli	a3,s10,8
-	andi	a5,s10,0xff
+	srli	a3,s8,8
+	andi	a5,s8,0xff
 	sw	a5,32(sp)
 	andi	a5,a3,0xff
 	sw	a5,36(sp)
-	lui	a5,%hi(.LANCHOR4)
-	addi	s10,a5,%lo(.LANCHOR4)
-	lui	a5,%hi(.L187)
-	addi	a5,a5,%lo(.L187)
+	lui	a5,%hi(.LANCHOR3)
+	addi	s8,a5,%lo(.LANCHOR3)
+	lui	a5,%hi(.L190)
+	addi	a5,a5,%lo(.L190)
 	sw	a5,40(sp)
 	lui	a5,%hi(.LANCHOR0+300)
 	addi	a5,a5,%lo(.LANCHOR0+300)
 	sw	a5,56(sp)
-	lui	a5,%hi(.LANCHOR0+252)
-	addi	a5,a5,%lo(.LANCHOR0+252)
-	sw	a5,52(sp)
-	lui	a5,%hi(.LANCHOR0+168)
-	addi	a5,a5,%lo(.LANCHOR0+168)
-	sw	a5,48(sp)
 	lui	a5,%hi(.LANCHOR0+308)
 	addi	a5,a5,%lo(.LANCHOR0+308)
 	lui	s6,%hi(.LANCHOR2)
 	sw	a5,60(sp)
-	lui	s8,%hi(.LANCHOR2-1776)
+	lui	s7,%hi(.LANCHOR2-1776)
 	addi	a5,s6,%lo(.LANCHOR2)
 	sw	a5,4(sp)
-	addi	a5,s8,%lo(.LANCHOR2-1776)
+	addi	a5,s7,%lo(.LANCHOR2-1776)
 	sw	a5,24(sp)
-	lui	a5,%hi(.LANCHOR4+12)
-	addi	a5,a5,%lo(.LANCHOR4+12)
-	li	a2,65536
+	lui	a5,%hi(.LANCHOR3+16)
+	addi	a5,a5,%lo(.LANCHOR3+16)
 	sw	a5,44(sp)
+	lui	a5,%hi(.LANCHOR0+212)
+	addi	a5,a5,%lo(.LANCHOR0+212)
+	sw	a5,52(sp)
+	lui	a5,%hi(.LANCHOR0+168)
+	addi	a5,a5,%lo(.LANCHOR0+168)
+	li	a2,65536
+	sw	a5,48(sp)
+	li	s9,65536
 	addi	a5,a2,-2
-	sw	a5,0(sp)
-	li	a5,65536
 	li	s11,-251658240
 	li	s1,-251658240
 	li	s4,-268435456
 	lui	s3,%hi(.LANCHOR1)
-	addi	a5,a5,-1
+	sw	a5,0(sp)
+	addi	a5,s9,-1
 	addi	s3,s3,%lo(.LANCHOR1)
 	addi	s11,s11,8
 	addi	s1,s1,4
 	li	s2,63
 	sw	a5,28(sp)
 	addi	s4,s4,4
-.L167:
+.L170:
 	lw	a5,0(s11)
 	andi	a5,a5,2
-	bne	a5,zero,.L168
-.L357:
-	lw	s8,4(s0)
+	bne	a5,zero,.L171
+.L366:
+	lw	s9,4(s0)
 	lw	s7,0(s0)
-.L169:
+.L172:
 	lw	a5,284(s0)
-	beq	s8,s7,.L171
-.L358:
-	addi	a3,s8,1
-	andi	a4,s8,63
+	beq	s9,s7,.L174
+.L367:
+	addi	a3,s9,1
+	andi	a4,s9,63
 	add	a4,s3,a4
 	sw	a3,4(s0)
 	sw	zero,288(s0)
 	lbu	a4,0(a4)
-	beq	a5,zero,.L349
+	beq	a5,zero,.L358
 	lw	a3,292(s0)
 	li	a2,1
 	addi	a0,a3,1
 	add	a1,s0,a3
 	sw	a0,292(s0)
 	sb	a4,300(a1)
-	beq	a5,a2,.L350
+	beq	a5,a2,.L359
 	li	a2,2
-	beq	a5,a2,.L351
+	beq	a5,a2,.L360
 	lw	s5,336(s0)
 	li	a1,3
 	addi	s5,s5,-1
-	beq	a5,a1,.L352
+	beq	a5,a1,.L361
 	sw	s5,336(s0)
-	bne	s5,zero,.L279
+	bne	s5,zero,.L283
 	addi	a3,a3,-1
 	add	a3,s0,a3
 	lbu	a5,301(a3)
@@ -1447,160 +1475,159 @@ main:
 	sw	zero,284(s0)
 	or	a5,a5,a3
 	lbu	a1,300(s0)
-	beq	a5,a4,.L183
-	lw	a5,272(s0)
+	beq	a5,a4,.L186
+	lw	a5,204(s0)
 	li	a4,254
-	bgtu	a5,a4,.L184
+	bgtu	a5,a4,.L187
 	addi	a5,a5,1
-	sw	a5,272(s0)
-.L184:
-	lw	a5,24(s10)
-	bne	a5,zero,.L353
-.L279:
+	sw	a5,204(s0)
+.L187:
+	lw	a5,0(s8)
+	bne	a5,zero,.L362
+.L283:
 	lw	a5,0(s4)
 	lw	s6,276(s0)
 	andi	s5,a5,15
-	beq	s6,s5,.L244
+	beq	s6,s5,.L251
 	sw	s5,276(s0)
 	andi	a5,a5,1
 	andi	s6,s6,1
-	beq	a5,zero,.L245
+	beq	a5,zero,.L252
 	srli	a5,s5,1
 	andi	a5,a5,3
-	sw	a5,204(s0)
-	beq	s6,zero,.L246
+	sw	a5,228(s0)
+	beq	s6,zero,.L253
 	lw	a5,280(s0)
 	srli	s5,s5,3
 	or	s5,s5,a5
-.L247:
-	lw	a5,268(s0)
+.L254:
+	lw	a5,272(s0)
 	slli	s5,s5,7
 	li	a4,-268435456
 	andi	a5,a5,112
 	or	a5,a5,s5
-	sw	a5,268(s0)
+	sw	a5,272(s0)
 	sw	a5,0(a4)
-.L244:
-	lw	a5,216(s0)
-	beq	a5,zero,.L255
-	beq	s8,s7,.L354
-.L256:
-	lw	a5,32(s10)
+.L251:
+	lw	a5,240(s0)
+	beq	a5,zero,.L262
+	beq	s9,s7,.L363
+.L263:
+	lw	a5,32(s8)
 	sw	a5,372(s0)
-.L255:
+.L262:
 	lw	a5,164(s0)
-	bne	a5,zero,.L355
-.L259:
+	bne	a5,zero,.L364
+.L266:
 	lw	a5,348(s0)
-	beq	a5,zero,.L348
-	beq	s8,s7,.L356
-.L348:
-	lw	s5,184(s0)
-	lw	a5,144(s0)
-.L261:
-	beq	s5,a5,.L167
-	lw	a5,0(s11)
-	andi	a5,a5,4
-	beq	a5,zero,.L167
-	lw	a4,4(sp)
-	andi	a5,s5,127
-	addi	s5,s5,1
-	add	a5,a4,a5
-	lbu	a4,-1904(a5)
-	sw	s5,184(s0)
+	beq	a5,zero,.L268
+	beq	s9,s7,.L365
+.L268:
+	lw	a5,184(s0)
+	lw	a4,144(s0)
+	beq	a5,a4,.L170
+	lw	a4,0(s11)
+	andi	a4,a4,4
+	beq	a4,zero,.L170
+	lw	a3,4(sp)
+	andi	a4,a5,127
+	addi	a5,a5,1
+	add	a4,a3,a4
+	lbu	a4,-1904(a4)
+	sw	a5,184(s0)
 	li	a5,-251658240
 	sw	a4,0(a5)
 	li	a5,3
 	sw	a5,0(s11)
 	lw	a5,0(s11)
 	andi	a5,a5,2
-	beq	a5,zero,.L357
-.L168:
+	beq	a5,zero,.L366
+.L171:
 	lw	a4,0(s1)
 	sw	zero,0(s11)
 	lw	s7,0(s0)
-	lw	s8,4(s0)
-	sub	a5,s7,s8
-	bgtu	a5,s2,.L170
+	lw	s9,4(s0)
+	sub	a5,s7,s9
+	bgtu	a5,s2,.L173
 	andi	a5,s7,63
 	add	a5,s3,a5
 	addi	s7,s7,1
 	sb	a4,0(a5)
 	sw	s7,0(s0)
 	lw	a5,284(s0)
-	bne	s8,s7,.L358
-.L171:
+	bne	s9,s7,.L367
+.L174:
 	lw	a5,288(s0)
 	lw	a4,0(sp)
-	bgtu	a5,a4,.L179
+	bgtu	a5,a4,.L182
 	addi	a5,a5,1
 	sw	a5,288(s0)
-.L179:
+.L182:
 	lw	a5,284(s0)
-	beq	a5,zero,.L279
+	beq	a5,zero,.L283
 	lw	a5,364(s0)
-	beq	a5,zero,.L279
+	beq	a5,zero,.L283
 	lw	a4,288(s0)
-	bne	a5,a4,.L279
+	bne	a5,a4,.L283
 	lw	a1,292(s0)
 	sw	zero,284(s0)
-	beq	a1,zero,.L242
+	beq	a1,zero,.L249
 	lbu	a1,300(s0)
-.L242:
-	lw	a5,272(s0)
+.L249:
+	lw	a5,204(s0)
 	li	a4,254
-	bgtu	a5,a4,.L243
+	bgtu	a5,a4,.L250
 	addi	a5,a5,1
-	sw	a5,272(s0)
-.L243:
-	lw	a5,24(s10)
-	beq	a5,zero,.L279
+	sw	a5,204(s0)
+.L250:
+	lw	a5,0(s8)
+	beq	a5,zero,.L283
 	li	a0,5
 	call	error.part.0
-	j	.L279
-.L355:
+	j	.L283
+.L364:
 	li	a0,4
 	call	mac_step
-	j	.L259
-.L170:
+	j	.L266
+.L173:
 	lw	a5,8(s0)
 	addi	a5,a5,1
 	sw	a5,8(s0)
-	j	.L169
-.L245:
+	j	.L172
+.L252:
 	lw	a5,280(s0)
 	srli	s5,s5,3
-	beq	s6,zero,.L347
-	lw	a4,32(s10)
+	beq	s6,zero,.L357
+	lw	a4,32(s8)
 	or	s5,s5,a5
 	li	a5,1
-	sw	a5,216(s0)
+	sw	a5,240(s0)
 	sw	a4,372(s0)
-	sw	s5,208(s0)
-	j	.L247
-.L362:
+	sw	s5,232(s0)
+	j	.L254
+.L370:
 	lw	s5,8(sp)
 	lw	s4,12(sp)
 	lw	s0,16(sp)
 	lw	s1,20(sp)
-.L253:
+.L260:
 	lw	a5,280(s0)
 	srli	s5,s5,3
 	andi	s5,s5,1
 	sw	zero,368(s0)
-.L347:
+.L357:
 	or	s5,s5,a5
-	j	.L247
-.L356:
+	j	.L254
+.L365:
 	lw	a5,340(s0)
 	li	a3,28
 	lw	a4,344(s0)
-	sub	a2,s9,a5
-	ble	a2,a3,.L281
+	sub	a2,s10,a5
+	ble	a2,a3,.L285
 	li	a2,0
 	li	a1,64
 	li	a0,28
-.L270:
+.L277:
 	lw	a3,0(a5)
  #APP
 # 63 "include/rvbl2.h" 1
@@ -1653,33 +1680,33 @@ main:
 	addi	a5,a5,32
 	addi	a2,a2,8
 	andi	a3,a3,2
-	beq	a3,zero,.L264
+	beq	a3,zero,.L271
 	lw	a7,0(s1)
 	sw	zero,0(s11)
 	lw	a3,0(s0)
 	lw	a6,4(s0)
 	sub	a6,a3,a6
-	bgtu	a6,s2,.L265
+	bgtu	a6,s2,.L272
 	andi	a6,a3,63
 	add	a6,s3,a6
 	addi	a3,a3,1
 	sw	a3,0(s0)
 	sb	a7,0(a6)
-.L264:
-	beq	a2,a1,.L267
-	sub	a3,s9,a5
-	bgt	a3,a0,.L270
+.L271:
+	beq	a2,a1,.L274
+	sub	a3,s10,a5
+	bgt	a3,a0,.L277
 	mv	a3,a5
-.L263:
-	beq	a5,s9,.L344
+.L270:
+	beq	a5,s10,.L354
 	neg	a2,a2
 	slli	a2,a2,2
 	addi	a2,a2,256
 	add	a5,a5,a2
-	j	.L271
-.L359:
-	beq	a3,s9,.L344
-.L271:
+	j	.L278
+.L368:
+	beq	a3,s10,.L354
+.L278:
 	lw	a2,0(a3)
 	addi	a3,a3,4
  #APP
@@ -1687,90 +1714,46 @@ main:
 	.insn r 0x33, 2, 0x40, a4, a2, a4
 # 0 "" 2
  #NO_APP
-	bne	a5,a3,.L359
-.L267:
+	bne	a3,a5,.L368
+.L274:
 	sw	a5,340(s0)
 	sw	a4,344(s0)
-	bne	a5,s9,.L348
-.L273:
-	li	a3,3
-	sb	a3,72(sp)
-	lw	a3,32(sp)
-	srli	a5,a4,8
-	li	a0,12
-	sb	a3,73(sp)
-	lw	a3,36(sp)
-	sb	a4,75(sp)
-	sb	a5,76(sp)
-	sb	a3,74(sp)
-	sw	zero,348(s0)
-	call	mac_step
-	li	a5,73
-	lw	a4,28(sp)
- #APP
-# 51 "include/rvbl2.h" 1
-	.insn r 0x33, 0, 0x40, a2, a5, a4
-# 0 "" 2
- #NO_APP
-	sb	a5,80(sp)
-	addi	a4,sp,72
-	addi	a5,sp,81
-.L274:
-	lbu	a3,0(a4)
-	sb	a3,0(a5)
- #APP
-# 51 "include/rvbl2.h" 1
-	.insn r 0x33, 0, 0x40, a2, a3, a2
-# 0 "" 2
- #NO_APP
-	addi	a5,a5,1
-	addi	a3,sp,86
-	addi	a4,a4,1
-	bne	a3,a5,.L274
-	lw	a5,144(s0)
-	lw	s5,184(s0)
-	sh	a2,86(sp)
-	li	a4,120
-	sub	a3,a5,s5
-	bgtu	a3,a4,.L360
-	addi	a0,sp,80
-	call	push8.part.0
-	lw	a5,144(s0)
-	j	.L261
-.L265:
+	bne	a5,s10,.L268
+	j	.L281
+.L272:
 	lw	a3,8(s0)
 	addi	a3,a3,1
 	sw	a3,8(s0)
-	j	.L264
-.L354:
+	j	.L271
+.L363:
 	lw	a5,284(s0)
-	bne	a5,zero,.L256
+	bne	a5,zero,.L263
 	lw	a5,372(s0)
 	addi	a5,a5,-1
 	sw	a5,372(s0)
-	bne	a5,zero,.L255
+	bne	a5,zero,.L262
 	call	finalize
-	j	.L255
-.L349:
+	j	.L262
+.L358:
 	li	a5,165
-	bne	a4,a5,.L279
+	bne	a4,a5,.L283
 	li	a5,1
 	sw	a5,284(s0)
 	lw	a5,28(sp)
 	sw	zero,292(s0)
 	sw	a5,296(s0)
-	j	.L279
-.L246:
-	lw	a5,216(s0)
-	bne	a5,zero,.L361
-.L249:
+	j	.L283
+.L253:
+	lw	a5,240(s0)
+	bne	a5,zero,.L369
+.L256:
 	lw	a4,368(s0)
 	li	a5,1
-	sw	a5,212(s0)
+	sw	a5,236(s0)
 	sw	zero,140(s0)
-	beq	a4,zero,.L253
-	lw	a2,220(s0)
-	lw	a3,28(s10)
+	beq	a4,zero,.L260
+	lw	a2,244(s0)
+	lw	a3,28(s8)
 	lw	a0,24(sp)
 	sw	s5,8(sp)
 	sw	s4,12(sp)
@@ -1781,20 +1764,20 @@ main:
 	mv	s4,a2
 	mv	s6,a0
 	mv	s1,a4
-	j	.L252
-.L251:
+	j	.L259
+.L258:
 	addi	s0,s0,1
 	addi	s6,s6,20
-	beq	s0,s1,.L362
-.L252:
+	beq	s0,s1,.L370
+.L259:
 	lw	a5,12(s6)
 	sub	a5,s4,a5
-	bgtu	a5,s5,.L251
+	bgtu	a5,s5,.L258
 	lbu	a1,16(s6)
 	mv	a0,s6
 	call	vt_add
-	j	.L251
-.L350:
+	j	.L258
+.L359:
 	lw	a5,296(s0)
  #APP
 # 51 "include/rvbl2.h" 1
@@ -1804,10 +1787,10 @@ main:
 	li	a5,2
 	sw	a4,296(s0)
 	sw	a5,284(s0)
-	j	.L279
-.L351:
+	j	.L283
+.L360:
 	li	a5,32
-	bgtu	a4,a5,.L363
+	bgtu	a4,a5,.L371
 	lw	a3,296(s0)
  #APP
 # 51 "include/rvbl2.h" 1
@@ -1820,8 +1803,8 @@ main:
 	sw	a3,296(s0)
 	sw	a4,336(s0)
 	sw	a5,284(s0)
-	j	.L279
-.L352:
+	j	.L283
+.L361:
 	lw	a5,296(s0)
  #APP
 # 51 "include/rvbl2.h" 1
@@ -1830,142 +1813,151 @@ main:
  #NO_APP
 	sw	a4,296(s0)
 	sw	s5,336(s0)
-	bne	s5,a2,.L279
+	bne	s5,a2,.L283
 	li	a5,4
 	sw	a5,284(s0)
-	j	.L279
-.L361:
+	j	.L283
+.L369:
 	call	finalize
 	lw	s5,276(s0)
-	j	.L249
-.L344:
-	sw	s9,340(s0)
+	j	.L256
+.L354:
+	sw	s10,340(s0)
 	sw	a4,344(s0)
-	j	.L273
-.L363:
-	lw	a5,272(s0)
+.L281:
+	li	a3,4
+	sb	a3,80(sp)
+	lw	a3,32(sp)
+	srli	a5,a4,8
+	addi	a1,sp,80
+	sb	a3,81(sp)
+	lw	a3,36(sp)
+	li	a0,73
+	sb	a4,83(sp)
+	sb	a3,82(sp)
+	sb	a5,84(sp)
+	sw	zero,348(s0)
+	call	signed_record
+	j	.L268
+.L371:
+	lw	a5,204(s0)
 	sw	zero,284(s0)
 	li	a4,254
 	lbu	a1,300(s0)
-	bgtu	a5,a4,.L178
+	bgtu	a5,a4,.L181
 	addi	a5,a5,1
-	sw	a5,272(s0)
-.L178:
-	lw	a5,24(s10)
-	beq	a5,zero,.L279
+	sw	a5,204(s0)
+.L181:
+	lw	a5,0(s8)
+	beq	a5,zero,.L283
 	li	a0,2
 	call	error.part.0
-	j	.L179
-.L183:
+	j	.L182
+.L186:
 	addi	a5,a1,-67
 	andi	a5,a5,0xff
-	li	a3,37
-	lbu	a4,301(s0)
-	bgtu	a5,a3,.L185
-	lw	a3,40(sp)
+	li	a4,37
+	lbu	s6,301(s0)
+	bgtu	a5,a4,.L188
+	lw	a4,40(sp)
 	slli	a5,a5,2
-	add	a5,a3,a5
+	add	a5,a4,a5
 	lw	a5,0(a5)
 	jr	a5
 	.section	.rodata
 	.align	2
 	.align	2
-.L187:
+.L190:
+	.word	.L200
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L199
+	.word	.L198
 	.word	.L197
-	.word	.L185
-	.word	.L185
-	.word	.L185
+	.word	.L188
 	.word	.L196
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
 	.word	.L195
 	.word	.L194
-	.word	.L185
 	.word	.L193
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
 	.word	.L192
 	.word	.L191
-	.word	.L190
-	.word	.L189
 	.word	.L188
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L185
-	.word	.L186
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L188
+	.word	.L189
 	.section	.text.startup
-.L360:
-	lw	a4,188(s0)
-	addi	a4,a4,1
-	sw	a4,188(s0)
-	j	.L261
-.L281:
+.L285:
 	mv	a3,a5
 	li	a2,0
-	j	.L263
-.L353:
+	j	.L270
+.L362:
 	li	a0,1
 	call	error.part.0
-	j	.L179
-.L332:
+	j	.L182
+.L341:
 	srli	a4,a5,1
 	addi	s0,s0,%lo(.LANCHOR0)
 	andi	a4,a4,3
-	sw	a4,204(s0)
-	j	.L166
-.L185:
-	lw	a5,272(s0)
+	sw	a4,228(s0)
+	j	.L169
+.L188:
+	lw	a5,204(s0)
 	li	a4,254
-	bgtu	a5,a4,.L220
+	bgtu	a5,a4,.L222
 	addi	a5,a5,1
-	sw	a5,272(s0)
-.L220:
-	lw	a5,24(s10)
-	beq	a5,zero,.L179
+	sw	a5,204(s0)
+.L222:
+	lw	a5,0(s8)
+	beq	a5,zero,.L182
 	li	a0,3
 	call	error.part.0
-	j	.L179
-.L186:
+	j	.L182
+.L189:
 	li	a5,12
-	bne	a4,a5,.L198
+	bne	s6,a5,.L201
 	addi	a0,sp,80
 	li	a5,1
 	addi	a1,s0,302
-	sw	a5,24(s10)
+	sw	a5,0(s8)
 	call	get_epc
 	addi	a0,sp,80
 	call	hot_find
-	blt	a0,zero,.L179
+	blt	a0,zero,.L182
 	lw	a4,356(s0)
 	add	a5,s0,a0
 	li	a3,2
 	addi	a4,a4,-1
 	sb	a3,12(a5)
 	sw	a4,356(s0)
-	j	.L179
-.L189:
+	j	.L182
+.L192:
 	li	a5,17
-	bne	a4,a5,.L198
+	bne	s6,a5,.L201
 	addi	a1,s0,302
 	addi	a0,sp,80
 	li	a5,1
-	sw	a5,24(s10)
+	sw	a5,0(s8)
 	call	get_epc
 	lbu	a4,316(s0)
 	lbu	a3,315(s0)
@@ -1981,56 +1973,57 @@ main:
 	andi	a1,a1,7
 	addi	a0,sp,80
 	call	seen_put
-	j	.L179
-.L188:
+	j	.L182
+.L191:
 	li	a5,4
-	bne	a4,a5,.L198
+	bne	s6,a5,.L201
 	lhu	a5,304(s0)
 	lhu	a3,302(s0)
-	lw	a4,220(s0)
+	lw	a4,244(s0)
 	slli	a5,a5,16
-	li	a2,1
-	sw	a2,24(s10)
 	or	a5,a5,a3
-	bleu	a5,a4,.L179
-	sw	a5,220(s0)
-	j	.L179
-.L197:
+	li	a3,1
+	sw	a3,0(s8)
+	sub	a4,a5,a4
+	ble	a4,zero,.L182
+	sw	a5,244(s0)
+	j	.L182
+.L200:
 	li	a5,14
-	bne	a4,a5,.L198
+	bne	s6,a5,.L201
 	lbu	a5,302(s0)
 	lbu	a4,303(s0)
 	li	a3,1
 	andi	a5,a5,7
-	sw	a5,0(s10)
+	sw	a5,4(s8)
 	lw	a5,56(sp)
 	andi	a4,a4,1
-	sw	a3,24(s10)
+	sw	a3,0(s8)
 	sw	a4,280(s0)
 	li	a1,12
-.L217:
+.L219:
 	lw	a3,44(sp)
 	lhu	a2,4(a5)
 	addi	a5,a5,2
 	add	a3,a3,s5
 	sh	a2,0(a3)
 	addi	s5,s5,2
-	bne	s5,a1,.L217
+	bne	s5,a1,.L219
 	lw	a5,276(s0)
-	lw	a3,268(s0)
+	lw	a3,272(s0)
 	srli	a5,a5,3
 	andi	a5,a5,1
 	or	a5,a5,a4
 	slli	a5,a5,7
 	andi	a4,a3,112
 	or	a5,a5,a4
-	sw	a5,268(s0)
+	sw	a5,272(s0)
 	li	a4,-268435456
 	sw	a5,0(a4)
-	j	.L179
-.L196:
+	j	.L182
+.L199:
 	li	a5,3
-	bne	a4,a5,.L198
+	bne	s6,a5,.L201
 	lbu	a5,302(s0)
 	lbu	a4,304(s0)
 	lbu	a3,303(s0)
@@ -2040,20 +2033,20 @@ main:
 	or	a4,a4,a3
 	add	a5,s0,a5
 	li	a3,1
-	sw	a3,24(s10)
-	sh	a4,224(a5)
-	j	.L179
-.L195:
+	sw	a3,0(s8)
+	sh	a4,248(a5)
+	j	.L182
+.L198:
 	li	a5,13
-	bne	a4,a5,.L198
+	bne	s6,a5,.L201
 	addi	a0,sp,80
 	li	a5,1
 	addi	a1,s0,302
-	sw	a5,24(s10)
+	sw	a5,0(s8)
 	call	get_epc
 	addi	a0,sp,80
 	call	hot_find
-	bge	a0,zero,.L179
+	bge	a0,zero,.L182
 	lw	a0,84(sp)
 	li	a3,-2048143360
 	addi	a3,a3,-1417
@@ -2079,65 +2072,97 @@ main:
 	xor	a5,a5,a3
 	mul	a5,a5,a4
 	srli	a5,a5,26
-	j	.L237
-.L365:
+	j	.L241
+.L374:
 	andi	a0,a3,63
 	add	a0,s3,a0
 	addi	a3,a3,1
 	sw	a3,0(s0)
 	sb	t3,0(a0)
-.L234:
+.L238:
 	add	a0,s0,a4
 	lbu	a3,12(a0)
-	bne	a3,a1,.L364
+	bne	a3,a1,.L372
 	addi	s5,s5,1
-	beq	s5,t1,.L179
-.L237:
+	beq	s5,t1,.L373
+.L241:
 	lw	a3,0(a2)
 	add	a4,s5,a5
 	andi	a4,a4,63
 	andi	a3,a3,2
-	beq	a3,zero,.L234
+	beq	a3,zero,.L238
 	lw	t3,0(a6)
 	sw	zero,0(a2)
 	lw	a3,0(s0)
 	lw	a0,4(s0)
 	sub	a0,a3,a0
-	bleu	a0,a7,.L365
+	bleu	a0,a7,.L374
 	lw	a3,8(s0)
 	addi	a3,a3,1
 	sw	a3,8(s0)
-	j	.L234
-.L194:
-	bne	a4,zero,.L198
+	j	.L238
+.L197:
+	bne	s6,zero,.L201
 	li	a5,4194304
 	sw	a5,340(s0)
 	li	a5,65536
 	li	a4,1
 	addi	a5,a5,-1
-	sw	a4,24(s10)
+	sw	a4,0(s8)
 	sw	a5,344(s0)
 	sw	a4,348(s0)
-	j	.L179
-.L193:
-	li	a5,16
-	beq	a4,a5,.L208
-	beq	a4,zero,.L209
-.L198:
-	lw	a5,272(s0)
-	li	a4,254
-	bgtu	a5,a4,.L223
+	j	.L182
+.L196:
+	li	a6,20
+	bgtu	s6,a6,.L201
+	li	a5,1114112
 	addi	a5,a5,1
-	sw	a5,272(s0)
-.L223:
-	lw	a5,24(s10)
-	beq	a5,zero,.L179
-	li	a0,4
-	call	error.part.0
-	j	.L179
-.L192:
+	srl	a5,a5,s6
+	andi	a5,a5,1
+	beq	a5,zero,.L201
+	lw	s5,208(s0)
+	li	a5,1
+	sw	a5,0(s8)
+	bne	s5,zero,.L375
+	beq	s6,zero,.L182
+	lhu	a4,312(s0)
+	lhu	a5,316(s0)
+	lhu	a1,310(s0)
+	lhu	a2,314(s0)
+	lhu	a7,304(s0)
+	lhu	a3,308(s0)
+	lhu	a0,306(s0)
+	lhu	t1,302(s0)
+	slli	a4,a4,16
+	slli	a5,a5,16
+	or	a4,a4,a1
+	or	a5,a5,a2
+	lw	a1,48(sp)
+	lw	a2,52(sp)
+	slli	a7,a7,16
+	slli	a3,a3,16
+	or	a3,a3,a0
+	or	a7,a7,t1
+	addi	a0,sp,80
+	sw	a7,212(s0)
+	sw	a3,216(s0)
+	sw	a4,220(s0)
+	sw	a5,224(s0)
+	call	chaskey12_subkeys
+	li	a6,20
+	bne	s6,a6,.L246
+	lhu	s5,320(s0)
+	lhu	a5,318(s0)
+	slli	s5,s5,16
+	or	s5,s5,a5
+.L246:
+	li	a5,1
+	sw	s5,200(s0)
+	sw	a5,208(s0)
+	j	.L182
+.L195:
 	li	a5,10
-	bne	a4,a5,.L198
+	bne	s6,a5,.L201
 	lbu	a3,304(s0)
 	lbu	a4,306(s0)
 	lbu	a5,308(s0)
@@ -2153,25 +2178,25 @@ main:
 	or	a3,a3,a7
 	or	a4,a4,a6
 	li	a0,1
-	sw	a5,8(s10)
-	sw	a0,24(s10)
-	lui	a5,%hi(.LANCHOR4)
-	sw	a3,28(s10)
-	sw	a4,4(s10)
+	sw	a5,12(s8)
+	sw	a0,0(s8)
+	lui	a5,%hi(.LANCHOR3)
+	sw	a3,28(s8)
+	sw	a4,8(s8)
 	sw	a1,360(s0)
-	addi	s10,a5,%lo(.LANCHOR4)
+	addi	s8,a5,%lo(.LANCHOR3)
 	andi	a5,a2,0xff
-	beq	a2,zero,.L366
-.L215:
+	beq	a2,zero,.L376
+.L217:
 	lhu	a4,310(s0)
-	sw	a5,32(s10)
+	sw	a5,32(s8)
 	sw	a4,364(s0)
-	j	.L179
-.L191:
-	bne	a4,zero,.L198
+	j	.L182
+.L194:
+	bne	s6,zero,.L201
 	lbu	a3,352(s0)
-	lhu	a5,240(s0)
-	lbu	a4,272(s0)
+	lhu	a5,264(s0)
+	lbu	a4,204(s0)
 	lw	a2,356(s0)
 	slli	a3,a3,16
 	or	a5,a5,a3
@@ -2180,7 +2205,7 @@ main:
 	li	a0,12
 	li	a4,1
 	sw	a5,72(sp)
-	sw	a4,24(s10)
+	sw	a4,0(s8)
 	sb	a2,76(sp)
 	call	mac_step
 	li	a5,65536
@@ -2195,7 +2220,7 @@ main:
 	sb	a3,80(sp)
 	li	a0,5
 	addi	a3,sp,72
-.L211:
+.L213:
 	lbu	a2,0(a3)
 	addi	a4,a4,1
 	addi	a1,sp,80
@@ -2207,31 +2232,33 @@ main:
 # 0 "" 2
  #NO_APP
 	addi	a3,a3,1
-	bne	a4,a0,.L211
+	bne	a4,a0,.L213
 	lw	a4,144(s0)
 	lw	a2,184(s0)
 	sh	a5,86(sp)
 	li	a3,120
 	sub	a5,a4,a2
-	bgtu	a5,a3,.L367
+	bgtu	a5,a3,.L377
 	addi	a0,sp,80
 	call	push8.part.0
-	j	.L179
-.L190:
+	j	.L182
+.L193:
 	li	a5,21
-	bne	a4,a5,.L198
+	bne	s6,a5,.L201
 	lhu	s5,304(s0)
 	lhu	a5,302(s0)
-	lw	a4,220(s0)
+	lw	a4,244(s0)
 	slli	s5,s5,16
-	li	a3,1
 	or	s5,s5,a5
-	sw	a3,24(s10)
+	li	a5,1
+	sw	a5,0(s8)
+	sub	a4,s5,a4
 	lhu	a5,306(s0)
 	lhu	a1,320(s0)
 	lbu	s6,322(s0)
-	bgtu	s5,a4,.L218
-.L219:
+	ble	a4,zero,.L221
+	sw	s5,244(s0)
+.L221:
 	li	a3,65536
 	srli	a4,a5,8
 	addi	a3,a3,-1
@@ -2248,7 +2275,7 @@ main:
  #NO_APP
 	addi	a5,s0,308
 	addi	a2,s0,320
-.L224:
+.L228:
 	lbu	a3,0(a5)
  #APP
 # 51 "include/rvbl2.h" 1
@@ -2256,12 +2283,12 @@ main:
 # 0 "" 2
  #NO_APP
 	addi	a5,a5,1
-	bne	a2,a5,.L224
+	bne	a2,a5,.L228
 	li	a5,-251658240
 	lw	a3,8(a5)
 	addi	a5,a5,8
 	andi	a3,a3,2
-	beq	a3,zero,.L225
+	beq	a3,zero,.L229
 	li	a2,-251658240
 	lw	a0,4(a2)
 	sw	zero,0(a5)
@@ -2269,29 +2296,29 @@ main:
 	lw	a3,4(s0)
 	li	a6,63
 	sub	a3,a5,a3
-	bgtu	a3,a6,.L226
+	bgtu	a3,a6,.L230
 	andi	a3,a5,63
 	add	a3,s3,a3
 	addi	a5,a5,1
 	sw	a5,0(s0)
 	sb	a0,0(a3)
-.L225:
+.L229:
 	li	a5,65536
 	addi	a5,a5,-1
 	xor	a4,a4,a5
-	bne	a1,a4,.L368
+	bne	a1,a4,.L378
 	lw	a5,360(s0)
-	bltu	s6,a5,.L179
+	bltu	s6,a5,.L182
 	lw	a1,60(sp)
 	addi	a0,sp,80
 	call	get_epc
-	lw	a5,212(s0)
-	bne	a5,zero,.L369
+	lw	a5,236(s0)
+	bne	a5,zero,.L379
 	li	a5,-251658240
 	lw	a4,8(a5)
 	addi	a5,a5,8
 	andi	a4,a4,2
-	beq	a4,zero,.L230
+	beq	a4,zero,.L234
 	li	a3,-251658240
 	lw	a2,4(a3)
 	sw	zero,0(a5)
@@ -2299,17 +2326,17 @@ main:
 	lw	a4,4(s0)
 	li	a1,63
 	sub	a4,a5,a4
-	bgtu	a4,a1,.L231
+	bgtu	a4,a1,.L235
 	andi	a4,a5,63
 	add	a4,s3,a4
 	addi	a5,a5,1
 	sw	a5,0(s0)
 	sb	a2,0(a4)
-.L230:
+.L234:
 	lw	a4,368(s0)
 	li	a5,8
-	beq	a4,a5,.L370
-.L232:
+	beq	a4,a5,.L380
+.L236:
 	lw	a4,368(s0)
 	lw	a3,4(sp)
 	slli	a5,a4,2
@@ -2326,71 +2353,43 @@ main:
 	sw	a3,-1772(a5)
 	lw	a3,88(sp)
 	sw	a3,-1768(a5)
-	j	.L179
-.L368:
+	j	.L182
+.L201:
+	lw	a5,204(s0)
+	li	a4,254
+	bgtu	a5,a4,.L225
+	addi	a5,a5,1
+	sw	a5,204(s0)
+.L225:
+	lw	a5,0(s8)
+	beq	a5,zero,.L182
+	li	a0,4
+	call	error.part.0
+	j	.L182
+.L378:
 	lw	a5,352(s0)
 	li	a4,254
-	bgtu	a5,a4,.L179
+	bgtu	a5,a4,.L182
 	addi	a5,a5,1
 	sw	a5,352(s0)
-	j	.L179
-.L218:
-	sw	s5,220(s0)
-	j	.L219
-.L209:
+	j	.L182
+.L376:
 	li	a5,1
-	li	a0,12
-	sw	a5,24(s10)
-	call	mac_step
-	sw	zero,248(s0)
-	sw	zero,200(s0)
-	j	.L179
-.L366:
-	li	a5,1
-	j	.L215
-.L208:
-	li	s5,1
-	li	a0,12
-	sw	s5,24(s10)
-	call	mac_step
-	lhu	a4,312(s0)
-	lhu	a5,316(s0)
-	lhu	a1,310(s0)
-	lhu	a2,314(s0)
-	lhu	a6,304(s0)
-	lhu	a3,308(s0)
-	lhu	a0,306(s0)
-	lhu	a7,302(s0)
-	slli	a4,a4,16
-	slli	a5,a5,16
-	or	a4,a4,a1
-	or	a5,a5,a2
-	lw	a1,48(sp)
-	lw	a2,52(sp)
-	slli	a6,a6,16
-	slli	a3,a3,16
-	or	a3,a3,a0
-	or	a6,a6,a7
-	addi	a0,sp,80
-	sw	s5,248(s0)
-	sw	zero,200(s0)
-	sw	a6,252(s0)
-	sw	a3,256(s0)
-	sw	a4,260(s0)
-	sw	a5,264(s0)
-	call	chaskey12_subkeys
-	j	.L179
-.L226:
-	lw	a5,8(s0)
+	j	.L217
+.L373:
+	lw	a5,204(s0)
+	li	a4,254
+	bgtu	a5,a4,.L242
 	addi	a5,a5,1
-	sw	a5,8(s0)
-	j	.L225
-.L367:
-	lw	a5,188(s0)
-	addi	a5,a5,1
-	sw	a5,188(s0)
-	j	.L179
-.L364:
+	sw	a5,204(s0)
+.L242:
+	lw	a5,0(s8)
+	beq	a5,zero,.L182
+	li	a1,72
+	li	a0,6
+	call	error.part.0
+	j	.L182
+.L372:
 	lw	a3,356(s0)
 	slli	a5,a4,1
 	add	a5,a5,a4
@@ -2405,22 +2404,33 @@ main:
 	sw	a3,68(a5)
 	lw	a3,88(sp)
 	sw	a3,72(a5)
-	j	.L179
-.L369:
-	mv	a1,s6
-	addi	a0,sp,80
-	call	vt_add
-	j	.L179
-.L231:
+	j	.L182
+.L375:
+	lw	a5,204(s0)
+	li	a4,254
+	bgtu	a5,a4,.L245
+	addi	a5,a5,1
+	sw	a5,204(s0)
+.L245:
+	li	a1,75
+	li	a0,7
+	call	error.part.0
+	j	.L182
+.L230:
 	lw	a5,8(s0)
 	addi	a5,a5,1
 	sw	a5,8(s0)
-	j	.L230
-.L370:
+	j	.L229
+.L377:
+	lw	a5,188(s0)
+	addi	a5,a5,1
+	sw	a5,188(s0)
+	j	.L182
+.L380:
 	lw	a4,4(sp)
 	lw	a5,24(sp)
 	addi	a4,a4,-1636
-.L233:
+.L237:
 	lw	a6,20(a5)
 	lw	a0,24(a5)
 	lw	a1,28(a5)
@@ -2432,14 +2442,28 @@ main:
 	sw	a2,12(a5)
 	sw	a3,16(a5)
 	addi	a5,a5,20
-	bne	a4,a5,.L233
+	bne	a4,a5,.L237
 	li	a5,7
 	sw	a5,368(s0)
-	j	.L232
+	j	.L236
+.L379:
+	mv	a1,s6
+	addi	a0,sp,80
+	call	vt_add
+	j	.L182
+.L235:
+	lw	a5,8(s0)
+	addi	a5,a5,1
+	sw	a5,8(s0)
+	j	.L234
 	.size	main, .-main
 	.data
 	.align	2
-	.set	.LANCHOR4,. + 0
+	.set	.LANCHOR3,. + 0
+	.type	err_armed, @object
+	.size	err_armed, 4
+err_armed:
+	.word	1
 	.type	gantry, @object
 	.size	gantry, 4
 gantry:
@@ -2461,10 +2485,6 @@ fares:
 	.half	750
 	.half	130
 	.half	380
-	.type	err_armed, @object
-	.size	err_armed, 4
-err_armed:
-	.word	1
 	.type	guard_ms, @object
 	.size	guard_ms, 4
 guard_ms:
@@ -2532,6 +2552,18 @@ mac_rec:
 	.size	auth_ctr, 4
 auth_ctr:
 	.zero	4
+	.type	bad_frame, @object
+	.size	bad_frame, 4
+bad_frame:
+	.zero	4
+	.type	auth_on, @object
+	.size	auth_on, 4
+auth_on:
+	.zero	4
+	.type	kk, @object
+	.size	kk, 16
+kk:
+	.zero	16
 	.type	code, @object
 	.size	code, 4
 code:
@@ -2564,21 +2596,9 @@ vehicles:
 	.size	seq, 4
 seq:
 	.zero	4
-	.type	auth_on, @object
-	.size	auth_on, 4
-auth_on:
-	.zero	4
-	.type	kk, @object
-	.size	kk, 16
-kk:
-	.zero	16
 	.type	pins, @object
 	.size	pins, 4
 pins:
-	.zero	4
-	.type	bad_frame, @object
-	.size	bad_frame, 4
-bad_frame:
 	.zero	4
 	.type	gp, @object
 	.size	gp, 4
@@ -2650,7 +2670,7 @@ fin_hold:
 	.zero	4
 	.section	.rodata
 	.align	2
-	.set	.LANCHOR3,. + 0
+	.set	.LANCHOR4,. + 0
 	.type	code_to_class, @object
 	.size	code_to_class, 4
 code_to_class:

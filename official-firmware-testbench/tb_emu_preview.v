@@ -22,6 +22,7 @@ module testbench;
     localparam integer GAP     = 20000;    // silence after each emu access (emu: ~0.1 s)
     localparam integer BOOT    = 3000;     // after reset, before the first access
     localparam integer TIMEOUT = 400000;   // the longest a -r may wait for its bytes
+    localparam integer QUIET   = 30000;    // -r reads once the line has been idle this long
     localparam integer N_EV    = 86;
     localparam integer N_RUNS  = 4;
 
@@ -64,7 +65,8 @@ module testbench;
         ev[84]=8'h45; ev[85]=8'h00;
     end
 
-    // the emulator's UART receive buffer: the first 8 bytes the chip sends
+    // the emulator's UART receive buffer, as top.sv builds it: an 8-byte circular
+    // FIFO, so byte 9 overwrites byte 1 and the window holds the LAST 8 bytes sent
     reg [7:0] rxbuf [0:7];
     integer   rx_n = 0;
     reg [7:0] rb;
@@ -75,7 +77,7 @@ module testbench;
             repeat (NB / 2) @(posedge clk);
             for (rk = 0; rk < 8; rk = rk + 1) begin repeat (NB) @(posedge clk); rb[rk] = uart_tx; end
             repeat (NB) @(posedge clk);
-            if (rx_n < 8) rxbuf[rx_n] = rb;
+            rxbuf[rx_n % 8] = rb;
             rx_n = rx_n + 1;
         end
     end
@@ -111,7 +113,7 @@ module testbench;
         endcase
     endtask
 
-    integer i, k, n, t, ptr, run = 0, pass = 0, fail = 0;
+    integer i, k, n, t, q, ptr, run = 0, pass = 0, fail = 0;
     reg [31:0] v, got;
     reg [8*8-1:0] hs, he;
     reg [7:0]  op, expect;
@@ -174,6 +176,10 @@ module testbench;
                     "R": begin
                         t = 0;
                         while (rx_n < ptr + n && t < TIMEOUT) begin @(posedge clk); t = t + 1; end
+                        q = 0;    // emu reads 50 ms after its last access: the chip has finished
+                        while (q < QUIET && t < TIMEOUT) begin
+                            @(posedge clk); t = t + 1; q = (uart_tx === 1'b0) ? 0 : q + 1;
+                        end
                         got = 0;
                         for (k = 0; k < n; k = k + 1)
                             if (ptr + k < rx_n && ptr + k < 8) got = got | (rxbuf[ptr + k] << (8 * k));

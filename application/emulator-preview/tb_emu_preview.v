@@ -18,7 +18,8 @@
 //    8  radio-corrupted tag (bad Gen2 CRC) -> NO TAG, camera
 //    9  adjacent lane's weak read below the RSSI floor -> NO TAG
 //   10  lane closed (P3) -> LANE CLOSED, P7 stays on while closed
-//   11  identify: the chip reads its own ROM and reports its size and CRC
+//   11  authenticated: key + counter start 1000, one car -> the 'A' record (Chaskey-12 tag)
+//   12  identify: the chip reads its own ROM and reports its size and CRC
 //
 // LINE = 0 plays every line; LINE = k plays line k only.
 // Pass: "EMULATOR PREVIEW: ALL TESTS PASSED".
@@ -29,8 +30,9 @@ module testbench;
     localparam integer GAP     = 20000;    // silence after each emu access (emu: ~0.1 s)
     localparam integer BOOT    = 3000;     // after reset, before the first access
     localparam integer TIMEOUT = 400000;   // the longest a -r may wait for its bytes
-    localparam integer N_EV    = 738;
-    localparam integer N_RUNS  = 11;
+    localparam integer QUIET   = 30000;    // -r reads once the line has been idle this long
+    localparam integer N_EV    = 846;
+    localparam integer N_RUNS  = 12;
 
     reg clk = 1'b0, rst = 1'b1;
     always #16.5 clk = ~clk;
@@ -59,7 +61,7 @@ module testbench;
         $dumpvars(1, testbench);
     end
 
-    reg [7:0] ev [0:737];
+    reg [7:0] ev [0:845];
     initial begin
         ev[0]=8'h53; ev[1]=8'h01; ev[2]=8'h00; ev[3]=8'h44; ev[4]=8'h01; ev[5]=8'hf0; ev[6]=8'h49; ev[7]=8'h01; ev[8]=8'h01; ev[9]=8'h54; ev[10]=8'h04; ev[11]=8'ha5;
         ev[12]=8'h52; ev[13]=8'h15; ev[14]=8'h30; ev[15]=8'h54; ev[16]=8'h04; ev[17]=8'h75; ev[18]=8'h00; ev[19]=8'h00; ev[20]=8'h00; ev[21]=8'h54; ev[22]=8'h04; ev[23]=8'h30;
@@ -120,12 +122,22 @@ module testbench;
         ev[672]=8'hdc; ev[673]=8'h54; ev[674]=8'h04; ev[675]=8'hf3; ev[676]=8'h1a; ev[677]=8'he2; ev[678]=8'h39; ev[679]=8'h54; ev[680]=8'h04; ev[681]=8'he5; ev[682]=8'hcc; ev[683]=8'h6e;
         ev[684]=8'h5a; ev[685]=8'h54; ev[686]=8'h02; ev[687]=8'h92; ev[688]=8'hf5; ev[689]=8'h49; ev[690]=8'h01; ev[691]=8'h08; ev[692]=8'h52; ev[693]=8'h04; ev[694]=8'h56; ev[695]=8'h00;
         ev[696]=8'h06; ev[697]=8'h17; ev[698]=8'h52; ev[699]=8'h04; ev[700]=8'h00; ev[701]=8'h00; ev[702]=8'h0f; ev[703]=8'h12; ev[704]=8'h4f; ev[705]=8'h01; ev[706]=8'h80; ev[707]=8'h45;
-        ev[708]=8'h00; ev[709]=8'h53; ev[710]=8'h01; ev[711]=8'h00; ev[712]=8'h44; ev[713]=8'h01; ev[714]=8'hf0; ev[715]=8'h54; ev[716]=8'h04; ev[717]=8'ha5; ev[718]=8'h49; ev[719]=8'h00;
-        ev[720]=8'h5b; ev[721]=8'h54; ev[722]=8'h01; ev[723]=8'haa; ev[724]=8'h52; ev[725]=8'h04; ev[726]=8'h49; ev[727]=8'h03; ev[728]=8'hd6; ev[729]=8'h0a; ev[730]=8'h52; ev[731]=8'h04;
-        ev[732]=8'h3d; ev[733]=8'hed; ev[734]=8'h21; ev[735]=8'hd5; ev[736]=8'h45; ev[737]=8'h00;
+        ev[708]=8'h00; ev[709]=8'h53; ev[710]=8'h01; ev[711]=8'h00; ev[712]=8'h44; ev[713]=8'h01; ev[714]=8'hf0; ev[715]=8'h54; ev[716]=8'h04; ev[717]=8'ha5; ev[718]=8'h4b; ev[719]=8'h14;
+        ev[720]=8'h52; ev[721]=8'h54; ev[722]=8'h04; ev[723]=8'h56; ev[724]=8'h42; ev[725]=8'h4c; ev[726]=8'h2d; ev[727]=8'h54; ev[728]=8'h04; ev[729]=8'h32; ev[730]=8'h20; ev[731]=8'h6c;
+        ev[732]=8'h61; ev[733]=8'h54; ev[734]=8'h04; ev[735]=8'h6e; ev[736]=8'h65; ev[737]=8'h20; ev[738]=8'h6b; ev[739]=8'h54; ev[740]=8'h04; ev[741]=8'h65; ev[742]=8'h79; ev[743]=8'h21;
+        ev[744]=8'he8; ev[745]=8'h54; ev[746]=8'h04; ev[747]=8'h03; ev[748]=8'h00; ev[749]=8'h00; ev[750]=8'h51; ev[751]=8'h54; ev[752]=8'h01; ev[753]=8'h14; ev[754]=8'h49; ev[755]=8'h01;
+        ev[756]=8'h01; ev[757]=8'h54; ev[758]=8'h04; ev[759]=8'ha5; ev[760]=8'h52; ev[761]=8'h15; ev[762]=8'h30; ev[763]=8'h54; ev[764]=8'h04; ev[765]=8'h75; ev[766]=8'h00; ev[767]=8'h00;
+        ev[768]=8'h00; ev[769]=8'h54; ev[770]=8'h04; ev[771]=8'h30; ev[772]=8'h19; ev[773]=8'h51; ev[774]=8'h80; ev[775]=8'h54; ev[776]=8'h04; ev[777]=8'hf3; ev[778]=8'h83; ev[779]=8'ha5;
+        ev[780]=8'hdc; ev[781]=8'h54; ev[782]=8'h04; ev[783]=8'hf3; ev[784]=8'h1a; ev[785]=8'he2; ev[786]=8'h39; ev[787]=8'h54; ev[788]=8'h04; ev[789]=8'he5; ev[790]=8'hcc; ev[791]=8'h6e;
+        ev[792]=8'h5a; ev[793]=8'h54; ev[794]=8'h02; ev[795]=8'h92; ev[796]=8'hf5; ev[797]=8'h49; ev[798]=8'h01; ev[799]=8'h00; ev[800]=8'h52; ev[801]=8'h04; ev[802]=8'h41; ev[803]=8'h00;
+        ev[804]=8'hc3; ev[805]=8'hce; ev[806]=8'h52; ev[807]=8'h04; ev[808]=8'hcb; ev[809]=8'hef; ev[810]=8'h41; ev[811]=8'hf2; ev[812]=8'h4f; ev[813]=8'h01; ev[814]=8'h10; ev[815]=8'h45;
+        ev[816]=8'h00; ev[817]=8'h53; ev[818]=8'h01; ev[819]=8'h00; ev[820]=8'h44; ev[821]=8'h01; ev[822]=8'hf0; ev[823]=8'h54; ev[824]=8'h04; ev[825]=8'ha5; ev[826]=8'h49; ev[827]=8'h00;
+        ev[828]=8'h5b; ev[829]=8'h54; ev[830]=8'h01; ev[831]=8'haa; ev[832]=8'h52; ev[833]=8'h04; ev[834]=8'h49; ev[835]=8'h04; ev[836]=8'hef; ev[837]=8'h0a; ev[838]=8'h52; ev[839]=8'h04;
+        ev[840]=8'h20; ev[841]=8'hed; ev[842]=8'h44; ev[843]=8'h18; ev[844]=8'h45; ev[845]=8'h00;
     end
 
-    // the emulator's UART receive buffer: the first 8 bytes the chip sends
+    // the emulator's UART receive buffer, as top.sv builds it: an 8-byte circular
+    // FIFO, so byte 9 overwrites byte 1 and the window holds the LAST 8 bytes sent
     reg [7:0] rxbuf [0:7];
     integer   rx_n = 0;
     reg [7:0] rb;
@@ -136,7 +148,7 @@ module testbench;
             repeat (NB / 2) @(posedge clk);
             for (rk = 0; rk < 8; rk = rk + 1) begin repeat (NB) @(posedge clk); rb[rk] = uart_tx; end
             repeat (NB) @(posedge clk);
-            if (rx_n < 8) rxbuf[rx_n] = rb;
+            rxbuf[rx_n % 8] = rb;
             rx_n = rx_n + 1;
         end
     end
@@ -175,11 +187,12 @@ module testbench;
             7: begin $display(""); $display("-- 8. radio-corrupted tag (bad Gen2 CRC) -> NO TAG, camera"); $display("$ ./emu -d 0xF0 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x8E165130 -t4 0x75494A89 -t4 0xB4A5E024 -t4 0x5A207FB7 -t2 0x063C -i 0x00 -r4 0x17010056 -r4 0x43220000 -o 0x20"); end
             8: begin $display(""); $display("-- 9. adjacent lane's weak read below the RSSI floor -> NO TAG"); $display("$ ./emu -d 0xF0 -t4 0x1E0A50A5 -t4 0x0BB801F4 -t4 0x004000FA -t2 0xCD00 -t1 0xC8 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x064F9130 -t4 0x5D5EB5D9 -t4 0x66176C76 -t4 0x145724E4 -t2 0x282A -i 0x00 -r4 0x17010056 -r4 0x43220000 -o 0x20"); end
             9: begin $display(""); $display("-- 10. lane closed (P3) -> LANE CLOSED, P7 stays on while closed"); $display("$ ./emu -d 0xF0 -i 0x09 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x08 -r4 0x17060056 -r4 0x120F0000 -o 0x80"); end
-            10: begin $display(""); $display("-- 11. identify: the chip reads its own ROM and reports its size and CRC"); $display("$ ./emu -d 0xF0 -t4 0x5B0049A5 -t1 0xAA -r4 0x0AD60349 -r4 0xD521ED3D"); end
+            10: begin $display(""); $display("-- 11. authenticated: key + counter start 1000, one car -> the 'A' record (Chaskey-12 tag)"); $display("$ ./emu -d 0xF0 -t4 0x52144BA5 -t4 0x2D4C4256 -t4 0x616C2032 -t4 0x6B20656E -t4 0xE8217965 -t4 0x51000003 -t1 0x14 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x00 -r4 0xCEC30041 -r4 0xF241EFCB -o 0x10"); end
+            11: begin $display(""); $display("-- 12. identify: the chip reads its own ROM and reports its size and CRC"); $display("$ ./emu -d 0xF0 -t4 0x5B0049A5 -t1 0xAA -r4 0x0AEF0449 -r4 0x1844ED20"); end
         endcase
     endtask
 
-    integer i, k, n, t, ptr, run = 0, pass = 0, fail = 0;
+    integer i, k, n, t, q, ptr, run = 0, pass = 0, fail = 0;
     reg [31:0] v, got;
     reg [8*8-1:0] hs, he;
     reg [7:0]  op, expect;
@@ -242,6 +255,10 @@ module testbench;
                     "R": begin
                         t = 0;
                         while (rx_n < ptr + n && t < TIMEOUT) begin @(posedge clk); t = t + 1; end
+                        q = 0;    // emu reads 50 ms after its last access: the chip has finished
+                        while (q < QUIET && t < TIMEOUT) begin
+                            @(posedge clk); t = t + 1; q = (uart_tx === 1'b0) ? 0 : q + 1;
+                        end
                         got = 0;
                         for (k = 0; k < n; k = k + 1)
                             if (ptr + k < rx_n && ptr + k < 8) got = got | (rxbuf[ptr + k] << (8 * k));

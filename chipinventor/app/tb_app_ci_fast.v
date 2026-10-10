@@ -108,11 +108,11 @@ module testbench;   // the platform runs the module named testbench
         lane_a_ev[176]=8'h13; lane_a_ev[177]=8'h06; lane_a_ev[178]=8'h00; lane_a_ev[179]=8'hee; lane_a_ev[180]=8'he3; lane_a_ev[181]=8'h42; lane_a_ev[182]=8'h05; lane_a_ev[183]=8'ha5;
         lane_a_ev[184]=8'h51; lane_a_ev[185]=8'h00; lane_a_ev[186]=8'h81; lane_a_ev[187]=8'h20;
         lane_a_rec[0]=64'h56000011fa003c7b; lane_a_pin[0]=8'h10;
-        lane_a_rec[1]=64'h4100db5f9a6a8fdf; lane_a_pin[1]=8'hff;
+        lane_a_rec[1]=64'h4100f147d259fde8; lane_a_pin[1]=8'hff;
         lane_a_rec[2]=64'h56010231ee023655; lane_a_pin[2]=8'h30;
-        lane_a_rec[3]=64'h4101dcf299bcd625; lane_a_pin[3]=8'hff;
+        lane_a_rec[3]=64'h4101af2737cddc22; lane_a_pin[3]=8'hff;
         lane_a_rec[4]=64'h560201170000a107; lane_a_pin[4]=8'h20;
-        lane_a_rec[5]=64'h41022063a5704a0c; lane_a_pin[5]=8'hff;
+        lane_a_rec[5]=64'h4102a2eec4f9ab7d; lane_a_pin[5]=8'hff;
         lane_a_rec[6]=64'h450154010000aa05; lane_a_pin[6]=8'hff;
         lane_a_rec[7]=64'h510300000100c7e6; lane_a_pin[7]=8'hff;
         lane_b_ev[0]=8'h42; lane_b_ev[1]=8'h15; lane_b_ev[2]=8'ha5; lane_b_ev[3]=8'h4b; lane_b_ev[4]=8'h10; lane_b_ev[5]=8'h52; lane_b_ev[6]=8'h56; lane_b_ev[7]=8'h42;
@@ -137,9 +137,9 @@ module testbench;   // the platform runs the module named testbench
         lane_b_ev[152]=8'h97; lane_b_ev[153]=8'h0a; lane_b_ev[154]=8'h50; lane_b_ev[155]=8'h3a; lane_b_ev[156]=8'h50; lane_b_ev[157]=8'h7e; lane_b_ev[158]=8'hf9; lane_b_ev[159]=8'h47;
         lane_b_ev[160]=8'h01; lane_b_ev[161]=8'h00;
         lane_b_rec[0]=64'h560003110000ea1c; lane_b_pin[0]=8'h60;
-        lane_b_rec[1]=64'h41009a976af1e269; lane_b_pin[1]=8'hff;
+        lane_b_rec[1]=64'h410063e22418e474; lane_b_pin[1]=8'hff;
         lane_b_rec[2]=64'h560104220000637b; lane_b_pin[2]=8'h60;
-        lane_b_rec[3]=64'h41013449e126f289; lane_b_pin[3]=8'hff;
+        lane_b_rec[3]=64'h4101c57a3349f212; lane_b_pin[3]=8'hff;
         identity_ev[0]=8'h42; identity_ev[1]=8'h05; identity_ev[2]=8'ha5; identity_ev[3]=8'h49; identity_ev[4]=8'h00; identity_ev[5]=8'h5b; identity_ev[6]=8'haa; identity_ev[7]=8'h57;
         identity_ev[8]=8'h04; identity_ev[9]=8'h50; identity_ev[10]=8'hc3; identity_ev[11]=8'h00; identity_ev[12]=8'h00; identity_ev[13]=8'h42; identity_ev[14]=8'h15; identity_ev[15]=8'ha5;
         identity_ev[16]=8'h4b; identity_ev[17]=8'h10; identity_ev[18]=8'h52; identity_ev[19]=8'h56; identity_ev[20]=8'h42; identity_ev[21]=8'h4c; identity_ev[22]=8'h2d; identity_ev[23]=8'h32;
@@ -151,9 +151,9 @@ module testbench;   // the platform runs the module named testbench
         identity_ev[64]=8'h00; identity_ev[65]=8'h00; identity_ev[66]=8'h30; identity_ev[67]=8'h4c; identity_ev[68]=8'hc7; identity_ev[69]=8'h07; identity_ev[70]=8'hd2; identity_ev[71]=8'hdd;
         identity_ev[72]=8'h44; identity_ev[73]=8'h79; identity_ev[74]=8'h98; identity_ev[75]=8'hb8; identity_ev[76]=8'heb; identity_ev[77]=8'he0; identity_ev[78]=8'h63; identity_ev[79]=8'h8c;
         identity_ev[80]=8'h76; identity_ev[81]=8'h55; identity_ev[82]=8'he6; identity_ev[83]=8'hc3; identity_ev[84]=8'h47; identity_ev[85]=8'h01; identity_ev[86]=8'h00;
-        identity_rec[0]=64'h4903d60a3ded21d5; identity_pin[0]=8'hff;
+        identity_rec[0]=64'h4904ef0a20ed4418; identity_pin[0]=8'hff;
         identity_rec[1]=64'h5600001482003c11; identity_pin[1]=8'h10;
-        identity_rec[2]=64'h41003d0c7fed4a75; identity_pin[2]=8'hff;
+        identity_rec[2]=64'h410032cf24ab4424; identity_pin[2]=8'hff;
     end
 
     localparam integer N_EV  = (SCEN == 0) ? 188 : (SCEN == 1) ? 162 : 87;

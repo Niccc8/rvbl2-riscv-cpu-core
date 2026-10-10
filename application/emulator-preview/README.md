@@ -20,8 +20,9 @@ For each command line, as `emu.c` does:
    - `-i`: the level on the pins it drives;
    - `-t1/-t2/-t4`: 1, 2 or 4 bytes into `rx_i`, least-significant byte first, at 115,200
      bps, each followed by 20,000 clock cycles of silence (emu: about 0.1 s per byte);
-   - `-r1/-r2/-r4`: the next bytes the chip sent on `tx_o` (the emulator keeps the first 8),
-     compared with the value;
+   - `-r1/-r2/-r4`: the next bytes of the 8-byte window, read once the line is quiet, compared
+     with the value. The window is the organisers' `top.sv` FIFO: circular, so it holds the
+     **last** 8 bytes the chip sent (Stage 4 ground truth, `docs/stage4/01_aws_reference.md` §3.5);
    - `-o`: the observed pins, compared with the value;
 3. print emu's own lines (`[ok] Written 0x301552A5 to UART RX`, `[ok] Read 0x11000056 from
    UART TX`, `[error] ...`), and stop the run at the first failed comparison, as emu does.
