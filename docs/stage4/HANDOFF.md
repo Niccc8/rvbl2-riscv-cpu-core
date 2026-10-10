@@ -1,6 +1,6 @@
 # Stage 4 hand-off (read this first in a new session)
 
-**Updated 2026-10-10 13:50.** Branch `stage4` (local only, not pushed). The mission is Nicholas's
+**Updated 2026-10-10 14:30.** Branch `stage4` (local only, not pushed). The mission is Nicholas's
 Stage 4 prompt: harden LaneX, build the pitch intelligence, ship a first-try-correct AWS F2 build.
 Gates: GATE 1 (audit scope) **passed**; GATE 2 (go for the FPGA build) and GATE 3 (go/no-go) pending.
 
@@ -25,26 +25,30 @@ Gates: GATE 1 (audit scope) **passed**; GATE 2 (go for the FPGA build) and GATE 
 | GATE 1 | Approved: **B1, B2, C1, C2, C3, C5(a)** + all P0 | — |
 | Clock decision (A1) | Nicholas asked to slow the clock "on the FPGA side, not inside the RISC-V". Agreed design: **a thin FPGA-only shell module `RISCV` in `riscv.sv`** holds the clock divider (MMCM or BUFGCE_DIV), reset sync, `Transmitter`/`Receiver`, and the **unchanged** core as `e_PROCESSOR`. `top.sv` stays byte-identical. Present line by line in `04_fpga_plan.md` at GATE 2 | — |
 
-## In progress (uncommitted, in the working tree)
+## Session 2 (2026-10-10 afternoon)
 
-`application/firmware/lane/main.c`: protocol **v4** started.
-- Done: `#define PROTO 4`; new `advance(t)` (RFC 1982 serial-number time: `if ((int32_t)(t - now) > 0) now = t;`) used by `R` and `T` frames; dedup test now `(int32_t)(now - seen[s].t) < (int32_t)dedup_ms`.
-- **The golden model (`application/testbench/lane_model.py`) is NOT yet updated**, so the regression fails until it is.
+- **P1 items B1, B2, C1, C2, C3, C5(a) implemented in lockstep** (model -> PROTOCOL.md v4 -> firmware ->
+  directed tests -> lane_core.js), firmware 2,799 words. Results: directed **103/103**, smoke 18/18,
+  showcase 30/30, fast 30/30, fuzz **262/262**, platform tb 26/26, emu preview **12/12**, page logic
+  182/182, official 34/34 + 4/4, coverage **40/40** bins; random (127 keyed vehicles, counter crossing
+  2^32) was still running at the time of writing: check `build/app_random.log`.
+- **Harness fix (justified):** `gen_emu_preview.py` kept the *first* 8 bytes; the organisers' `top.sv`
+  FIFO is circular (6-bit walker += 8), so the window holds the *last* 8. Preview now models that and
+  reads once the line is quiet (emu waits 50 ms). Found by the new authenticated emu line.
+- **Research:** `research/A` (MLFF status, TNG Titan Flow = our architecture), `B` (SkyeChip IPO,
+  Arm deal, RISC-V forecasts), `C` (MSRD 14-17 Oct 2026 KLCC, ASEM, inside SIBS; judging NOT public),
+  `D` (ETC market, Kapsch comparable, ROI model `docs/stage4/roi_model.py`: break-even 3.8 sen per RM100).
+- **`04_fpga_plan.md` written** (MMCM /8 -> 31.25 MHz inside `RISCV`, top.sv byte-identical, UART 271
+  clocks/bit, generator rules, CDC table, pre-flight G1-G8, risks) -> **GATE 2 PASSED (14:35): approved as written (MMCM); build before 13 Oct, so Phase 3 before the pitch kit; the organisers' echo test line need NOT pass on our build.**
+- Organisers' repos re-cloned to the session scratchpad `ext/s4`, `ext/s3` (unchanged: b748304, 560947c).
+- Local `aws_fpga_example/` is the OLD Stage 3 example (top.sv sha 3e6b...), not Stage 4's.
 
 ## Next, in order
 
-1. Finish the approved P1 items **in lockstep** (model → `PROTOCOL.md` → firmware → directed test), regression after each:
-   - **B1** model: `now` advance and guard/dedup with 32-bit modular arithmetic; directed test across the wrap (T near `0xFFFFFF00`, then small times).
-   - **B2** hotlist add that finds no slot → `error(6, 0x48)` (`E` reason 6 "table full"); update the coverage bin.
-   - **C1** key lock: once a key is loaded, any `K` → `error(7, 0x4B)`; empty `K` with no key = no-op. Coverage: replace "key cleared" with "key change refused". Directed scenarios that clear/replace keys must change (`directed_v3`).
-   - **C2** `K` payload 16 (counter 0) or **20** bytes (key + u32 counter start); `frame_len_ok` 0x4B: 16, 20, 0.
-   - **C3** with a key loaded, the `I` record is followed by an `A` (same `auth_message`, byte 1 of `I` = version): in `att_step` do `mac_flush(); seal(...); if (auth_on) mac_start(r); else push8(r);`.
-   - **C5(a)** one more emu line in `emu_commands()`: load a key (`K`, 20 bytes) + one car → `-r4 -r4` reads the `A` record.
-   - Protocol v4 everywhere: `lane_core.js` `authMessage` takes the version (3 for the Stage 3 transcripts in `docs/demo`, 4 new); `WHY[]` gains reasons 6 and 7; `PROTOCOL.md` v4.
-   - Rebuild firmware; regenerate generated files (`lane_model.py`, `gen_ci_imem.py`, `gen_platform_tb.py`, `gen_emu_preview.py`) via their normal scripts, never by hand; full regression.
-2. Phase 2 market research (I do it directly with WebSearch/WebFetch, small steps): partial files in `docs/stage4/research/` (A tolling, B silicon, C event, D diligence+ROI) → `docs/stage4/03_market.md`; pitch kit in `docs/stage4/pitch/`.
-3. Write `docs/stage4/04_fpga_plan.md` → **GATE 2**.
-4. Phase 3 (after GATE 2): clean `stage4-aws/` into `archive/`; generator → `riscv.sv`; pre-flight gate (Verilator lint with real `top.sv`, system sim with the real `top.sv` + **the organisers' real `emu.c` compiled against a simulated `fpga_pci_peek/poke`**, Yosys check, timing estimate, mutation tests) → `06_verification.md`; runbook `05_RUNBOOK.md` → **GATE 3**.
+1. If random passed: commit the v4 work (explicit paths; no co-author line).
+2. GATE 2 answer -> Phase 3 per `04_fpga_plan.md` §9.
+3. `03_market.md` (synthesise research A-D) and the pitch kit in `docs/stage4/pitch/`.
+4. Refresh `docs/demo/index.html` (still the Stage 3 v3 snapshot) only after `run_ci.sh` produces v4 transcripts.
 
 ## Key facts to not re-derive (details in `01_aws_reference.md`)
 
