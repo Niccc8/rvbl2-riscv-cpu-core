@@ -1,6 +1,6 @@
 # Stage 4 hand-off (read this first in a new session)
 
-**Updated 2026-10-10 15:40.** Branch `stage4` (local only, not pushed). The mission is Nicholas's
+**Updated 2026-10-10 16:05.** Branch `stage4` (local only, not pushed). The mission is Nicholas's
 Stage 4 prompt: harden LaneX, build the pitch intelligence, ship a first-try-correct AWS F2 build.
 Gates: GATE 1 (audit scope) **passed**; GATE 2 (go for the FPGA build) and GATE 3 (go/no-go) pending.
 
@@ -59,24 +59,19 @@ Gates: GATE 1 (audit scope) **passed**; GATE 2 (go for the FPGA build) and GATE 
 - Harness fixes in `gen_emu_preview.py` (circular window; faithful start-up window; PULL param; GAP after -d).
 - `05_RUNBOOK.md` written. `06_verification.md` NOT yet written (fill from `build/stage4/preflight_summary.txt`).
 
-## State at 15:40
+## State at 16:05
 
-- Committed `2a11d88`: generator, pre-flight tooling, runbook `05`, draft `06`, `03_market.md`, pitch kit
-  (`docs/stage4/pitch/01-05`), README Stage 4 section.
-- **Uncommitted (waiting only for the random run):** firmware "arm once the lane is seen empty" + model +
-  PROTOCOL.md + regenerated files + `stage4/riscv.sv`, `stage4/riscv_bufgce_div.sv` + preview harness fixes.
-  Results on this firmware: directed 103/103, fuzz 262/262, smoke 18/18, showcase 30/30, fast 30/30,
-  platform 26/26, preview PULL=0 12/12 and PULL=1 12/12, official 34/34+4/4, page 182/182.
-  Random (`build/app_random.log`) still running at 15:40 (vvp started 14:54; empty log until it ends).
-- Full-fidelity G3 (`--scale 1.0`, ~1 h) launched 15:40 -> `build/stage4/emu_sys_full.log`.
+- All committed up to `afa9698` (firmware arm-when-empty + build files `6846c6e`, pre-flight fixes `afa9698`).
+- Full regression green on the final firmware (directed 103, random 396, fuzz 262, smoke 18, showcase 30,
+  fast 30, platform 26, preview 12+12, official 34+4, page 182).
+- **Full-fidelity G3 (emu's real 50 ms waits): 15/15, 46.5 s simulated** (`build/stage4/emu_sys_full.log`).
+- **`preflight.sh` on `afa9698`: PREFLIGHT: GO** (16:45; summary in `06_verification.md` §1).
 
 ## Next, in order
 
-1. Random green -> commit the firmware change (explicit paths; no co-author line).
-2. `bash scripts/stage4/preflight.sh` on the clean tree (~20 min) -> paste `build/stage4/preflight_summary.txt`
-   into `06_verification.md` (replace PREFLIGHT_SUMMARY_PLACEHOLDER and REGRESSION_PLACEHOLDER).
-3. GATE 3 verdict to Nicholas (go/no-go, evidence, residual risks).
-4. Refresh `docs/demo/index.html` only after `run_ci.sh` produces v4 transcripts (optional).
+1. (done) summary pasted into `06`.
+2. GATE 3 verdict to Nicholas (go/no-go, evidence, residual risks).
+3. Optional: refresh `docs/demo/index.html` after `run_ci.sh` produces v4 transcripts.
 
 ## Key facts to not re-derive (details in `01_aws_reference.md`)
 

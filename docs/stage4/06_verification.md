@@ -7,7 +7,33 @@ Everything here was run locally; no AWS credit or synthesis hour was used.
 
 ## 1. Pre-flight gate (`bash scripts/stage4/preflight.sh`)
 
-PREFLIGHT_SUMMARY_PLACEHOLDER
+```text
+Stage 4 pre-flight, 2026-10-10 16:26, commit afa9698
+
+PASS  G1  riscv.sv and riscv_bufgce_div.sv are current (regenerated from rtl/ + firmware.hex)
+PASS  G1  ROM bit-identical to firmware.hex; no $readmemh/`timescale/`define/initial; module names safe
+PASS  G1  organisers' top.sv (0fd7391018a38aeeaef7...) and emu.c (31e4ca7c3d4c4f08dd89...) unchanged
+PASS  G2  Verilator -sv -Wall, riscv.sv + real top.sv: 0 errors, only waived rtl/ warnings
+PASS  G2  Verilator -sv -Wall, riscv_bufgce_div.sv + real top.sv: 0 errors, only waived rtl/ warnings
+PASS  G3  riscv.sv: organisers' emu.c on top.sv, 12 lines + bring-up + 2 negatives at 0.1x emu waits: ==== emu_sys: 15 passed, 0 failed, 4.650 s simulated ====
+PASS  G3  riscv_bufgce_div.sv: organisers' emu.c on top.sv, 12 lines + bring-up + 2 negatives at 0.1x emu waits: ==== emu_sys: 15 passed, 0 failed, 4.650 s simulated ====
+PASS  G4  emu start-up window, undriven pin 0 reads 0, stale pins 7-1: ==== tb_emu_preview: 12 passed, 0 failed ====
+PASS  G4  emu start-up window, undriven pin 0 reads 1, stale pins 7-1: ==== tb_emu_preview: 12 passed, 0 failed ====
+PASS  G5  riscv.sv: Yosys synth_xilinx xcup: no latch, check clean; RAMB36E2 2 (DMEM), DSP48E2 10, LUT 6249, FF 1224
+PASS  G6  riscv.sv @ 64 ns: longest path estimate: 17.80 ns, uses 28 % of the period (pessimistic model): GO
+PASS  G5  riscv_bufgce_div.sv: Yosys synth_xilinx xcup: no latch, check clean; RAMB36E2 2 (DMEM), DSP48E2 10, LUT 6452, FF 1226
+NOTE  G6  riscv_bufgce_div.sv @ 32 ns: longest path estimate: 18.10 ns, uses 57 %: positive slack, below the 2x bar (fallback only)
+PASS  G7  ==== mutants: 5 caught, 0 missed ==== (reset polarity, UART divider, o_Tx_Done, o_Rx_Done, pin direction)
+
+PREFLIGHT: GO
+```
+
+### 1a. G3 at full fidelity (emu's real 50 ms waits)
+
+`sim_emu --scale 1.0 --negative` on `stage4/riscv.sv` (log: `build/stage4/emu_sys_full.log`):
+bring-up (RST = 1, PC moving inside the ROM) **PASS**; lines 1–12 **PASS** (0.8–6.4 s of hardware
+time each); the two corrupted lines are reported by emu with `[error]`, as they must be.
+**15/15, 46.5 s of simulated hardware time.**
 
 ## 2. What each check proves, and its limits
 
@@ -26,7 +52,7 @@ PREFLIGHT_SUMMARY_PLACEHOLDER
 | Suite | Result |
 |---|---|
 | Golden-model coverage | 40/40 bins |
-| `tb_app` directed / random / fuzz / smoke / showcase | REGRESSION_PLACEHOLDER |
+| `tb_app` directed / random / fuzz / smoke / showcase | 103/103 · 396/396 · 262/262 · 18/18 · 30/30 |
 | `tb_app` showcase at 921,600 bps | 30/30 |
 | ChipInventor netlist (`tb_app_ci`, showcase) | 26/26 |
 | Emulator preview, undriven pin = 0 / = 1 | 12/12 / 12/12 |
