@@ -19,6 +19,7 @@ PASS on the first build (`06` §1c).** Claim earned: "FPGA-validated prototype".
 | Verification evidence | `06_verification.md` |
 | MAX 10 (DE10-Lite) prototype scope | `07_max10_prototype.md` (not built; awaiting Nicholas) |
 | Pitch kit | `pitch/01–05` |
+| AWS run screenshots + recording (for slides) | `stage4/evidence/` (index in its README; the 270 MB recording and the unredacted screenshot are local only, git-excluded) |
 | Build files | `stage4/riscv.sv` (31.25 MHz, the build), `riscv_15mhz.sv`, `riscv_bufgce_div.sv` (backups) |
 | Generator, gate | `scripts/stage4/gen_riscv_sv.py`, `scripts/stage4/preflight.sh` |
 | Organisers' files (not in git) | `stage4/vendor/` (fetch: `stage4/README.md`) |
