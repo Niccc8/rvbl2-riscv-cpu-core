@@ -18,6 +18,9 @@
 // ============================================================================
 module testbench;
     parameter LINE = 0;
+    // How a pin nobody drives resolves on the FPGA (emu's start-up window releases
+    // pin 0 before the line's own -d): 0 or 1. Both must pass.
+    parameter PULL = 1'b0;
     localparam integer NB      = 263;      // clock cycles per UART bit: 115200 bps at 30.303 MHz
     localparam integer GAP     = 20000;    // silence after each emu access (emu: ~0.1 s)
     localparam integer BOOT    = 3000;     // after reset, before the first access
@@ -32,7 +35,8 @@ module testbench;
     always @(posedge clk) cycles = cycles + 1;
 
     // the emulator's side of the pins: it drives pin k with emu_in[k] while
-    // emu_dir[k] = 0, and observes it while emu_dir[k] = 1
+    // emu_dir[k] = 0, and observes it while emu_dir[k] = 1. emu_in is top.sv's IN
+    // register: nothing clears it between runs, so a run starts with the last one's
     reg  [7:0] emu_dir = 8'h01, emu_in = 8'h00;
     reg        uart_rx = 1'b1;
     wire       uart_tx;
@@ -40,7 +44,7 @@ module testbench;
     genvar g;
     generate for (g = 0; g < 8; g = g + 1) begin : pin
         assign pins[g] = emu_dir[g] ? 1'bz : emu_in[g];
-        assign (weak0, weak1) pins[g] = 1'b0;
+        assign (weak0, weak1) pins[g] = PULL;
     end endgenerate
     top dut (
         .clk_i(clk), .rst_i(rst),
@@ -136,8 +140,12 @@ module testbench;
                     stopped = 1'b1; n = -2;                // so the loop lands on the E
                 end else begin
                     show_cmd(run);
-                    rst = 1'b1; emu_dir = 8'h01; emu_in = 8'h00; rx_n = 0; ptr = 0;
+                    // emu.c: -d 0x01, then RST 1, 0, 1; the line's own -d comes ~100 ms
+                    // after the release. Meanwhile pin 0 floats (PULL) and pins 7-1 carry
+                    // the previous run's emu_in: the chip boots and runs in that window.
+                    rst = 1'b1; emu_dir = 8'h01; rx_n = 0; ptr = 0;   // emu_in kept
                     repeat (20) @(posedge clk);
+                    rst = 1'b0; repeat (BOOT + 2 * GAP) @(posedge clk);
                     $display("[ok] RISC-V started!");
                 end
             end else if (op == "E") begin
@@ -156,14 +164,10 @@ module testbench;
                 end
                 run = run + 1;
             end else if (!stopped) begin
-                // emu's first -d comes before the core runs its first instruction here; on
-                // the F2 it follows the reset (the firmware sets its own pin directions)
-                if (!started && op != "D") begin
-                    started = 1'b1;
-                    rst = 1'b0; repeat (BOOT) @(posedge clk);
-                end
+                started = 1'b1;
                 case (op)
-                    "D": begin emu_dir = v; $display("[ok] Written 0x%s to DIRECTION", hexs(v, 4)); end
+                    "D": begin emu_dir = v; $display("[ok] Written 0x%s to DIRECTION", hexs(v, 4));
+                               repeat (GAP) @(posedge clk); end   // emu: >= 100 ms to the next write
                     "I": begin emu_in = v; $display("[ok] Written 0x%s to INPUT PINS", hexs(v, 4));
                                repeat (GAP) @(posedge clk); end
                     "T": begin

@@ -474,7 +474,7 @@ static void on_gpio(uint32_t v)
             if (now - pend[i].t <= guard_ms)            /* pend[i].t <= now always */
                 vt_add(&pend[i].e, pend[i].rssi);
         pend_n = 0;
-    } else if (was && !(v & 1)) {
+    } else if (was && !(v & 1) && active) {           /* a vehicle seen arriving */
         fin_pending = 1;                                /* decide after the hold-off */
         fin_hold = hold;
         fin_closed = closed_cfg | ((v >> 3) & 1);
@@ -677,10 +677,12 @@ int main(void)
 {
     uint8_t c;
     gpio_set_dir(0xF0);
+    /* The pins at boot are the baseline. A vehicle already in the zone is not
+     * decided (its reads from before the reset are lost, so a record would only
+     * accuse it of having no tag); the detector arms once the zone has been seen
+     * empty. This also keeps a floating P0 at power-up (the organisers' emu
+     * releases pin 0 before its own -d) from making a phantom vehicle. */
     gp = gpio_read() & 0x0F;
-    if (gp & 1)
-        code = (gp >> 1) & 3;
-    gp &= ~1u;                          /* a car already present is seen rising */
     update_p7();
     for (;;) {
         uart_service();

@@ -62,7 +62,10 @@ Protocol (every multi-byte field little-endian unless stated):
   GPIO (DATADIR = 0xF0): inputs P0 vehicle present, P2:P1 class code from the
   classifier (00 class 1, 01 class 2, 10 class 3, 11 class 0 motorcycle),
   P3 lane closed. Outputs, held until the next vehicle: P4 charged,
-  P5 camera fired, P6 security alarm; P7 = lane closed (live).
+  P5 camera fired, P6 security alarm; P7 = lane closed (live). The pins at
+  reset are the baseline: a vehicle already present is not decided, and the
+  detector arms once P0 has been seen low (a departure with no arrival is
+  ignored).
 
   Time: the lane clock 'now' follows the host's millisecond times ('R', 'T')
   and only moves forward, in serial-number arithmetic (RFC 1982): t is later
@@ -249,7 +252,7 @@ class LaneModel:
     `rom` is the firmware image as 32-bit words (for 'I'); `cov` counts every
     decision path and boundary the stimulus reached (functional coverage)."""
 
-    def __init__(self, rom=None):
+    def __init__(self, rom=None, boot_pins=0):
         self.out = bytearray()           # every byte the chip transmits
         self.pins = 0                    # pins 7:4 as the chip drives them
         self.vehicle_pins = []           # pins 7:4 right after each vehicle record
@@ -273,7 +276,7 @@ class LaneModel:
         self.active = False
         self.vt = []                     # [[epc, count, rssi_max]]
         self.code = 0
-        self.gp = 0                      # last GPIO input value seen
+        self.gp = boot_pins & 0x0F       # last GPIO input value seen (the baseline at reset)
         self.st = 0                      # parser state
         self.buf = bytearray()
         self.need = 0
@@ -493,7 +496,10 @@ class LaneModel:
                     self.cov["read dropped by the guard"] += 1
             self.pend = []
         elif was and not v & 1:
-            self._finalize()
+            if self.active:
+                self._finalize()
+            else:
+                self.cov["departure with no arrival ignored"] += 1
         self._update_p7()
 
     def _finalize(self):

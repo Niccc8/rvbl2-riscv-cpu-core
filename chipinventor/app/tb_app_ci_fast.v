@@ -151,7 +151,7 @@ module testbench;   // the platform runs the module named testbench
         identity_ev[64]=8'h00; identity_ev[65]=8'h00; identity_ev[66]=8'h30; identity_ev[67]=8'h4c; identity_ev[68]=8'hc7; identity_ev[69]=8'h07; identity_ev[70]=8'hd2; identity_ev[71]=8'hdd;
         identity_ev[72]=8'h44; identity_ev[73]=8'h79; identity_ev[74]=8'h98; identity_ev[75]=8'hb8; identity_ev[76]=8'heb; identity_ev[77]=8'he0; identity_ev[78]=8'h63; identity_ev[79]=8'h8c;
         identity_ev[80]=8'h76; identity_ev[81]=8'h55; identity_ev[82]=8'he6; identity_ev[83]=8'hc3; identity_ev[84]=8'h47; identity_ev[85]=8'h01; identity_ev[86]=8'h00;
-        identity_rec[0]=64'h4904ef0a20ed4418; identity_pin[0]=8'hff;
+        identity_rec[0]=64'h4904e90ade56a319; identity_pin[0]=8'hff;
         identity_rec[1]=64'h5600001482003c11; identity_pin[1]=8'h10;
         identity_rec[2]=64'h410032cf24ab4424; identity_pin[2]=8'hff;
     end

@@ -26,6 +26,9 @@
 // ============================================================================
 module testbench;
     parameter LINE = 0;
+    // How a pin nobody drives resolves on the FPGA (emu's start-up window releases
+    // pin 0 before the line's own -d): 0 or 1. Both must pass.
+    parameter PULL = 1'b0;
     localparam integer NB      = 263;      // clock cycles per UART bit: 115200 bps at 30.303 MHz
     localparam integer GAP     = 20000;    // silence after each emu access (emu: ~0.1 s)
     localparam integer BOOT    = 3000;     // after reset, before the first access
@@ -40,7 +43,8 @@ module testbench;
     always @(posedge clk) cycles = cycles + 1;
 
     // the emulator's side of the pins: it drives pin k with emu_in[k] while
-    // emu_dir[k] = 0, and observes it while emu_dir[k] = 1
+    // emu_dir[k] = 0, and observes it while emu_dir[k] = 1. emu_in is top.sv's IN
+    // register: nothing clears it between runs, so a run starts with the last one's
     reg  [7:0] emu_dir = 8'h01, emu_in = 8'h00;
     reg        uart_rx = 1'b1;
     wire       uart_tx;
@@ -48,7 +52,7 @@ module testbench;
     genvar g;
     generate for (g = 0; g < 8; g = g + 1) begin : pin
         assign pins[g] = emu_dir[g] ? 1'bz : emu_in[g];
-        assign (weak0, weak1) pins[g] = 1'b0;
+        assign (weak0, weak1) pins[g] = PULL;
     end endgenerate
     top dut (
         .clk_i(clk), .rst_i(rst),
@@ -132,8 +136,8 @@ module testbench;
         ev[792]=8'h5a; ev[793]=8'h54; ev[794]=8'h02; ev[795]=8'h92; ev[796]=8'hf5; ev[797]=8'h49; ev[798]=8'h01; ev[799]=8'h00; ev[800]=8'h52; ev[801]=8'h04; ev[802]=8'h41; ev[803]=8'h00;
         ev[804]=8'hc3; ev[805]=8'hce; ev[806]=8'h52; ev[807]=8'h04; ev[808]=8'hcb; ev[809]=8'hef; ev[810]=8'h41; ev[811]=8'hf2; ev[812]=8'h4f; ev[813]=8'h01; ev[814]=8'h10; ev[815]=8'h45;
         ev[816]=8'h00; ev[817]=8'h53; ev[818]=8'h01; ev[819]=8'h00; ev[820]=8'h44; ev[821]=8'h01; ev[822]=8'hf0; ev[823]=8'h54; ev[824]=8'h04; ev[825]=8'ha5; ev[826]=8'h49; ev[827]=8'h00;
-        ev[828]=8'h5b; ev[829]=8'h54; ev[830]=8'h01; ev[831]=8'haa; ev[832]=8'h52; ev[833]=8'h04; ev[834]=8'h49; ev[835]=8'h04; ev[836]=8'hef; ev[837]=8'h0a; ev[838]=8'h52; ev[839]=8'h04;
-        ev[840]=8'h20; ev[841]=8'hed; ev[842]=8'h44; ev[843]=8'h18; ev[844]=8'h45; ev[845]=8'h00;
+        ev[828]=8'h5b; ev[829]=8'h54; ev[830]=8'h01; ev[831]=8'haa; ev[832]=8'h52; ev[833]=8'h04; ev[834]=8'h49; ev[835]=8'h04; ev[836]=8'he9; ev[837]=8'h0a; ev[838]=8'h52; ev[839]=8'h04;
+        ev[840]=8'hde; ev[841]=8'h56; ev[842]=8'ha3; ev[843]=8'h19; ev[844]=8'h45; ev[845]=8'h00;
     end
 
     // the emulator's UART receive buffer, as top.sv builds it: an 8-byte circular
@@ -188,7 +192,7 @@ module testbench;
             8: begin $display(""); $display("-- 9. adjacent lane's weak read below the RSSI floor -> NO TAG"); $display("$ ./emu -d 0xF0 -t4 0x1E0A50A5 -t4 0x0BB801F4 -t4 0x004000FA -t2 0xCD00 -t1 0xC8 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x064F9130 -t4 0x5D5EB5D9 -t4 0x66176C76 -t4 0x145724E4 -t2 0x282A -i 0x00 -r4 0x17010056 -r4 0x43220000 -o 0x20"); end
             9: begin $display(""); $display("-- 10. lane closed (P3) -> LANE CLOSED, P7 stays on while closed"); $display("$ ./emu -d 0xF0 -i 0x09 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x08 -r4 0x17060056 -r4 0x120F0000 -o 0x80"); end
             10: begin $display(""); $display("-- 11. authenticated: key + counter start 1000, one car -> the 'A' record (Chaskey-12 tag)"); $display("$ ./emu -d 0xF0 -t4 0x52144BA5 -t4 0x2D4C4256 -t4 0x616C2032 -t4 0x6B20656E -t4 0xE8217965 -t4 0x51000003 -t1 0x14 -i 0x01 -t4 0x301552A5 -t4 0x00000075 -t4 0x80511930 -t4 0xDCA583F3 -t4 0x39E21AF3 -t4 0x5A6ECCE5 -t2 0xF592 -i 0x00 -r4 0xCEC30041 -r4 0xF241EFCB -o 0x10"); end
-            11: begin $display(""); $display("-- 12. identify: the chip reads its own ROM and reports its size and CRC"); $display("$ ./emu -d 0xF0 -t4 0x5B0049A5 -t1 0xAA -r4 0x0AEF0449 -r4 0x1844ED20"); end
+            11: begin $display(""); $display("-- 12. identify: the chip reads its own ROM and reports its size and CRC"); $display("$ ./emu -d 0xF0 -t4 0x5B0049A5 -t1 0xAA -r4 0x0AE90449 -r4 0x19A356DE"); end
         endcase
     endtask
 
@@ -215,8 +219,12 @@ module testbench;
                     stopped = 1'b1; n = -2;                // so the loop lands on the E
                 end else begin
                     show_cmd(run);
-                    rst = 1'b1; emu_dir = 8'h01; emu_in = 8'h00; rx_n = 0; ptr = 0;
+                    // emu.c: -d 0x01, then RST 1, 0, 1; the line's own -d comes ~100 ms
+                    // after the release. Meanwhile pin 0 floats (PULL) and pins 7-1 carry
+                    // the previous run's emu_in: the chip boots and runs in that window.
+                    rst = 1'b1; emu_dir = 8'h01; rx_n = 0; ptr = 0;   // emu_in kept
                     repeat (20) @(posedge clk);
+                    rst = 1'b0; repeat (BOOT + 2 * GAP) @(posedge clk);
                     $display("[ok] RISC-V started!");
                 end
             end else if (op == "E") begin
@@ -235,14 +243,10 @@ module testbench;
                 end
                 run = run + 1;
             end else if (!stopped) begin
-                // emu's first -d comes before the core runs its first instruction here; on
-                // the F2 it follows the reset (the firmware sets its own pin directions)
-                if (!started && op != "D") begin
-                    started = 1'b1;
-                    rst = 1'b0; repeat (BOOT) @(posedge clk);
-                end
+                started = 1'b1;
                 case (op)
-                    "D": begin emu_dir = v; $display("[ok] Written 0x%s to DIRECTION", hexs(v, 4)); end
+                    "D": begin emu_dir = v; $display("[ok] Written 0x%s to DIRECTION", hexs(v, 4));
+                               repeat (GAP) @(posedge clk); end   // emu: >= 100 ms to the next write
                     "I": begin emu_in = v; $display("[ok] Written 0x%s to INPUT PINS", hexs(v, 4));
                                repeat (GAP) @(posedge clk); end
                     "T": begin

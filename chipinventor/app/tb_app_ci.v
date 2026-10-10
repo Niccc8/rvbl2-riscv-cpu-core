@@ -113,7 +113,7 @@ module testbench;   // the platform runs the module named testbench
         showcase_ev[376]=8'h00; showcase_ev[377]=8'h42; showcase_ev[378]=8'h09; showcase_ev[379]=8'ha5; showcase_ev[380]=8'h54; showcase_ev[381]=8'h04; showcase_ev[382]=8'h40; showcase_ev[383]=8'h13;
         showcase_ev[384]=8'h06; showcase_ev[385]=8'h00; showcase_ev[386]=8'hee; showcase_ev[387]=8'he3; showcase_ev[388]=8'h42; showcase_ev[389]=8'h05; showcase_ev[390]=8'ha5; showcase_ev[391]=8'h51;
         showcase_ev[392]=8'h00; showcase_ev[393]=8'h81; showcase_ev[394]=8'h20;
-        showcase_rec[0]=64'h4904ef0a20ed4418; showcase_pin[0]=8'hff;
+        showcase_rec[0]=64'h4904e90ade56a319; showcase_pin[0]=8'hff;
         showcase_rec[1]=64'h56000011fa003c7b; showcase_pin[1]=8'h10;
         showcase_rec[2]=64'h4100f147d259fde8; showcase_pin[2]=8'hff;
         showcase_rec[3]=64'h56010231ee023655; showcase_pin[3]=8'h30;

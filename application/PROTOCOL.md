@@ -35,7 +35,7 @@ This is the same direction as the organisers' GPIO and UART test firmware: `./em
 
 | Pin | Dir | Meaning |
 |---|---|---|
-| P0 | in | Vehicle present in the read zone (level) |
+| P0 | in | Vehicle present in the read zone (level). The level at reset is the baseline: a vehicle already in the zone is not decided, and the detector arms once P0 has been seen low (a departure with no arrival is ignored) |
 | P2:P1 | in | Class code from the classifier, latched while P0 = 1: `00` class 1, `01` class 2, `10` class 3, `11` class 0 (motorcycle) |
 | P3 | in | Lane-closed switch (level) |
 | P4 | out | **Charged**: the last vehicle was charged |
@@ -221,12 +221,12 @@ of `now` is taken as a step back and ignored, so a host must not jump that far b
 | Rule | Value | Why |
 |---|---|---|
 | Boot | **1,758 cycles** from reset release to the main loop (58 µs at 30.3 MHz) | The big tables and the transmit queue are in `.noinit`, so start-up zeroes only 360 bytes |
-| The longest a received byte waits | **137–197 cycles** across every scenario, against a budget of 2,630 (ASIC), 4,340 (FPGA, 50 MHz) and 330 at 921,600 bps | The main loop never blocks. The MAC runs 4 rounds and the ROM measurement 64 words per iteration, as background jobs. The UART holds a single byte, so every long loop (hash probes, MAC rounds, record pushes, the ROM measurement) moves it into a 64-byte receive ring as soon as it lands; the parser reads from the ring |
+| The longest a received byte waits | **137–199 cycles** across every scenario, against a budget of 2,630 (ASIC), 4,340 (FPGA, 50 MHz) and 330 at 921,600 bps | The main loop never blocks. The MAC runs 4 rounds and the ROM measurement 64 words per iteration, as background jobs. The UART holds a single byte, so every long loop (hash probes, MAC rounds, record pushes, the ROM measurement) moves it into a 64-byte receive ring as soon as it lands; the parser reads from the ring |
 | Host inter-frame gap | ≥ 2 byte-times after a frame | Headroom for end-of-frame work |
 | **Frame timeout** | Off by default. With `P`'s `timeout` = N, a half-received frame is dropped after N quiet main-loop iterations and reported as `E` reason 5 (the testbenches use 48, about 3 byte-times) | The organisers' emulator sends one byte per AXI access, about 0.1 s apart, so any timeout would cut its frames. A host that streams its bytes can turn it on, so line noise never leaves a frame hanging |
-| **Exit hold-off** | A decision waits until the UART has been quiet for `hold` iterations (default 64) after P0 falls. Measured at most **18,823 cycles** (v3; v4: 17,558) from the car leaving to its record (0.62 ms at 30.3 MHz), including any cut-off frame | Reads still in flight when the car leaves are counted. That covers a late reader report, or `emu` queuing a frame before `-i 0x00`. The next car's arrival decides the previous one at once |
+| **Exit hold-off** | A decision waits until the UART has been quiet for `hold` iterations (default 64) after P0 falls. Measured at most **18,873 cycles** (v4; v3: 18,823) from the car leaving to its record (0.62 ms at 30.3 MHz), including any cut-off frame | Reads still in flight when the car leaves are counted. That covers a late reader report, or `emu` queuing a frame before `-i 0x00`. The next car's arrival decides the previous one at once |
 | Host settle after a pin change | ≥ 16,000 cycles after an arrival and ≥ 30,000 after a departure when frames may be cut off; 2,000 and 16,000 otherwise | Longer than the frame timeout and the hold-off |
-| ROM measurement | 65,813 cycles from the `I` frame to the `I` record at 115,200 bps (70,344 with a key, the `A` included); 47,038 at 921,600 | 2,799 words, one `crcw` each, 64 per iteration, unrolled by 8 with the UART serviced between groups |
+| ROM measurement | 65,688 cycles from the `I` frame to the `I` record at 115,200 bps (70,128 with a key, the `A` included); 46,913 at 921,600 | 2,793 words, one `crcw` each, 64 per iteration, unrolled by 8 with the UART serviced between groups |
 
 ## 8. Demonstrations
 
