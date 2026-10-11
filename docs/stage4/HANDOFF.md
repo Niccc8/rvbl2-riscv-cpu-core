@@ -11,7 +11,11 @@ ultrasonic sensor (rescoped from two IR beams: the sensor Nicholas has), USB-UAR
 Verified in simulation (`06` §1d) and compiled in Quartus 25.1std.0 on Nicholas's laptop (0 errors, timing
 met +4.39 ns at 31.25 MHz). **On the board (11 Oct): `Id.56dE` and `PASS12` work**; his flicker report fixed and
 the board hardened (`06` §1d round 2: 1,291 simulated checks). Next: his bench procedure,
-`stage4/de10lite/lab_brief.html` E1–E10 (also published: https://claude.ai/artifact/1geGwAnsMETUvzNhbt8Chj); then the pitch deck.
+`stage4/de10lite/lab_brief.html` E1–E10 (also published: https://claude.ai/artifact/1geGwAnsMETUvzNhbt8Chj).
+**Grand Final deck built 2026-10-11** (12 min + 10 min Q&A, 17 Oct, KLCC; judges from ChipInventor, UST,
+SkyeChip): `presentation/stage4/LaneX_Final.pptx` (git-ignored; rebuild: `scripts/stage4/pitch/build_all.ps1`),
+native PowerPoint with generated 3D models (`.glb`) and Morph; script `pitch/06_final_script.md` (also the
+speaker notes), demo day `pitch/07_demo_day.md`. Open items for Nicholas: names, slide 12's photo, rehearsal.
 
 ## Where everything is
 
@@ -26,7 +30,7 @@ the board hardened (`06` §1d round 2: 1,291 simulated checks). Next: his bench 
 | DE10-Lite desk lane (Tier 1) | `07_max10_prototype.md` (as built); **`stage4/de10lite/README.md`** (your steps, demo, troubleshooting) |
 | Quartus Prime Lite install + programming guide | `08_quartus_setup.md` (installed: `C:ltera_lite.1std`, 25.1std.0) |
 | Desk-lane generator, checks | `scripts/stage4/gen_de10lite.py` (`--check`), `stage4/de10lite/sim/check_board.py`, `stage4/de10lite/dashboard/test_live.py` |
-| Pitch kit | `pitch/01–05` |
+| Pitch kit | `pitch/01–05` (Stage 4 planning); **final: `pitch/06_final_script.md`, `pitch/07_demo_day.md`, deck generator `scripts/stage4/pitch/`** |
 | AWS run screenshots + recording (for slides) | `stage4/evidence/` (index in its README; the 270 MB recording and the unredacted screenshot are local only, git-excluded) |
 | Build files | `stage4/riscv.sv` (31.25 MHz, the build), `riscv_15mhz.sv`, `riscv_bufgce_div.sv` (backups) |
 | Generator, gate | `scripts/stage4/gen_riscv_sv.py`, `scripts/stage4/preflight.sh` |
