@@ -10,6 +10,7 @@ alarm. A laptop can watch every record live and verify it. Plan and rationale:
 
 | File | What | Edit? |
 | --- | --- | --- |
+| `lab_brief.html` | **The lab brief**: how the chip maps onto the board (diagrams), then the bench procedure E1–E10 with expected results and checkboxes | — |
 | `lanex.qpf` | **Open this in Quartus** | — |
 | `compile.bat`, `program_sram.bat`, `program_flash.bat` | Double-click helpers: compile; load the `.sof` (until power-off); write the `.pof` to the internal flash (boots by itself) | — |
 | `wiring_card.html` / `.png` | **The wiring card**: header pins, the sensor and its divider, lamps, controls, bring-up. Print the HTML (A4 landscape) or open the PNG on a phone | generated |
@@ -27,11 +28,14 @@ are current). Do not edit them by hand.
 
 ## Your steps
 
+The short version; the full bench procedure, with wiring diagrams and the expected result of every
+step, is `lab_brief.html`.
+
 | # | Do | You should see |
 | --- | --- | --- |
-| 1 | Quartus: **File → Open Project → `lanex.qpf`**, then **Processing → Start Compilation** (or double-click `compile.bat`). About 7 minutes (the fitter works hard on timing) | 0 errors. Every timing slack positive (the core clock's Fmax ≥ 31.25 MHz; on this laptop: **36.35 MHz**) |
+| 1 | Quartus: **File → Open Project → `lanex.qpf`**, then **Processing → Start Compilation** (or double-click `compile.bat`). About 7 minutes (the fitter works hard on timing) | 0 errors. Every timing slack positive (the core clock's Fmax ≥ 31.25 MHz; on this laptop: **36.22 MHz**) |
 | 2 | **Tools → Programmer**: Hardware Setup = USB-Blaster; Add File `output_files\lanex.sof`; Start (or `program_sram.bat`) | Lamp test (everything lit for 1 s), the banner scrolls, then **`Id.56dE`** and LEDR9: the chip measured its own ROM |
-| 3 | **SW9 up** (nothing wired yet) | `tESt01` … `tESt12`, the lamps of each AWS test, then **`PASS12`** and LEDR9. **SW9 down** |
+| 3 | **SW9 up** (nothing wired yet) | Each AWS test: `tESt01` for 0.5 s, then its result and lamps for 0.9 s (about 17 s in all), then **`PASS12`** and LEDR9. **SW9 down** |
 | 4 | **SW8 up**, SW3 up (tag `CAr`), press and release KEY1 | `CHArGE`, then `2.50`; LEDR4 |
 | 5 | Unplug the board. Wire the sensor and its divider (wiring card). Power up **with the lane empty** (the board learns the floor). SW8 down | A toy under the sensor: LEDR0, and the display shows its height (`h  4.5` = 4.5 cm) |
 | 6 | Push the car, then the lorry (tag `CAr`) | Car: `CHArGE / 2.50`. Lorry: `CLASS / 7.50`, LEDR1 (tall) |
@@ -57,7 +61,7 @@ for each toy, then set `TALL_MM` in `lanex.qsf` between them (in mm) and compile
 
 The slowest path is inside the chip core (register file → multiplier → register file, about
 31 ns), the same design that ran at 31.25 MHz on the AWS F2. On this laptop, Quartus Prime Lite
-25.1std.0 meets timing with **+4.49 ns setup slack** (Fmax 36.35 MHz) at the worst corner (Slow
+25.1std.0 meets timing with **+4.39 ns setup slack** (Fmax 36.22 MHz) at the worst corner (Slow
 1200 mV, 85 °C), with the fitter's "high performance effort" (`lanex.qsf`); without it, +0.47 ns.
 If a later compile ever shows a negative slack, change `set_parameter -name CORE_HZ 31250000` in
 `lanex.qsf` to `25000000` and compile again: the PLL and every UART divider follow. The firmware
@@ -67,8 +71,8 @@ does not care: its timing rules are in clock cycles.
 
 | Check | Result |
 | --- | --- |
-| Quartus compile (this laptop, 25.1std.0) | 0 errors; 14,715 LEs (30 %), the 64 Kbit data RAM in M9K blocks, 1 PLL; setup slack +4.49 ns, hold +0.33 ns; `.sof` + `.pof` written |
-| `sim/check_board.py`: the whole board in simulation (Verilator) | **623 checks, 0 failed**: every tag preset × every vehicle height × lane open/closed; the laptop's frames; tour mode; edge cases. **The golden model replays every byte and pin change the chip received and must produce exactly what the chip sent**; every display, LED, lamp and buzzer state checked. Also a stress pass, with time squeezed 31× so that frames outlast vehicles |
+| Quartus compile (this laptop, 25.1std.0) | 0 errors; 14,936 LEs (30 %), the 64 Kbit data RAM in M9K blocks, 1 PLL; setup slack +4.39 ns, hold +0.33 ns; `.sof` + `.pof` written |
+| `sim/check_board.py`: the whole board in simulation (Verilator) | **1,291 checks, 0 failed** (`06_verification.md` §1d): every mode change, fault and four random 140-action sessions, each ending in a working lane; a real-speed flicker analysis of every light; and every tag preset × every vehicle height × lane open/closed; the laptop's frames; tour mode; edge cases. **The golden model replays every byte and pin change the chip received and must produce exactly what the chip sent**; every display, LED, lamp and buzzer state checked. Also a stress pass, with time squeezed 31× so that frames outlast vehicles |
 | `dashboard/test_live.py` (QuickJS) | **29 checks, 0 failed**: the dashboard finds every record in the simulated laptop stream, verifies every signature, survives damaged bytes, rejects a forged signature |
 | `scripts/stage4/gen_de10lite.py --check` | the generated files are current; the frame templates replay to the golden model's own frames |
 
@@ -79,9 +83,9 @@ Run them: `python stage4/de10lite/sim/check_board.py` (needs WSL with Verilator 
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| Display stays `no Id` | The chip did not answer `I` | Press KEY0. If it persists: the `.sof` is from another build; recompile |
+| Display stays `no Id` | The chip did not answer `I` | Hold KEY0. If it persists: the `.sof` is from another build; recompile |
 | No vehicle is ever detected | The sensor reads nothing (Echo not wired, no 5 V, divider wrong) | LEDR0 must light with a toy under it. Check pin 11 (5 V) on VCC, Trig on pin 4, Echo through 1 kΩ to pin 3, and 2 kΩ from pin 3 to GND |
-| Vehicles appear on their own | The floor was learnt with something under the sensor | Empty the lane, press KEY0 |
+| Vehicles appear on their own | The floor was learnt with something under the sensor, or a sloped surface scatters the echo | Empty the lane, hold KEY0; use a flat card as the lane floor |
 | Lorry/car confused | Threshold | `TALL_MM` in `lanex.qsf` (see above) |
 | The buzzer sounds all the time | A low-level-trigger buzzer module | SW6 up |
 | Dashboard: Connect does nothing | Not Chrome/Edge, or another program holds the COM port | Close serial monitors; use Chrome or Edge |

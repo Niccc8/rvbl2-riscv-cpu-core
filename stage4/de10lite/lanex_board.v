@@ -59,6 +59,7 @@ module lanex_board #(
                      MSG_NO_ID = 5'd18, MSG_TEST = 5'd19, MSG_PASS = 5'd20, MSG_FAIL = 5'd21;
     localparam [4:0] SP = 5'd31, DASH = 5'd27;
     localparam integer LAMP_MS = 1000, SCROLL_MS = 170, ID_MS = 2500;
+    localparam [12:0] DEC_MS = 13'd4000, FARE_FROM = 13'd2500;  // a decision: word 1.5 s, then the fare 2.5 s
 
     // ------------------------------------------------------------------
     // Inputs: two flip-flops each, then debounced in board milliseconds
@@ -173,23 +174,34 @@ module lanex_board #(
     wire tour_mode = (mode == M_TOUR);
     wire lane_mode = (mode == M_LANE);
     wire can_issue = fr_idle && !fr_start && !chip_rst && since_rst > BOOT_CYC[15:0];
+    // watchdog: after a vehicle leaves, the chip answers with its 'V' record within
+    // milliseconds. If 1.5 s pass without one, the board restarts the chip (a warm
+    // boot: its boot frames, its identity) instead of waiting for ever.
+    reg  [10:0] wd_ms;               // counting down while a decision is awaited (0: none)
+    reg         p0_q;
+    wire        wd_fire = lane_mode && tick && (wd_ms == 11'd1);
 
     always @(posedge clk) begin
         fr_start     <= 1'b0;
         chip_rst_req <= 1'b0;
         if (rst) begin
             mode <= M_BOOT; bphase <= B_LAMP; phase_ms <= 16'd0; banner_off <= 6'd0;
-            boot_idx <= 3'd0; sw9_q <= 1'b0; key1_q <= 1'b0;
+            boot_idx <= 3'd0; sw9_q <= 1'b0; key1_q <= 1'b0; wd_ms <= 11'd0; p0_q <= 1'b0;
             pend_sight <= 1'b0; pend_read <= 1'b0; pend_id <= 1'b0; read_tid <= 4'd0; fr_tid <= 4'd0;
         end else begin
             sw9_q  <= swd[9];
             key1_q <= key1;
+            p0_q   <= chip_pins_in[0];
             if (tick && phase_ms != 16'hFFFF) phase_ms <= phase_ms + 16'd1;
+            if (!lane_mode || (rec_valid && rec_kind == 8'h56)) wd_ms <= 11'd0;     // answered
+            else if (p0_q && !chip_pins_in[0]) wd_ms <= 11'd1500;                     // a vehicle left
+            else if (tick && wd_ms != 11'd0) wd_ms <= wd_ms - 11'd1;
             if (swd[9] && !sw9_q && !tour_mode) begin            // SW9 up: the tour, from reset
                 mode <= M_TOUR; phase_ms <= 16'd0; chip_rst_req <= 1'b1;
                 pend_sight <= 1'b0; pend_read <= 1'b0; pend_id <= 1'b0;
-            end else if (!swd[9] && sw9_q && tour_mode) begin    // SW9 down: a warm boot
+            end else if ((!swd[9] && sw9_q && tour_mode) || wd_fire) begin   // SW9 down, or no answer: a warm boot
                 mode <= M_BOOT; bphase <= B_ID; phase_ms <= 16'd0; boot_idx <= 3'd0; chip_rst_req <= 1'b1;
+                pend_sight <= 1'b0; pend_read <= 1'b0; pend_id <= 1'b0;
             end else if (tour_mode) begin
                 if (tr_rst_req) chip_rst_req <= 1'b1;
             end else begin
@@ -246,6 +258,7 @@ module lanex_board #(
     reg         have_floor, occupied;
     reg  [1:0]  n_occ;               // consecutive readings with something under the sensor
     reg  [1:0]  n_clear;             // ... and with nothing
+    reg  [4:0]  n_bad;               // ... and with no reading at all (unplugged, nothing echoes)
     reg         present, tall;
     reg  [7:0]  clear_ms;
     // P2:P1 = SW2:1 if set (01 van, 10 lorry, 11 motorcycle), else the height
@@ -266,9 +279,9 @@ module lanex_board #(
     always @(posedge clk) begin
         if (rst || !lane_mode) begin
             present <= 1'b0; tall <= 1'b0; clear_ms <= 8'd0; occupied <= 1'b0;
-            max_mm <= 12'd0; n_occ <= 2'd0; n_clear <= 2'd0;
+            max_mm <= 12'd0; n_occ <= 2'd0; n_clear <= 2'd0; n_bad <= 5'd0;
         end else if (manual) begin
-            occupied <= 1'b0; n_occ <= 2'd0; n_clear <= 2'd0; tall <= 1'b0;
+            occupied <= 1'b0; n_occ <= 2'd0; n_clear <= 2'd0; n_bad <= 5'd0; tall <= 1'b0;
             if (key1) begin
                 present <= 1'b1; clear_ms <= 8'd0;
             end else if (present && tick) begin
@@ -277,7 +290,12 @@ module lanex_board #(
                 end else clear_ms <= clear_ms + 8'd1;
             end
         end else begin
-            if (s_valid && s_ok) begin                    // a reading (a missed echo changes nothing)
+            if (s_valid && !s_ok) begin                   // no reading: one miss changes nothing,
+                if (n_bad != 5'd31) n_bad <= n_bad + 5'd1; // 16 in a row (1 s): the sensor is gone
+                if (n_bad == 5'd15) occupied <= 1'b0;
+            end
+            if (s_valid && s_ok) begin                    // a reading
+                n_bad     <= 5'd0;
                 occupied  <= (h_now >= PRESENT_MM);
                 if (h_now >= PRESENT_MM) begin
                     n_clear <= 2'd0;
@@ -292,8 +310,8 @@ module lanex_board #(
                     if (n_clear != 2'd3) n_clear <= n_clear + 2'd1;
                 end
             end
-            // three clear readings in a row, and the chip has seen it: it has left
-            if (present && n_clear == 2'd3 && seen) begin present <= 1'b0; n_clear <= 2'd0; end
+            // three clear readings in a row (or the sensor gone), and the chip has seen it: it has left
+            if (present && (n_clear == 2'd3 || n_bad >= 5'd16) && seen) begin present <= 1'b0; n_clear <= 2'd0; end
             if (!present && n_occ == 2'd0) begin tall <= 1'b0; max_mm <= 12'd0; end
         end
     end
@@ -309,15 +327,15 @@ module lanex_board #(
 
     wire       hrx_valid;
     wire [7:0] hrx_data;
-    wire       h_valid, h_last, h_pop;
+    wire       h_valid, h_last, h_pop, h_id_done;
     wire [7:0] h_data;
     lx_uart_rx #(.CPB(CPB)) u_hrx (.clk(clk), .rst(rst), .rxd(host_rx_s), .valid(hrx_valid), .data(hrx_data));
     lx_hostlink #(.TIMEOUT(20 * 10 * CPB)) u_host (
         .clk(clk), .rst(chip_rst), .flush(!lane_mode),
         .rx_valid(hrx_valid), .rx_data(hrx_data),
-        .valid(h_valid), .data(h_data), .last(h_last), .pop(h_pop));
+        .valid(h_valid), .data(h_data), .last(h_last), .pop(h_pop), .id_done(h_id_done));
 
-    wire       tr_valid, tr_last, tr_pop, tr_done, tr_in_line;
+    wire       tr_valid, tr_last, tr_pop, tr_done, tr_in_line, tr_show, tr_checked, tr_pass;
     wire [7:0] tr_data;
     wire [3:0] tr_pins, tr_line, tr_npass, tr_first_fail, tr_lines;
     lx_tour_n u_tn (.n(tr_lines));
@@ -327,12 +345,29 @@ module lanex_board #(
         .chip_rst_req(tr_rst_req), .pins(tr_pins),
         .valid(tr_valid), .data(tr_data), .last(tr_last), .pop(tr_pop),
         .line(tr_line), .in_line(tr_in_line), .done(tr_done), .npass(tr_npass),
-        .first_fail(tr_first_fail));
+        .first_fail(tr_first_fail), .show(tr_show), .checked(tr_checked), .pass_now(tr_pass));
 
-    wire [3:0] pins_req = tour_mode ? tr_pins : (lane_mode ? lane_pins : 4'b0000);
+    // The host's rule after an identify (PROTOCOL.md section 7): the chip measures its
+    // ROM in the background for about 2 ms; nothing new goes in until its 'I' record
+    // is back (at most ID_WAIT clocks), so its answers come in the order sent.
+    localparam [17:0] ID_WAIT = 18'd200000;
+    reg  [17:0] idw_cnt;
+    reg         id_wait;
+    wire        id_sent = (fr_pop && fr_last && fr_tid == TID_IDENTIFY) || h_id_done;
+    always @(posedge clk) begin
+        if (chip_rst || tour_mode) begin
+            id_wait <= 1'b0; idw_cnt <= 18'd0;
+        end else if (id_sent) begin
+            id_wait <= 1'b1; idw_cnt <= 18'd0;
+        end else if (id_wait) begin
+            if ((rec_valid && rec_kind == 8'h49) || idw_cnt == ID_WAIT) id_wait <= 1'b0;
+            else idw_cnt <= idw_cnt + 18'd1;
+        end
+    end
+    wire [3:0] pins_req = tour_mode ? tr_pins : id_wait ? chip_pins_in : (lane_mode ? lane_pins : 4'b0000);
     lx_chipio #(.CPB(CPB), .SETTLE(SETTLE)) u_io (
         .clk(clk), .rst(chip_rst), .pins_req(pins_req),
-        .src_valid({h_valid & lane_mode, fr_valid & !tour_mode, tr_valid & tour_mode}),
+        .src_valid({h_valid & lane_mode & !id_wait, fr_valid & !tour_mode & !id_wait, tr_valid & tour_mode}),
         .src_data({h_data, fr_data, tr_data}),
         .src_last({h_last, fr_last, tr_last}),
         .src_pop({h_pop, fr_pop, tr_pop}),
@@ -345,18 +380,31 @@ module lanex_board #(
     lx_build_id u_id (.rom_words(rom_words), .rom_crc(rom_crc));
     reg  [2:0]  dec_status;
     reg  [15:0] dec_fare;
-    reg  [12:0] dec_ms;              // a decision shows for 5 s (0: not showing)
+    reg  [12:0] dec_ms;              // a decision shows for 4 s: its word 1.5 s, then the fare (0: not showing)
     reg  [3:0]  err_reason;
     reg  [11:0] err_ms, id_ms;
     reg  [15:0] id_crc;
     reg  [7:0]  v_seq;
     reg         v_open, signed_ok;
-    reg  [12:0] fresh_ms;            // the outside lamps follow a decision for 5 s
+    reg  [12:0] fresh_ms;            // the outside lamps follow a decision for 4 s
     reg  [7:0]  flash_ms;            // the white camera flash
     reg  [9:0]  beep_ms;
     reg  [1:0]  beep_kind;           // 1 a chirp (charged), 2 three beeps (alarm)
     reg  [6:0]  link_ms;             // LEDR3: the laptop is talking
     reg  [2:0]  pat_wait;            // ms after a 'V' before its lamp pins are read
+    // tour mode shows each line's result as latched at its check, never the live
+    // pins (the chip restarts at every line: live lamps would blink in between)
+    reg  [3:0]  t_lamps;
+    reg  [2:0]  t_status;
+    reg         t_isv, t_isid, t_pass;
+    always @(posedge clk) begin
+        if (rst || !tour_mode) begin
+            t_lamps <= 4'd0; t_status <= 3'd0; t_isv <= 1'b0; t_isid <= 1'b0; t_pass <= 1'b0;
+        end else if (tr_checked) begin
+            t_lamps <= lamps; t_status <= dec_status; t_isv <= (dec_ms != 0);
+            t_isid <= (dec_ms == 0) && (id_ms != 0); t_pass <= tr_pass;
+        end
+    end
     always @(posedge clk) begin
         if (rst) begin
             dec_status <= 3'd0; dec_fare <= 16'd0; dec_ms <= 13'd0; err_reason <= 4'd0; err_ms <= 12'd0;
@@ -390,10 +438,10 @@ module lanex_board #(
             end else if (rec_valid) begin
                 case (rec_kind)
                     8'h56: begin                                  // 'V': a vehicle's decision
-                        dec_status <= rec[18:16]; dec_fare <= rec[47:32]; dec_ms <= 13'd5000;
+                        dec_status <= rec[18:16]; dec_fare <= rec[47:32]; dec_ms <= DEC_MS;
                         err_ms <= 12'd0; id_ms <= 12'd0;
                         v_seq <= rec[15:8]; v_open <= 1'b1; signed_ok <= 1'b0;
-                        fresh_ms <= 13'd5000; pat_wait <= 3'd3;
+                        fresh_ms <= DEC_MS; pat_wait <= 3'd3;
                     end
                     8'h41: begin                                  // 'A': its authenticator
                         if (v_open && rec[15:8] == v_seq) signed_ok <= 1'b1;
@@ -464,9 +512,9 @@ module lanex_board #(
                               (fare_bcd[19:16] != 4'd0) ? {1'b0, fare_bcd[19:16]} : SP,
                               (fare_bcd[19:12] != 8'd0) ? {1'b0, fare_bcd[15:12]} : SP,
                               1'b0, fare_bcd[11:8], 1'b0, fare_bcd[7:4], 1'b0, fare_bcd[3:0]};
-    wire alarm_word = (dec_status == 3'd3) || (dec_status == 3'd4);     // StOLEn, CLOnE: blink
-    wire fare_phase = (dec_fare != 16'd0) &&                            // seconds 2 and 4 of 5
-                      ((dec_ms > 13'd3000 && dec_ms <= 13'd4000) || (dec_ms > 13'd1000 && dec_ms <= 13'd2000));
+    wire alarm_word = (dec_status == 3'd3) || (dec_status == 3'd4);     // StOLEn, CLOnE: blink,
+    wire [12:0] dec_elapsed = DEC_MS - dec_ms;                         // lit for the first 256 ms
+    wire fare_phase = (dec_fare != 16'd0) && (dec_ms <= FARE_FROM);    // after the word's 1.5 s
     wire tour_pass  = tr_done && (tr_npass == tr_lines);
 
     reg [29:0] chars;
@@ -478,25 +526,28 @@ module lanex_board #(
             all_on = 1'b1;
         end else if (in_banner) begin
             chars = t_banner;
-        end else if (tour_mode) begin
+        end else if (tour_mode) begin                              // steady phases, latched results
             if (tr_done) begin
                 msg = tour_pass ? MSG_PASS : MSG_FAIL;
                 chars = {t_word[29:10], tour_pass ? pass_dd : fail_dd};
-            end else if (dec_ms != 0) begin
-                msg = {2'b00, dec_status};
-            end else if (id_ms != 0) begin
+            end else if (tr_show && t_isv) begin
+                msg = {2'b00, t_status};                           // the line's decision
+            end else if (tr_show && t_isid) begin
                 msg = MSG_ID; chars = {t_word[29:20], id_hex}; dp = 6'b010000;
+            end else if (tr_show) begin
+                msg = MSG_BLANK;                                   // (no record: the line fails)
             end else begin
-                msg = MSG_TEST; chars = {t_word[29:10], line_dd};
+                msg = MSG_TEST; chars = {t_word[29:10], line_dd};  // "tESt01" while it runs
             end
         end else if (mode == M_BOOT) begin                         // the chip's ID: "Id.56dE"
             if (id_seen) begin msg = MSG_ID; chars = {t_word[29:20], id_hex}; dp = 6'b010000; end
             else msg = MSG_NO_ID;
-        end else if (chip_pins_in[0] && !manual) begin            // the height the sensor measures: "h  4.5" cm
+        end else if ((chip_pins_in[0] || wd_ms != 0) && !manual) begin   // the vehicle's height ("h  4.5" cm),
+                                                                   // until the chip's decision arrives
             chars = {5'd29, SP, (h_bcd[15:12] != 4'd0) ? {1'b0, h_bcd[15:12]} : SP,
                      (h_bcd[15:8] != 8'd0) ? {1'b0, h_bcd[11:8]} : SP, 1'b0, h_bcd[7:4], 1'b0, h_bcd[3:0]};
             dp = 6'b000010;
-        end else if (chip_pins_in[0]) begin                        // manual: a dash runs across
+        end else if (chip_pins_in[0] || wd_ms != 0) begin          // manual: a dash runs across
             chars = {6{SP}};
             chars[5 * (3'd5 - dash_pos) +: 5] = DASH;
         end else if (err_ms != 0) begin
@@ -506,31 +557,46 @@ module lanex_board #(
         end else if (dec_ms != 0) begin
             msg = {2'b00, dec_status};
             if (fare_phase) begin chars = fare_chars; dp = 6'b000100; end   // "  7.50" (ringgit)
-            else blank = alarm_word && dec_ms[8];
+            else blank = alarm_word && dec_elapsed[8];
         end else if (lamps[3]) begin
             msg = MSG_CLOSED;                                      // P7, from the chip
         end else begin
             chars = t_preset;                                      // the tag the next vehicle carries
         end
     end
-    lx_hex6 u_hex (.clk(clk), .chars(chars), .dp(dp), .all_on(all_on), .blank(blank), .hex_n(hex_n));
+    // A warm boot (after the tour, or the watchdog) waits a few ms for the chip's
+    // 'I' record: the displays, LEDs and lamps hold what they showed until it comes
+    // (at most 1 s, then "no Id"), so nothing blinks in between.
+    wire freeze = (mode == M_BOOT) && (bphase == B_ID) && !id_seen && (phase_ms < 16'd1000);
+    lx_hex6 u_hex (.clk(clk), .hold(freeze), .chars(chars), .dp(dp), .all_on(all_on), .blank(blank), .hex_n(hex_n));
 
     // ------------------------------------------------------------------
     // LEDs, the outside lamps, the buzzer
     // ------------------------------------------------------------------
-    wire self_ok = tour_mode ? tour_pass : id_ok;
-    assign ledr = lamp_test ? 10'h3FF :
-                  {self_ok, signed_ok, lamps, link_ms != 0, chip_pins_in[0], tall, occupied};
+    wire       self_ok    = tour_mode ? (tr_done ? tour_pass : (tr_show && t_pass)) : id_ok;
+    wire [3:0] lamps_show = tour_mode ? (tr_show && !tr_done ? t_lamps : 4'd0) : lamps;
+    wire [9:0] ledr_c = lamp_test ? 10'h3FF :
+                        {self_ok, signed_ok && !tour_mode, lamps_show, link_ms != 0,
+                         chip_pins_in[0] && !tour_mode, tall, occupied};
     wire beep_on = (beep_kind == 2'd1) ? (beep_ms != 0) :
                    (beep_kind == 2'd2) ? ((beep_ms > 10'd600) ||
                                           (beep_ms > 10'd350 && beep_ms <= 10'd500) ||
                                           (beep_ms > 10'd100 && beep_ms <= 10'd250)) : 1'b0;
     wire buzz = (lamp_test && phase_ms < 16'd100) || (beep_on && !tour_mode);
     assign buzzer      = (buzz && !swd[7]) ^ swd[6];   // SW7 mutes; SW6 for a low-level-trigger module
-    assign lamp_green  = lamp_test | (lamps[0] && fresh_ms != 0);
-    assign lamp_white  = lamp_test | (lamps[1] && flash_ms != 0);
-    assign lamp_red    = lamp_test | (lamps[2] && fresh_ms != 0);
-    assign lamp_closed = lamp_test | lamps[3];
+    wire tour_lit = tour_mode && tr_show && !tr_done;   // tour: each line's lamps, steady
+    wire [3:0] lamps_c = {lamp_test | (tour_mode ? tour_lit && t_lamps[3] : lamps[3]),
+                          lamp_test | (tour_mode ? tour_lit && t_lamps[2] : lamps[2] && fresh_ms != 0),
+                          lamp_test | (tour_mode ? tour_lit && t_lamps[1] : lamps[1] && flash_ms != 0),
+                          lamp_test | (tour_mode ? tour_lit && t_lamps[0] : lamps[0] && fresh_ms != 0)};
+    reg  [9:0] ledr_q;
+    reg  [3:0] lamps_q;
+    always @(posedge clk) begin
+        if (rst) begin ledr_q <= 10'd0; lamps_q <= 4'd0; end
+        else if (!freeze) begin ledr_q <= ledr_c; lamps_q <= lamps_c; end
+    end
+    assign ledr = ledr_q;
+    assign {lamp_closed, lamp_red, lamp_white, lamp_green} = lamps_q;
 endmodule
 
 // ============================================================================
@@ -793,7 +859,8 @@ module lx_hostlink #(parameter integer TIMEOUT = 54200) (
     output wire       valid,
     output wire [7:0] data,
     output wire       last,
-    input  wire       pop
+    input  wire       pop,
+    output wire       id_done        // one cycle: an identify frame ('I') has just been passed on
 );
     reg [7:0]  mem [0:63];
     reg [5:0]  wr, cm, rd;           // write, committed (whole frames), read
@@ -802,14 +869,16 @@ module lx_hostlink #(parameter integer TIMEOUT = 54200) (
     reg [19:0] idle;
     reg [5:0]  rd_idx;
     reg [5:0]  rd_len;
+    reg [7:0]  rd_type;
     wire       full = (wr + 6'd1 == rd);
+    assign id_done = pop && last && (rd_type == 8'h49);
     assign valid = (rd != cm);
     assign data  = mem[rd];
     assign last  = (rd_idx > 6'd2) && (rd_idx == rd_len + 6'd4);
     always @(posedge clk) begin
         if (rst || flush) begin
             wr <= 6'd0; cm <= 6'd0; rd <= 6'd0; ws <= 2'd0; need <= 6'd0; idle <= 20'd0;
-            rd_idx <= 6'd0; rd_len <= 6'd0;
+            rd_idx <= 6'd0; rd_len <= 6'd0; rd_type <= 8'd0;
         end else begin
             if (rx_valid) begin
                 idle <= 20'd0;
@@ -835,6 +904,7 @@ module lx_hostlink #(parameter integer TIMEOUT = 54200) (
             end
             if (pop) begin
                 rd <= rd + 6'd1;
+                if (rd_idx == 6'd1) rd_type <= data;
                 if (rd_idx == 6'd2) rd_len <= data[5:0];
                 rd_idx <= last ? 6'd0 : rd_idx + 6'd1;
             end
@@ -888,12 +958,14 @@ endmodule
 
 // Tour mode: plays lx_tour_rom - each line from a chip reset, then its pins and
 // frames in order; at the line's end it compares the last 8 bytes and the lamps
-// with the golden answer (lx_tour_exp), as ./emu's -r and -o do. Each line
-// stays on show for at least LINE_MS board milliseconds.
+// with the golden answer (lx_tour_exp), as ./emu's -r and -o do. What a person
+// sees is paced and steady: "tESt nn" for TEST_MS (the line runs, in a few ms,
+// inside it), then the line's result for SHOW_MS (show = 1), then the next line.
 module lx_tour #(
     parameter integer BOOT_CYC = 10000,
     parameter integer END_CYC  = 200000,
-    parameter integer LINE_MS  = 800
+    parameter integer TEST_MS  = 500,
+    parameter integer SHOW_MS  = 900
 ) (
     input  wire        clk, rst, tick, quiet,
     input  wire [63:0] window,
@@ -909,10 +981,13 @@ module lx_tour #(
     output wire        in_line,
     output reg         done,
     output reg  [3:0]  npass,
-    output reg  [3:0]  first_fail
+    output reg  [3:0]  first_fail,
+    output wire        show,         // the line's result is on show
+    output reg         checked,      // one cycle: the line was just compared ...
+    output wire        pass_now      // ... and this is its verdict
 );
     localparam [2:0] T_RESET = 3'd0, T_BOOT = 3'd1, T_RUN = 3'd2, T_PINS = 3'd3, T_END = 3'd4,
-                     T_WAIT = 3'd5, T_PACE = 3'd6, T_NEXT = 3'd7;
+                     T_WAIT = 3'd5, T_PACE = 3'd6, T_SHOW = 3'd7;
     reg  [2:0]  st;
     reg  [9:0]  pc;
     reg  [19:0] cnt;
@@ -921,17 +996,19 @@ module lx_tour #(
     wire [68:0] exp;
     lx_tour_rom u_rom (.a(pc), .q(op));
     lx_tour_exp u_exp (.a(line), .q(exp));
-    assign valid   = (st == T_RUN) && !op[9];
-    assign data    = op[7:0];
-    assign last    = op[8];
-    assign in_line = !done;
-    wire pass = (nbytes == 4'd8) && (window == exp[63:0]) && (!exp[68] || lamps == exp[67:64]);
+    assign valid    = (st == T_RUN) && !op[9];
+    assign data     = op[7:0];
+    assign last     = op[8];
+    assign in_line  = !done;
+    assign show     = (st == T_SHOW) || done;
+    assign pass_now = (nbytes == 4'd8) && (window == exp[63:0]) && (!exp[68] || lamps == exp[67:64]);
     always @(posedge clk) begin
         chip_rst_req <= 1'b0;
+        checked      <= 1'b0;
         if (rst) begin
             st <= T_RESET; pc <= 10'd0; cnt <= 20'd0; line <= 4'd0; line_ms <= 16'd0;
             done <= 1'b0; npass <= 4'd0; first_fail <= 4'd0; pins <= 4'd0;
-        end else begin
+        end else if (!done) begin
             if (tick && line_ms != 16'hFFFF) line_ms <= line_ms + 16'd1;
             case (st)
                 T_RESET: begin                                    // every ./emu run starts from reset
@@ -953,23 +1030,30 @@ module lx_tour #(
                     else if (quiet) begin cnt <= 20'd0; st <= T_WAIT; end
                 T_WAIT:                                           // the chip decides and answers
                     if (cnt == END_CYC) begin
-                        if (pass) npass <= npass + 4'd1;
+                        checked <= 1'b1;
+                        if (pass_now) npass <= npass + 4'd1;
                         else if (first_fail == 4'd0) first_fail <= line + 4'd1;
                         st <= T_PACE;
                     end else cnt <= cnt + 20'd1;
-                T_PACE:
-                    if (line_ms >= LINE_MS) begin pc <= pc + 10'd1; st <= T_NEXT; end
-                default:                                          // T_NEXT: another line, or the end
-                    if (op == 10'h3FF) done <= 1'b1;
-                    else if (!done) begin line <= line + 4'd1; st <= T_RESET; end
+                T_PACE:                                           // "tESt nn" for TEST_MS in all
+                    if (line_ms >= TEST_MS) begin line_ms <= 16'd0; st <= T_SHOW; end
+                default:                                          // T_SHOW: the result, then the next line
+                    if (line_ms >= SHOW_MS) begin
+                        pc <= pc + 10'd1;
+                        if (op_next == 10'h3FF) done <= 1'b1;
+                        else begin line <= line + 4'd1; st <= T_RESET; end
+                    end
             endcase
         end
     end
+    wire [9:0] op_next;
+    lx_tour_rom u_rom_n (.a(pc + 10'd1), .q(op_next));
 endmodule
 
 // Six 7-segment digits, common anode on the DE10-Lite: a segment is lit by 0
 module lx_hex6 (
     input  wire        clk,
+    input  wire        hold,         // keep showing the last picture
     input  wire [29:0] chars,        // HEX5 in bits 29:25 ... HEX0 in bits 4:0
     input  wire [5:0]  dp,
     input  wire        all_on, blank,
@@ -983,7 +1067,7 @@ module lx_hex6 (
     lx_font f4 (.a(chars[24:20]), .q(s4));
     lx_font f5 (.a(chars[29:25]), .q(s5));
     wire [47:0] on = {dp[5], s5, dp[4], s4, dp[3], s3, dp[2], s2, dp[1], s1, dp[0], s0};
-    always @(posedge clk) hex_n <= all_on ? 48'd0 : blank ? {48{1'b1}} : ~on;
+    always @(posedge clk) if (!hold) hex_n <= all_on ? 48'd0 : blank ? {48{1'b1}} : ~on;
 endmodule
 
 `default_nettype wire

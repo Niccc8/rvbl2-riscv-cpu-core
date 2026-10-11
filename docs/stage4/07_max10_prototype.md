@@ -58,7 +58,7 @@ has no internal tri-state), and the data RAM is coded as Quartus infers M9K bloc
 | 4 | Tag **CLOnE** | `CLOnE`: "this tag was 40 km away 30 s ago" | The clever one |
 | 5 | Pushes the same car again within 3 s | `no tAG` + flash: tailgating protection | Shows a real rule |
 | 6 | (laptop) clicks **"Report stolen" (Taxi)**, then pushes a car with the `CAb` tag | The next decision is **`StOLEn`** | Back office ↔ lane, live |
-| 7 | (presenter) flips SW9 | **Tour mode**: the 12 AWS golden scenarios run on the board, each checked against its golden answer: `tESt01` … **`PASS12`**, LEDR9 | The verification culture, live |
+| 7 | (presenter) flips SW9 | **Tour mode**: the 12 AWS golden scenarios run on the board, each checked against its golden answer, paced and steady (`tESt01` 0.5 s, then its result and lamps 0.9 s) … **`PASS12`**, LEDR9 | The verification culture, live |
 
 ## 4. Inputs, outputs, switches
 
@@ -71,7 +71,7 @@ has no internal tri-state), and the data RAM is coded as Quartus infers M9K bloc
 | SW6 / SW7 | Buzzer module is low-level trigger / mute the buzzer |
 | SW8 | Manual: KEY1 is the vehicle (press = in the zone) — the no-sensor fallback |
 | SW9 | Tour mode: the 12 AWS `./emu` lines, then `PASS12` (or `FAIL` + the first failing line) |
-| KEY0 | Reset (and the sensor relearns the floor) |
+| KEY0 | Reset, when held 20 ms (a glitch is ignored); the sensor relearns the floor |
 | KEY1 | Manual vehicle when SW8 is up; otherwise "fingerprint the ROM now" (an `I` frame) |
 
 | Output | Meaning |
@@ -82,8 +82,8 @@ has no internal tri-state), and the data RAM is coded as Quartus infers M9K bloc
 | LEDR4–7 | P4 charged · P5 camera · P6 alarm · P7 lane closed (exactly the `-o` lamps on AWS) |
 | LEDR8 | The last vehicle record was **signed** (its `A` record arrived, CRC ok) |
 | LEDR9 | Self-check: the chip's ROM fingerprint matches the build (tour mode: all 12 passed) |
-| HEX5–HEX0 | Idle: the tag preset (or `CLOSEd`). A vehicle under the sensor: its height. After a decision: the word, and the fare in its 2nd and 4th second, for 5 s (alarms blink). `Err  n` for a refused frame, `Id.56dE` for an identity |
-| GPIO lamps | Green (charged, 5 s), white (camera flash, 200 ms), red (alarm, 5 s), buzzer (charged: a chirp; alarm: three beeps), lane-closed lamp |
+| HEX5–HEX0 | Idle: the tag preset (or `CLOSEd`). A vehicle under the sensor: its height. After a decision: the word for 1.5 s, then the fare for 2.5 s (alarms: the word, blinking, 4 s). `Err  n` for a refused frame, `Id.56dE` for an identity |
+| GPIO lamps | Green (charged, 4 s), white (camera flash, 200 ms), red (alarm, 4 s), buzzer (charged: a chirp; alarm: three beeps), lane-closed lamp |
 
 Decision words: `CHArGE`, `no tAG`, `CLASS`, `StOLEn`, `CLOnE`, `FrEE`, `CLOSEd`.
 
@@ -135,14 +135,14 @@ frames) with no board.
 | Item | Design |
 | --- | --- |
 | Source of truth | `scripts/stage4/gen_de10lite.py` writes `lanex_chip.v` (the chip + ROM, as for AWS), `lanex_data.v` (frame templates, the tour's 12 lines with golden answers, 7-segment words), `lanex.qpf/qsf/sdc`, the wiring card and the dashboard. `--check` fails if any is stale |
-| Clock | MAX 10 PLL (`altpll`, instantiated directly): 50 MHz × 5 / 8 = **31.25 MHz**, the AWS clock. Quartus (high-performance fitter effort): **+4.49 ns setup slack** at Slow 1200 mV 85 °C (Fmax 36.35 MHz); fallback `CORE_HZ` 25 MHz, one line in `lanex.qsf` |
+| Clock | MAX 10 PLL (`altpll`, instantiated directly): 50 MHz × 5 / 8 = **31.25 MHz**, the AWS clock. Quartus (high-performance fitter effort): **+4.39 ns setup slack** at Slow 1200 mV 85 °C (Fmax 36.22 MHz); fallback `CORE_HZ` 25 MHz, one line in `lanex.qsf` |
 | One clock domain | Only the 50 MHz input (into the PLL) and the asynchronous pins (switches, KEY1, Echo, the laptop's line) cross, through 2-flip-flop synchronisers |
 | One channel into the chip (`lx_chipio`) | Pin changes and whole frames, one at a time; a pin change only between frames, then a 40,000-cycle settle (PROTOCOL.md §7). So the order the chip sees is exactly the order a testbench logs, and the golden model can replay it |
 | The lane | `lx_sonar` triggers the HC-SR04 every 62.5 ms and times the echo (mm = cycles × 171.5 m/s). A vehicle never "leaves" before the chip has seen it arrive with its current class |
 | Frames | Built from templates with live fields (the read's millisecond time; the clone's sighting at now − 30 s) and the CRC-16 computed in fabric. Boot: `P` (RSSI floor 30, frame timeout 48), `C`, `G` (gantry 2 at 40.0 km), `H` (the stolen preset), `K` (the demo key), then `I` |
 | Records | 8-byte records (CRC-16 checked, re-synchronised byte by byte if needed) drive the display, LEDs, lamps and buzzer; the chip's UART output also goes to the laptop unchanged |
 | Tour | Each of the 12 `./emu` lines from a chip reset, its pins and frames in order; then its last 8 bytes and lamps compared with the golden answer, as `emu -r`/`-o` do |
-| Resources (Quartus) | 14,715 LEs (30 %), 2,276 registers, 66,048 memory bits (the 8 KB data RAM and the 64-byte laptop buffer in M9K), 11 multiplier elements, 1 PLL |
+| Resources (Quartus) | 14,936 LEs (30 %), 2,368 registers, 66,048 memory bits (the 8 KB data RAM and the 64-byte laptop buffer in M9K), 11 multiplier elements, 1 PLL |
 | Persistence | The `.pof` in the MAX 10's internal flash: the box boots the demo on power-up, no laptop |
 
 ## 8. Verification (before the board)
@@ -150,12 +150,12 @@ frames) with no board.
 | # | Check | Tool | Result |
 | --- | --- | --- | --- |
 | V1 | The design elaborates and lints | Icarus, Verilator | clean (width notes only) |
-| V2 | **Differential, whole board**: every tag preset × car / lorry / manual / van / motorcycle, the lane open and closed. Every byte and pin change the chip receives is logged and **`lane_model.py` replays them and must produce exactly the chip's bytes**. Also each decision is the one the scenario means (from PROTOCOL.md §6, worked out independently), and a stress pass with time squeezed 31× | `sim/check_board.py` (Verilator) | **PASS** (623 checks in all, V2–V5; `06` §1d) |
+| V2 | **Differential, whole board**: every tag preset × car / lorry / manual / van / motorcycle, the lane open and closed. Every byte and pin change the chip receives is logged and **`lane_model.py` replays them and must produce exactly the chip's bytes**. Also each decision is the one the scenario means (from PROTOCOL.md §6, worked out independently), and a stress pass with time squeezed 31× | `sim/check_board.py` (Verilator) | **PASS** (1,291 checks in all, V2–V5 and every mode change, fault, random session and a real-speed flicker analysis; `06` §1d) |
 | V3 | Display, LEDs, lamps, buzzer for every decision | same | same |
 | V4 | Tour mode: the 12 lines, each also replayed by the model; `PASS12` | same | same |
 | V5 | Laptop frames merged whole; `H` changes the next decision; garbage, half and oversize frames never reach the chip | same | same |
 | V6 | The dashboard's logic on the simulated laptop stream; damage; forgery | `dashboard/test_live.py` (QuickJS) | **PASS**, 29 checks |
-| V7 | **Quartus** synthesis, fit, timing, programming files | Quartus Prime Lite 25.1std.0 on Nicholas's laptop | 0 errors; timing met, +4.49 ns |
+| V7 | **Quartus** synthesis, fit, timing, programming files | Quartus Prime Lite 25.1std.0 on Nicholas's laptop | 0 errors; timing met, +4.39 ns |
 
 Two real fabric bugs were found and fixed by V2 before any hardware: a vehicle could "leave" before
 the chip had seen it arrive (if the channel was busy with a laptop frame), and a lorry's class could
@@ -174,7 +174,10 @@ sensor, the dashboard, the flash), and the wiring card's bring-up list.
 | Ultrasonic misses a sloped toy surface | A missed echo changes nothing (not counted as "clear"); presence needs 2 readings, departure 3; KEY1 manual mode as a fallback |
 | Car/lorry threshold wrong for the toys | The display shows each toy's measured height; `TALL_MM` in `lanex.qsf` |
 | Something under the sensor at power-up | The floor is relearnt upward automatically; KEY0 relearns it |
-| Timing margin | Met with +4.49 ns (16 %); `CORE_HZ` 25 MHz fallback, one line |
+| The sensor stops answering under a vehicle | After 16 readings with no echo (1 s) the vehicle counts as gone and is decided |
+| The chip stops answering | Watchdog: no decision 1.5 s after a vehicle leaves → the board restarts the chip (warm boot) |
+| Flicker between states | Tour results latched and paced; warm boots hold the picture until the chip's identity arrives; a leaving vehicle's height stays until its decision. Checked at real speed in simulation: nothing visible lasts 5–150 ms unless meant to |
+| Timing margin | Met with +4.39 ns (16 %); `CORE_HZ` 25 MHz fallback, one line |
 | No admin rights for the driver | Done: Quartus and the USB-Blaster work (Nicholas's school project ran) |
 | Time (event 14–17 Oct) | Tier 1 only; VGA and real RFID stay out |
 

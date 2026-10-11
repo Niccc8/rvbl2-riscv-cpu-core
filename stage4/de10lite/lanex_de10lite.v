@@ -3,7 +3,7 @@
 // Port names are Terasic's (pins in lanex.qsf). Hand-written.
 //
 //   MAX10_CLK1_50 --> PLL (x mul / div) --> the core clock, CORE_HZ
-//   KEY0 = reset (the whole board, as power-on); KEY1, SW9..0: see lanex_board.v
+//   KEY0 = reset (the whole board, as power-on; held 20 ms); KEY1, SW9..0: see lanex_board.v
 //   GPIO header JP1 (wiring_card.html):
 //     GPIO[0] in   laptop -> board (USB-UART TXD)     GPIO[5] out  white lamp (camera)
 //     GPIO[1] out  board -> laptop (USB-UART RXD)     GPIO[6] out  red lamp (alarm)
@@ -103,14 +103,26 @@ module lanex_de10lite #(
     );
     wire clk = pll_clk[0];
 
-    // ---- reset: KEY0 or the PLL not locked; released synchronously --------
-    wire rst_async = !KEY[0] || !pll_locked;
+    // ---- reset: the PLL not locked, or KEY0 held for 20 ms ------------------
+    // (KEY0 is debounced by the board's Schmitt trigger; the 20 ms filter also
+    // keeps a glitch on it from restarting the demo)
+    wire rst_async = !pll_locked;
     reg  [3:0] rst_sync = 4'hF;
     always @(posedge clk or posedge rst_async) begin
         if (rst_async) rst_sync <= 4'hF;
         else           rst_sync <= {rst_sync[2:0], 1'b0};
     end
-    wire rst = rst_sync[3];
+    localparam integer KEY0_CYC = CORE_HZ / 50;           // 20 ms
+    reg  [1:0]  k0_s = 2'b00;
+    reg  [19:0] k0_cnt = 20'd0;
+    reg         k0_rst = 1'b0;
+    always @(posedge clk) begin
+        k0_s <= {k0_s[0], !KEY[0]};
+        if (!k0_s[1]) begin k0_cnt <= 20'd0; k0_rst <= 1'b0; end
+        else if (k0_cnt == KEY0_CYC - 1) k0_rst <= 1'b1;
+        else k0_cnt <= k0_cnt + 20'd1;
+    end
+    wire rst = rst_sync[3] | k0_rst;
 
     // ---- the board ---------------------------------------------------------
     wire [47:0] hex_n;

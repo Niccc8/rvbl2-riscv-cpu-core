@@ -9,7 +9,9 @@ PASS on the first build (`06` §1c).** Claim earned: "FPGA-validated prototype".
 **DE10-Lite desk lane (Tier 1) built 2026-10-11** (`stage4/de10lite/`, start at its README): one HC-SR04
 ultrasonic sensor (rescoped from two IR beams: the sensor Nicholas has), USB-UART + LaneX Live dashboard.
 Verified in simulation (`06` §1d) and compiled in Quartus 25.1std.0 on Nicholas's laptop (0 errors, timing
-met +4.49 ns at 31.25 MHz). Next: Nicholas's bring-up (README "Your steps"); then the pitch deck.
+met +4.39 ns at 31.25 MHz). **On the board (11 Oct): `Id.56dE` and `PASS12` work**; his flicker report fixed and
+the board hardened (`06` §1d round 2: 1,291 simulated checks). Next: his bench procedure,
+`stage4/de10lite/lab_brief.html` E1–E10 (also published: https://claude.ai/artifact/1geGwAnsMETUvzNhbt8Chj); then the pitch deck.
 
 ## Where everything is
 

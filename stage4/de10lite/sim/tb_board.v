@@ -19,6 +19,8 @@
 //   Q                wait until the channel into the chip is quiet
 //   T                wait until tour mode has finished
 //   X <n> <b>...     the laptop sends n bytes (hex)
+//   R                KEY0: the board resets (as the 20 ms-filtered KEY0 does)
+//   F <0|1>          fault injection: the chip's UART output silenced / restored
 //   D <tag>          log a snapshot of the displays, LEDs and lamps
 //   E                end
 //
@@ -28,6 +30,8 @@
 //   B c bb           a byte the chip received (decoded from its rx line)
 //   C c bb           a byte the chip sent (decoded from its tx line)
 //   T c bb           a byte the laptop received (decoded from GPIO[1])
+//   H c hex48 ledr lamps mode  every change of the displays, LEDs or lamps (mode 0 boot, 1 lane, 2 tour)
+//   F c v            the fault injection's state
 //   D c tag hex48 ledr lamps dec_ms   lamps = {buzzer, closed, red, white, green};
 //                    dec_ms = the decision display's remaining time
 // ============================================================================
@@ -72,6 +76,16 @@ module tb_board;
         pins_q <= dut.chip_pins_in;
         if (!dut.chip_rst && dut.chip_pins_in !== pins_q) $fwrite(lf, "P %0d %x\n", cyc, dut.chip_pins_in);
     end
+    // every change a person could see: the 6 digits, the 10 LEDs, the 5 outside outputs
+    reg [47:0] hex_q = 48'd0;
+    reg [9:0]  ledr_q = 10'd0;
+    reg [4:0]  lamps_q = 5'd0;
+    always @(posedge clk) begin
+        hex_q <= hex_n; ledr_q <= ledr; lamps_q <= {bz, c, r, w, g};
+        if (hex_n !== hex_q || ledr !== ledr_q || {bz, c, r, w, g} !== lamps_q)
+            $fwrite(lf, "H %0d %012x %03x %02x %0d\n", cyc, hex_n, ledr, {bz, c, r, w, g}, dut.mode);
+    end
+
     // UART monitors on the chip's rx and tx lines and on the laptop's line
     uart_mon #(.CPB(CPB), .TAG("B")) m_rx   (.clk(clk), .line(dut.chip_rx), .cyc(cyc));
     uart_mon #(.CPB(CPB), .TAG("C")) m_tx   (.clk(clk), .line(dut.chip_tx), .cyc(cyc));
@@ -158,6 +172,12 @@ module tb_board;
                 "U": begin n = $fscanf(sf, " %d", v); obj_mm = v; end
                 "Y": begin n = $fscanf(sf, " %d", v); k = readings + v; while (readings < k) @(posedge clk); end
                 "Z": begin n = $fscanf(sf, " %d", v); plugged = v[0]; echo = !v[0]; end
+                "R": begin rst = 1'b1; repeat (100) @(posedge clk); rst = 1'b0; end
+                "F": begin
+                         n = $fscanf(sf, " %d", v);
+                         $fwrite(lf, "F %0d %0d\n", cyc, v);
+                         if (v[0]) force dut.chip_tx = 1'b1; else release dut.chip_tx;
+                     end
                 "W": begin n = $fscanf(sf, " %d", v); wait_ms(v); end
                 "M": begin while (dut.mode != 2'd1) @(posedge clk); wait_ms(5); end
                 "N": begin while (!(dut.mode == 2'd0 && dut.bphase == 2'd2)) @(posedge clk); wait_ms(5); end

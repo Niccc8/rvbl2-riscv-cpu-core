@@ -396,7 +396,7 @@ def qsf(core_hz):
         "set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0",
         "set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85",
         "set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL",
-        "# Fitter effort for timing: +4.5 ns of setup slack at 31.25 MHz instead of +0.5 ns",
+        "# Fitter effort for timing: +4.4 ns of setup slack at 31.25 MHz instead of +0.5 ns",
         "# (Quartus 25.1std.0 on Nicholas's laptop); the compile takes about 7 minutes, not 2",
         "set_global_assignment -name OPTIMIZATION_MODE \"HIGH PERFORMANCE EFFORT\"",
         "# Boot from the internal configuration flash at power-up (as Terasic's own projects)",

@@ -102,6 +102,43 @@ a watchdog now ends any run that waits for an event that never comes.
 Not covered until the board: the HC-SR04 on real toys (its readings, the threshold), the USB-UART
 on Windows, Web Serial in the browser, the internal-flash boot.
 
+### 1d, round 2: after the first board test (2026-10-11)
+
+Nicholas programmed the board: `Id.56dE` and `PASS12` worked; he saw the tour **flicker between
+tests**, and found the manual car's word/fare/word/fare/word cycle confusing. Causes and fixes:
+
+| Seen | Cause | Fix |
+| --- | --- | --- |
+| Tour flicker | Each line restarts the chip; for ~15 ms the chip's lamps were 0 and the display fell back to `tESt nn` until the line's record arrived | Tour shows latched, paced phases: `tESt nn` 0.5 s, then the line's result and lamps 0.9 s |
+| Word/fare repeated | 5 s alternating display | Word 1.5 s, then the fare 2.5 s, then idle (alarms: the word blinking, lit first) |
+| (review) a ~10 ms `no Id` / LEDR9 blink after the tour | A warm boot waits for the chip's `I` record | Displays, LEDs and lamps hold the last picture until it comes (at most 1 s) |
+| (review) a ~1 ms idle flash between a vehicle's height and its decision | The `V` record takes ~1.4 ms to arrive | The height stays until the decision |
+| (review) sensor lost under a vehicle: the vehicle stayed for ever | No reading counts as "clear" | 16 readings with no echo (1 s): the vehicle has left |
+| (review) a silent chip would hang the lane | — | Watchdog: no `V` 1.5 s after a departure → warm boot |
+| (review) a glitch on KEY0 reset the board | Unfiltered | KEY0 must be held 20 ms |
+| (stress pass) two identify requests within 2 ms, or a frame right after one: the chip answers in another order or merges them | The fabric did not keep the host's rule "after `I`, wait for the answer" | After any `I` frame the fabric holds frames and pin changes until the `I` record (at most 6.4 ms) |
+
+New checks (`check_board.py`): scenario families **modes** (SW9 during the banner, tours cut at
+3 s / 0.7 s / 0.1 s, two tours in a row, SW9 flicked under the debounce, SW0 / override / tag /
+SW8 changed under a vehicle, KEY1 identify under a vehicle, a refused key `E` 7, laptop frames
+during the tour and the boot, KEY0 under a vehicle and mid-tour), **faults** (sensor unplugged under
+a car and at idle, a lorry parked 150 readings, the chip silenced by fault injection: watchdog,
+`no Id`, recovery with KEY1), **chaos 1–4** (seeded random sessions of 140 actions each: objects of
+every height, every switch, KEY0, KEY1, the sensor, the laptop's valid, damaged, half and oversize
+frames; each ends with two vehicles that must be decided right, one without and one after a reset),
+**glitch** at real speed with the flicker analysis (per light: no state of 5–150 ms; tour states
+≥ 300 ms), and `tb_top.v` for the top level's reset path.
+
+| Run | Result |
+| --- | --- |
+| Full pass (×10), final RTL | **1,035 checks, 0 failed**: matrix 430, host 50, tour 38, edges 76, modes 188 (78 chip runs), faults 43, chaos 57 + 53 + 50 + 50 (90 chip runs) |
+| Stress pass (×312), model comparison | **203 checks, 0 failed** (run on the RTL before the alarm-blink change, which touches only the display) |
+| Real-speed pass, flicker analysis, final RTL | **52 checks, 0 failed**, no short state on any light |
+| `tb_top.v` (KEY0 filter, power-up) | **TOP PASS** |
+| Control: the real-speed pass on the previous design (`87e4a5a`) | **40 short states**, among them `tESt01` … for 5 ms: the flicker Nicholas saw, reproduced by the test |
+| `test_live.py` | **29 checks, 0 failed** |
+| Quartus 25.1std.0, final RTL | **0 errors**; 14,936 LEs (30 %), 2,368 registers; setup slack **+4.388 ns** (Fmax 36.22 MHz), hold +0.328 ns at Slow 1200 mV 85 °C |
+
 ## 2. What each check proves, and its limits
 
 | # | Check | Proves | Does not prove |

@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LaneX Desk Lane Lab Brief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a lab manual - a narrow reading column with full-width figures and procedure tables,
+     a title block like an engineering drawing, numbered steps only where order matters. */
+  :root {
+    --paper: #f5f6f3; --sheet: #ffffff; --ink: #18232e; --muted: #56636f; --rule: #d5dad6;
+    --blue: #1f4e8c; --blue-soft: #e4ecf6; --warn: #b42318; --warn-soft: #fdecea; --ok: #1f7a43; --ok-soft: #e5f3ea;
+    --amber: #a15c07; --amber-soft: #fbf0dc;
+    --w-tx: #2563eb; --w-rx: #16a34a; --w-echo: #ea580c; --w-trig: #b45309; --w-5v: #c81e1e; --w-gnd: #1f2937;
+    --w-green: #22a554; --w-white: #8b949e; --w-red: #dc2626; --w-buzz: #7c3aed; --w-yel: #ca8a04;
+    --chip: #0f2742; --chip-fg: #e8f0fa; --fab: #eef2f7; --fab-line: #9fb0c3;
+    --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+    --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0e141b; --sheet: #141c25; --ink: #e3e9ef; --muted: #9aa8b5; --rule: #2a3643;
+      --blue: #7fb0ec; --blue-soft: #18293d; --warn: #ff8a7a; --warn-soft: #3a1c1a; --ok: #6fd39a; --ok-soft: #14301f;
+      --amber: #f2b45a; --amber-soft: #33270f;
+      --w-gnd: #cbd5e1; --chip: #0b1d33; --chip-fg: #dce8f6; --fab: #1a2531; --fab-line: #3b4d61;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0e141b; --sheet: #141c25; --ink: #e3e9ef; --muted: #9aa8b5; --rule: #2a3643;
+    --blue: #7fb0ec; --blue-soft: #18293d; --warn: #ff8a7a; --warn-soft: #3a1c1a; --ok: #6fd39a; --ok-soft: #14301f;
+    --amber: #f2b45a; --amber-soft: #33270f;
+    --w-gnd: #cbd5e1; --chip: #0b1d33; --chip-fg: #dce8f6; --fab: #1a2531; --fab-line: #3b4d61;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--paper); color: var(--ink); font: 15.5px/1.6 var(--body); padding-inline: 16px; padding-block: 24px 64px; }
+  .wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: .2px; line-height: 1.1; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(34px, 6vw, 52px); }
+  h2 { font-size: 30px; }
+  h3 { font-size: 21px; font-weight: 600; }
+  p { margin: 0; max-width: 68ch; }
+  a { color: var(--blue); }
+  code, .mono { font-family: var(--mono); font-size: .92em; }
+  section { display: flex; flex-direction: column; gap: 14px; }
+  .eyebrow { font: 600 12px/1 var(--mono); letter-spacing: 1.6px; text-transform: uppercase; color: var(--blue); }
+
+  /* title block */
+  .titleblock { background: var(--sheet); border: 2px solid var(--ink); display: grid; grid-template-columns: 1fr auto; }
+  .titleblock .main { padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .titleblock .main p { color: var(--muted); }
+  .titleblock dl { margin: 0; border-left: 2px solid var(--ink); display: grid; grid-template-columns: auto auto; font-size: 13px; min-width: 0; }
+  .titleblock dt, .titleblock dd { margin: 0; padding: 7px 12px; border-bottom: 1px solid var(--rule); }
+  .titleblock dt { font: 600 11px/1.6 var(--mono); text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+  .titleblock dd { font-family: var(--mono); }
+  @media (max-width: 720px) { .titleblock { grid-template-columns: 1fr; } .titleblock dl { border-left: 0; border-top: 2px solid var(--ink); } }
+
+  nav.toc { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 22px; font-size: 14px; }
+  nav.toc a { text-decoration: none; color: var(--ink); border-bottom: 1px solid var(--rule); padding: 5px 0; display: flex; gap: 10px; }
+  nav.toc a span { font-family: var(--mono); color: var(--blue); min-width: 2.4em; }
+
+  .part { border-top: 3px solid var(--ink); padding-top: 18px; }
+  .figure { background: var(--sheet); border: 1px solid var(--rule); padding: 14px; overflow-x: auto; }
+  .figure svg { display: block; width: 100%; height: auto; min-width: 640px; }
+  .figure.narrow svg { min-width: 520px; }
+  .caption { font-size: 13px; color: var(--muted); margin-top: 8px; max-width: none; }
+  .tablewrap { overflow-x: auto; background: var(--sheet); border: 1px solid var(--rule); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th { text-align: left; font: 600 11.5px/1.3 var(--mono); text-transform: uppercase; letter-spacing: .8px; color: var(--muted); padding: 9px 10px; border-bottom: 2px solid var(--ink); background: var(--paper); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  td.mono, td .mono { white-space: nowrap; }
+  .hx { font-family: var(--mono); font-weight: 600; background: var(--ink); color: var(--paper); padding: 1px 6px; border-radius: 3px; white-space: nowrap; letter-spacing: 1px; }
+  .led { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: 0; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+  .callout { border-left: 4px solid var(--blue); background: var(--blue-soft); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .callout.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .callout.ok { border-color: var(--ok); background: var(--ok-soft); }
+  .callout.amber { border-color: var(--amber); background: var(--amber-soft); }
+  .callout b.t { font-family: var(--display); font-size: 18px; font-weight: 600; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid2 > * { min-width: 0; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+
+  /* procedure */
+  .ex { background: var(--sheet); border: 1px solid var(--rule); display: flex; flex-direction: column; }
+  .ex header { display: flex; align-items: baseline; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+  .ex header .no { font: 700 26px/1 var(--display); color: var(--blue); }
+  .ex header h3 { flex: 1; min-width: 200px; }
+  .ex header .time { font: 500 12px/1 var(--mono); color: var(--muted); }
+  .ex .body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 9px; }
+  ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 2.2em 1fr; gap: 4px 10px; }
+  ol.steps > li::before { content: counter(s); font: 600 13px/1.7 var(--mono); color: var(--paper); background: var(--ink); text-align: center; border-radius: 3px; height: 1.7em; }
+  ol.steps > li > * { grid-column: 2; min-width: 0; }
+  .expect { font-size: 14px; color: var(--ok); }
+  .expect::before { content: "Expect: "; font-weight: 600; }
+  .check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+  .check input { margin-top: 4px; accent-color: var(--blue); }
+  ul.plain { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 4px; }
+
+  svg text { font-family: var(--body); }
+  svg .t-mono { font-family: var(--mono); }
+  svg .t-disp { font-family: var(--display); font-weight: 700; }
+  svg .ink { fill: var(--ink); } svg .muted { fill: var(--muted); } svg .blue { fill: var(--blue); }
+  svg .chipfill { fill: var(--chip); } svg .chiptext { fill: var(--chip-fg); }
+  svg .fab { fill: var(--fab); stroke: var(--fab-line); }
+  svg .sheet { fill: var(--sheet); stroke: var(--rule); }
+  svg .line { stroke: var(--ink); fill: none; }
+  svg .lineb { stroke: var(--blue); fill: none; }
+  svg .dash { stroke-dasharray: 5 4; }
+  input:focus-visible, a:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+
+<header class="titleblock">
+  <div class="main">
+    <span class="eyebrow">Stage 4 &middot; Laboratory brief</span>
+    <h1>LaneX desk lane on the DE10-Lite</h1>
+    <p>How the RVBL-2 lane-controller chip is mapped onto the FPGA board, and the bench procedure to build and test the physical lane, from the two checks you have already passed to a demo box that boots by itself.</p>
+  </div>
+  <dl>
+    <dt>Board</dt><dd>Terasic DE10-Lite</dd>
+    <dt>FPGA</dt><dd>10M50DAF484C7G</dd>
+    <dt>Chip</dt><dd>RVBL-2 + LaneX v4</dd>
+    <dt>ROM ID</dt><dd>0x56DE, 2,793 words</dd>
+    <dt>Clock</dt><dd>31.25 MHz</dd>
+    <dt>Tools</dt><dd>Quartus Lite 25.1std</dd>
+    <dt>Done</dt><dd>B1 Id, B2 PASS12</dd>
+  </dl>
+</header>
+
+<nav class="toc" aria-label="Contents">
+  <a href="#a1"><span>A1</span>One chip, three homes</a>
+  <a href="#a2"><span>A2</span>Every chip pin on the board</a>
+  <a href="#a3"><span>A3</span>Inside the FPGA</a>
+  <a href="#a4"><span>A4</span>One vehicle, step by step</a>
+  <a href="#b0"><span>B0</span>Parts, tools, safety</a>
+  <a href="#e1"><span>E1&ndash;E2</span>New build, no wires</a>
+  <a href="#e3"><span>E3&ndash;E5</span>Power, sensor, heights</a>
+  <a href="#e6"><span>E6&ndash;E7</span>Vehicles, lamps, buzzer</a>
+  <a href="#e8"><span>E8</span>Laptop dashboard</a>
+  <a href="#e9"><span>E9&ndash;E10</span>Recovery drills, flash</a>
+  <a href="#ref"><span>R</span>Reference tables</a>
+</nav>
+
+<!-- =================================================================== PART A -->
+<section class="part" id="a1">
+  <span class="eyebrow">Part A &middot; How it works</span>
+  <h2>A1. One chip, three homes</h2>
+  <p>The RVBL-2 chip is the same design everywhere: the RISC-V core, its 8 KB data RAM, the ROM holding the LaneX firmware, one GPIO block with 8 pins, and one UART. What changes from home to home is <b>what is wired to its edge</b>. On the ASIC, its pins are physical pads. On AWS, the organisers' wrapper turns them into registers that <code>./emu</code> pokes over PCIe. On the DE10-Lite, a ring of FPGA logic we wrote plays the outside world.</p>
+  <div class="figure">
+    <svg viewBox="0 0 960 330" role="img" aria-label="The same chip in the ASIC, on AWS F2 and on the DE10-Lite">
+      <!-- three panels -->
+      <g>
+        <rect class="sheet" x="10" y="10" width="300" height="300" rx="6"/>
+        <text class="t-disp ink" x="26" y="40" font-size="20">ASIC (Stage 3, Sky130)</text>
+        <rect class="chipfill" x="85" y="95" width="150" height="120" rx="6"/>
+        <text class="t-disp chiptext" x="160" y="150" font-size="18" text-anchor="middle">RVBL-2</text>
+        <text class="chiptext" x="160" y="172" font-size="11" text-anchor="middle">core &middot; RAM &middot; ROM</text>
+        <text class="chiptext" x="160" y="187" font-size="11" text-anchor="middle">GPIO &middot; UART</text>
+        <g class="line" stroke-width="2">
+          <path d="M85 120 H40"/><path d="M85 150 H40"/><path d="M85 185 H40"/>
+          <path d="M235 120 H280"/><path d="M235 150 H280"/><path d="M235 185 H280"/>
+        </g>
+        <text class="t-mono muted" x="44" y="113" font-size="10">clk</text>
+        <text class="t-mono muted" x="44" y="143" font-size="10">rst</text>
+        <text class="t-mono muted" x="44" y="178" font-size="10">rx</text>
+        <text class="t-mono muted" x="242" y="113" font-size="10">pins[7:0]</text>
+        <text class="t-mono muted" x="242" y="143" font-size="10">tx</text>
+        <text class="t-mono muted" x="242" y="178" font-size="10">(pads)</text>
+        <text class="muted" x="26" y="250" font-size="12.5">Pins are real pads on the die.</text>
+        <text class="muted" x="26" y="268" font-size="12.5">A tri-state buffer per GPIO pin;</text>
+        <text class="muted" x="26" y="286" font-size="12.5">the 33 ns clock = 30.3 MHz.</text>
+      </g>
+      <g>
+        <rect class="sheet" x="330" y="10" width="300" height="300" rx="6"/>
+        <text class="t-disp ink" x="346" y="40" font-size="20">AWS F2 (Stage 4, run 10 Oct)</text>
+        <rect class="fab" x="350" y="62" width="260" height="190" rx="6"/>
+        <text class="t-mono blue" x="362" y="80" font-size="10.5">top.sv (organisers)</text>
+        <rect class="chipfill" x="405" y="110" width="150" height="100" rx="6"/>
+        <text class="t-disp chiptext" x="480" y="158" font-size="18" text-anchor="middle">RVBL-2</text>
+        <text class="chiptext" x="480" y="178" font-size="11" text-anchor="middle">same RTL, same ROM</text>
+        <text class="t-mono muted" x="362" y="236" font-size="10">AXI registers &middot; Transmitter/Receiver</text>
+        <text class="muted" x="346" y="276" font-size="12.5">./emu writes pins and bytes over PCIe;</text>
+        <text class="muted" x="346" y="294" font-size="12.5">MMCM 250 / 8 = 31.25 MHz.</text>
+      </g>
+      <g>
+        <rect class="sheet" x="650" y="10" width="300" height="300" rx="6"/>
+        <text class="t-disp ink" x="666" y="40" font-size="20">DE10-Lite (this lab)</text>
+        <rect class="fab" x="670" y="62" width="260" height="190" rx="6"/>
+        <text class="t-mono blue" x="682" y="80" font-size="10.5">lanex_board.v (ours)</text>
+        <rect class="chipfill" x="725" y="110" width="150" height="100" rx="6"/>
+        <text class="t-disp chiptext" x="800" y="158" font-size="18" text-anchor="middle">RVBL-2</text>
+        <text class="chiptext" x="800" y="178" font-size="11" text-anchor="middle">same RTL, same ROM</text>
+        <text class="t-mono muted" x="682" y="236" font-size="10">sensor &middot; reader &middot; display &middot; link</text>
+        <text class="muted" x="666" y="276" font-size="12.5">Our fabric plays the lane around it;</text>
+        <text class="muted" x="666" y="294" font-size="12.5">PLL 50 &times; 5 / 8 = 31.25 MHz.</text>
+      </g>
+    </svg>
+  </div>
+  <p class="caption">The chip in the middle is generated from the same <code>rtl/</code> files and the same <code>firmware.hex</code> each time. The DE10-Lite build changes only two things, both value-for-value: the GPIO tri-state is replaced by a multiplexer (an FPGA has no tri-state inside), and the data RAM is written the way Quartus turns it into memory blocks.</p>
+</section>
+
+<section id="a2">
+  <h2>A2. Every chip pin, and what it became</h2>
+  <p>Read this table left to right: the chip's pin, what it meant on the ASIC, and what drives it or listens to it on the DE10-Lite. The four input pins never touch the FPGA's own pins any more: our fabric computes them from the sensor and the switches, and hands them to the chip through one ordered channel.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Chip pin</th><th>On the ASIC</th><th>On the DE10-Lite</th><th>You see / touch</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">clk_i</td><td>External 30.3 MHz clock</td><td>PLL: 50 MHz &times; 5 / 8 = <b>31.25 MHz</b> (the AWS clock)</td><td>&ndash;</td></tr>
+        <tr><td class="mono">rst_i</td><td>Reset pad</td><td>PLL not locked, <b>KEY0 held 20 ms</b>, each tour line, a warm boot</td><td>KEY0</td></tr>
+        <tr><td class="mono">P0 (in)</td><td>Vehicle present</td><td>Ultrasonic: something &ge; 15 mm above the floor for 2 readings; or KEY1 in manual mode (SW8)</td><td>LEDR2</td></tr>
+        <tr><td class="mono">P2:P1 (in)</td><td>Class code from the classifier</td><td>Height: &ge; 60 mm = lorry (<code>10</code>), else car (<code>00</code>); or SW2:SW1 when set</td><td>LEDR1 (tall)</td></tr>
+        <tr><td class="mono">P3 (in)</td><td>Lane-closed switch</td><td>SW0</td><td>SW0</td></tr>
+        <tr><td class="mono">P4 (out)</td><td>Charged lamp</td><td>LEDR4 directly; green LED for 4 s; one chirp</td><td>LEDR4, GPIO pin 5</td></tr>
+        <tr><td class="mono">P5 (out)</td><td>Camera trigger</td><td>LEDR5 directly; white LED flash (200 ms)</td><td>LEDR5, pin 6</td></tr>
+        <tr><td class="mono">P6 (out)</td><td>Alarm</td><td>LEDR6 directly; red LED for 4 s; three beeps</td><td>LEDR6, pins 7 and 8</td></tr>
+        <tr><td class="mono">P7 (out)</td><td>Lane closed (live)</td><td>LEDR7 directly; yellow LED</td><td>LEDR7, pin 9</td></tr>
+        <tr><td class="mono">rx_i</td><td>UART from the toll back end</td><td>Our UART transmitter. It sends the boot frames, the emulated tag reads, the laptop's frames and the tour's frames, one whole frame at a time</td><td>(laptop via pin 1)</td></tr>
+        <tr><td class="mono">tx_o</td><td>UART to the back end</td><td>Two listeners: our record decoder (displays, LEDs, lamps) and, unchanged, GPIO pin 2 to the laptop</td><td>HEX, LEDR8/9, laptop</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout">
+    <b class="t">Why LEDR4 stays on after a charged car</b>
+    <p>LEDR4&ndash;7 are wired straight to the chip's output pins P4&ndash;P7: they are the same lamps <code>./emu -o</code> read on AWS. The protocol defines P4 as &ldquo;the <i>last</i> vehicle was charged&rdquo;, so it stays lit until the next vehicle is decided. The outside LEDs are different: they follow the same pins only for 4 s after each decision, so the booth looks calm between cars.</p>
+  </div>
+</section>
+
+<section id="a3">
+  <h2>A3. Inside the FPGA</h2>
+  <p>The chip sits in the middle. Everything around it is test equipment, the board's own version of the organisers' <code>emu</code>. It decides nothing about a vehicle: LaneX runs only on the chip.</p>
+  <div class="figure">
+    <svg viewBox="0 0 960 520" role="img" aria-label="Block diagram of the FPGA fabric around the chip">
+      <rect class="fab" x="150" y="20" width="660" height="480" rx="10" stroke-width="1.5"/>
+      <text class="t-mono blue" x="166" y="42" font-size="11">MAX 10 FPGA &middot; lanex_de10lite.v / lanex_board.v &middot; one 31.25 MHz clock</text>
+
+      <!-- outside world, left -->
+      <g font-size="12.5">
+        <rect class="sheet" x="10" y="70" width="120" height="46" rx="5"/><text class="ink" x="70" y="91" text-anchor="middle">HC-SR04</text><text class="muted" x="70" y="107" text-anchor="middle" font-size="11">Trig pin 4, Echo pin 3</text>
+        <rect class="sheet" x="10" y="138" width="120" height="46" rx="5"/><text class="ink" x="70" y="159" text-anchor="middle">SW0&ndash;SW9</text><text class="muted" x="70" y="175" text-anchor="middle" font-size="11">tag, class, modes</text>
+        <rect class="sheet" x="10" y="206" width="120" height="46" rx="5"/><text class="ink" x="70" y="227" text-anchor="middle">KEY0, KEY1</text><text class="muted" x="70" y="243" text-anchor="middle" font-size="11">reset, vehicle / ID</text>
+        <rect class="sheet" x="10" y="300" width="120" height="58" rx="5"/><text class="ink" x="70" y="321" text-anchor="middle">USB-UART</text><text class="muted" x="70" y="337" text-anchor="middle" font-size="11">laptop: pin 1 in,</text><text class="muted" x="70" y="351" text-anchor="middle" font-size="11">pin 2 out</text>
+      </g>
+      <!-- fabric blocks -->
+      <g font-size="12">
+        <rect class="sheet" x="175" y="66" width="170" height="54" rx="5"/><text class="ink" x="260" y="88" text-anchor="middle" font-weight="600">lx_sonar + lane</text><text class="muted" x="260" y="105" text-anchor="middle" font-size="11">height &rarr; present, lorry</text>
+        <rect class="sheet" x="175" y="140" width="170" height="54" rx="5"/><text class="ink" x="260" y="162" text-anchor="middle" font-weight="600">sync + debounce</text><text class="muted" x="260" y="179" text-anchor="middle" font-size="11">2 flip-flops, 10 ms</text>
+        <rect class="sheet" x="175" y="214" width="170" height="54" rx="5"/><text class="ink" x="260" y="236" text-anchor="middle" font-weight="600">control</text><text class="muted" x="260" y="253" text-anchor="middle" font-size="11">boot, lane, tour, watchdog</text>
+        <rect class="sheet" x="175" y="296" width="170" height="54" rx="5"/><text class="ink" x="260" y="318" text-anchor="middle" font-weight="600">lx_hostlink</text><text class="muted" x="260" y="335" text-anchor="middle" font-size="11">laptop frames, whole only</text>
+        <rect class="sheet" x="175" y="372" width="170" height="54" rx="5"/><text class="ink" x="260" y="394" text-anchor="middle" font-weight="600">lx_framer + lx_tour</text><text class="muted" x="260" y="411" text-anchor="middle" font-size="11">tag reads, boot, 12 AWS tests</text>
+        <rect class="sheet" x="370" y="190" width="120" height="160" rx="5"/><text class="ink" x="430" y="212" text-anchor="middle" font-weight="600">lx_chipio</text>
+        <text class="muted" x="430" y="232" text-anchor="middle" font-size="11">one channel:</text>
+        <text class="muted" x="430" y="248" text-anchor="middle" font-size="11">pin changes and</text>
+        <text class="muted" x="430" y="264" text-anchor="middle" font-size="11">whole frames,</text>
+        <text class="muted" x="430" y="280" text-anchor="middle" font-size="11">one at a time,</text>
+        <text class="muted" x="430" y="296" text-anchor="middle" font-size="11">then a settle</text>
+      </g>
+      <!-- chip -->
+      <rect class="chipfill" x="515" y="160" width="140" height="220" rx="8"/>
+      <text class="t-disp chiptext" x="585" y="205" font-size="22" text-anchor="middle">RVBL-2</text>
+      <text class="chiptext" x="585" y="226" font-size="11" text-anchor="middle">lanex_chip.v</text>
+      <text class="t-mono chiptext" x="645" y="246" font-size="10.5" text-anchor="end">P7:P4 out</text>
+      <text class="t-mono chiptext" x="525" y="270" font-size="10.5">P3:P0 in</text>
+      <text class="t-mono chiptext" x="525" y="300" font-size="10.5">rx_i</text>
+      <text class="t-mono chiptext" x="645" y="300" font-size="10.5" text-anchor="end">tx_o</text>
+      <text class="chiptext" x="585" y="350" font-size="10.5" text-anchor="middle">LaneX decides here</text>
+      <!-- right blocks -->
+      <g font-size="12">
+        <rect class="sheet" x="680" y="230" width="115" height="54" rx="5"/><text class="ink" x="737" y="252" text-anchor="middle" font-weight="600">lx_records</text><text class="muted" x="737" y="269" text-anchor="middle" font-size="11">8-byte records, CRC</text>
+        <rect class="sheet" x="680" y="306" width="115" height="54" rx="5"/><text class="ink" x="737" y="328" text-anchor="middle" font-weight="600">display + lamps</text><text class="muted" x="737" y="345" text-anchor="middle" font-size="11">words, timers</text>
+      </g>
+      <g font-size="12.5">
+        <rect class="sheet" x="830" y="196" width="120" height="46" rx="5"/><text class="ink" x="890" y="217" text-anchor="middle">LEDR4&ndash;7</text><text class="muted" x="890" y="233" text-anchor="middle" font-size="11">chip lamps, direct</text>
+        <rect class="sheet" x="830" y="262" width="120" height="46" rx="5"/><text class="ink" x="890" y="283" text-anchor="middle">HEX5&ndash;HEX0</text><text class="muted" x="890" y="299" text-anchor="middle" font-size="11">words, fare, height</text>
+        <rect class="sheet" x="830" y="328" width="120" height="58" rx="5"/><text class="ink" x="890" y="349" text-anchor="middle">LEDs, buzzer</text><text class="muted" x="890" y="365" text-anchor="middle" font-size="11">GPIO pins 5&ndash;9,</text><text class="muted" x="890" y="379" text-anchor="middle" font-size="11">LEDR8/9</text>
+        <rect class="sheet" x="830" y="420" width="120" height="46" rx="5"/><text class="ink" x="890" y="441" text-anchor="middle">to the laptop</text><text class="muted" x="890" y="457" text-anchor="middle" font-size="11">pin 2, unchanged</text>
+      </g>
+      <!-- arrows -->
+      <defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--ink)"/></marker></defs>
+      <g class="line" stroke-width="1.5" marker-end="url(#ar)">
+        <path d="M130 93 H173"/><path d="M130 161 H173"/><path d="M130 229 H173"/><path d="M130 323 H173"/>
+        <path d="M345 93 H405 V188"/><path d="M345 167 H360 V230 H368"/><path d="M345 241 H368"/>
+        <path d="M345 323 H368"/><path d="M345 399 H430 V352"/>
+        <path d="M490 266 H513"/><path d="M490 296 H513"/>
+        <path d="M655 250 H674 V219 H828"/>
+        <path d="M666 270 V257 H678"/><path d="M666 296 V443 H828"/>
+        <path d="M795 257 H812 V285 H828"/><path d="M737 284 V304"/><path d="M795 333 H828"/>
+      </g>
+      <path d="M655 296 H666 V270" stroke="var(--ink)" stroke-width="1.5" fill="none"/>
+      <circle cx="666" cy="296" r="3" fill="var(--ink)"/>
+      <text class="t-mono muted" x="495" y="260" font-size="9.5">pins</text>
+      <text class="t-mono muted" x="497" y="290" font-size="9.5">bytes</text>
+    </svg>
+  </div>
+  <p class="caption">The one-channel rule is what makes the board verifiable. A pin change waits until no frame is on the line, then nothing happens for 1.3 ms. So the order in which the chip sees events is exactly the order the testbench logs, and the golden model can replay it and must produce the chip's exact bytes. It did, in every one of the simulated runs.</p>
+
+  <div class="grid2">
+    <div class="callout">
+      <b class="t">The chip's memories on the FPGA</b>
+      <p>The 2,793-word firmware ROM becomes logic: a big lookup table built from logic elements, read in the same clock cycle as on the ASIC. The 8 KB data RAM becomes four 2 KB memory blocks, one per byte lane. The whole design, chip and fabric, uses 30 % of the FPGA.</p>
+    </div>
+    <div class="callout">
+      <b class="t">Why a &ldquo;tag reader emulator&rdquo;?</b>
+      <p>A real gantry has a UHF RFID reader. Here the switches SW5:SW3 choose which tag the next vehicle carries, and the fabric sends the chip the exact <code>R</code> frame a reader would send (with a live time stamp and CRC) the moment the vehicle arrives.</p>
+    </div>
+  </div>
+</section>
+
+<section id="a4">
+  <h2>A4. One vehicle, step by step</h2>
+  <p>A toy car pushed under the sensor with the tag set to <span class="hx">CAr</span>. Times are for the real board; the sensor measures every 62.5 ms.</p>
+  <div class="figure">
+    <svg viewBox="0 0 960 300" role="img" aria-label="Timeline of one vehicle">
+      <defs><marker id="ar2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--ink)"/></marker></defs>
+      <text class="t-mono muted" x="10" y="60" font-size="11">sensor</text>
+      <text class="t-mono muted" x="10" y="120" font-size="11">fabric</text>
+      <text class="t-mono muted" x="10" y="180" font-size="11">chip</text>
+      <text class="t-mono muted" x="10" y="240" font-size="11">you see</text>
+      <g class="line" stroke-width="1" opacity=".35"><path d="M70 56 H950"/><path d="M70 116 H950"/><path d="M70 176 H950"/><path d="M70 236 H950"/></g>
+      <!-- sensor readings -->
+      <g fill="var(--w-echo)">
+        <rect x="90" y="48" width="6" height="16"/><rect x="140" y="48" width="6" height="16"/><rect x="190" y="48" width="6" height="16"/>
+        <rect x="240" y="48" width="6" height="16"/><rect x="290" y="48" width="6" height="16"/><rect x="340" y="48" width="6" height="16"/>
+        <rect x="390" y="48" width="6" height="16"/><rect x="440" y="48" width="6" height="16"/><rect x="490" y="48" width="6" height="16"/>
+      </g>
+      <rect x="120" y="40" width="210" height="32" rx="4" fill="none" stroke="var(--w-echo)" stroke-dasharray="4 3"/>
+      <text class="ink" x="125" y="34" font-size="11.5">car under the sensor (4.0 cm)</text>
+      <text class="t-mono ink" x="78" y="30" font-size="10.5">t = 0</text>
+      <!-- fabric events -->
+      <circle cx="193" cy="116" r="6" fill="var(--blue)"/><text class="ink" x="186" y="140" font-size="11.5" text-anchor="end">2nd reading: P0 = 1</text>
+      <circle cx="215" cy="116" r="4" fill="var(--blue)"/>
+      <rect x="222" y="108" width="54" height="16" rx="3" fill="var(--blue-soft)" stroke="var(--blue)"/><text class="t-mono blue" x="249" y="120" font-size="10" text-anchor="middle">R frame</text>
+      <text class="muted" x="222" y="100" font-size="11">the tag read (2.3 ms)</text>
+      <circle cx="493" cy="116" r="6" fill="var(--blue)"/><text class="ink" x="486" y="140" font-size="11.5" text-anchor="end">3rd clear reading: P0 = 0</text>
+      <!-- chip events -->
+      <path class="line" d="M193 122 V170" stroke-width="1.2" marker-end="url(#ar2)"/>
+      <text class="ink" x="200" y="196" font-size="11.5">arms; collects the read</text>
+      <path class="line" d="M493 122 V170" stroke-width="1.2" marker-end="url(#ar2)"/>
+      <rect x="500" y="168" width="70" height="16" rx="3" fill="var(--chip)"/><text class="t-mono chiptext" x="535" y="180" font-size="10" text-anchor="middle">decides</text>
+      <text class="ink" x="500" y="204" font-size="11.5">0.6 ms: P4 = 1; then its V + A records (1.4 ms)</text>
+      <!-- you see -->
+      <rect x="196" y="226" width="300" height="20" rx="3" fill="var(--ink)"/><text class="t-mono" x="346" y="240" font-size="11" text-anchor="middle" fill="var(--paper)">h  4.0   LEDR2</text>
+      <rect x="500" y="226" width="140" height="20" rx="3" fill="var(--ok)"/><text class="t-mono" x="570" y="240" font-size="11" text-anchor="middle" fill="var(--sheet)">CHArGE  1.5 s</text>
+      <rect x="644" y="226" width="200" height="20" rx="3" fill="var(--ok)" opacity=".75"/><text class="t-mono" x="744" y="240" font-size="11" text-anchor="middle" fill="var(--sheet)">2.50  2.5 s</text>
+      <rect x="848" y="226" width="100" height="20" rx="3" fill="none" stroke="var(--ink)"/><text class="t-mono ink" x="898" y="240" font-size="11" text-anchor="middle">CAr (idle)</text>
+      <text class="muted" x="500" y="272" font-size="11.5">green LED + chirp; LEDR4 on; LEDR8 = signed; laptop: CRC &#10003; signature &#10003;</text>
+    </svg>
+  </div>
+  <p class="caption">Arrival needs two readings in a row (about 125 ms) so a single echo glitch never makes a vehicle; departure needs three clear readings, so the gap between a car's windows never splits it in two. A missed echo counts as neither.</p>
+</section>
+
+<!-- =================================================================== PART B -->
+<section class="part" id="b0">
+  <span class="eyebrow">Part B &middot; Bench procedure</span>
+  <h2>B0. Parts, tools and safety</h2>
+  <div class="grid2">
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Part</th><th>Qty</th><th>Use</th></tr></thead>
+        <tbody>
+          <tr><td>HC-SR04 ultrasonic sensor</td><td>1</td><td>The gantry sensor</td></tr>
+          <tr><td>Resistor 1 k&Omega;</td><td>1</td><td>Echo divider, top</td></tr>
+          <tr><td>Resistor 2 k&Omega; (or 2 &times; 1 k&Omega; in series)</td><td>1</td><td>Echo divider, bottom</td></tr>
+          <tr><td>Mini breadboard (170 points)</td><td>1</td><td>Divider and the GND rail</td></tr>
+          <tr><td>Jumpers F&ndash;F and M&ndash;F</td><td>~20</td><td>Header to parts</td></tr>
+          <tr><td>LEDs green, red, yellow + 330 &Omega;</td><td>1 each</td><td>Optional lamps</td></tr>
+          <tr><td>LED white + 100 &Omega;</td><td>1</td><td>Optional camera flash</td></tr>
+          <tr><td>Active buzzer module (3 pins)</td><td>1</td><td>Optional</td></tr>
+          <tr><td>USB-UART 3.3 V (CP2102/CH340/FT232)</td><td>1</td><td>Laptop dashboard</td></tr>
+          <tr><td>Toy car; a clearly taller toy lorry</td><td>1 each</td><td>The traffic</td></tr>
+          <tr><td>Cardboard, tape, ruler</td><td>&ndash;</td><td>Gantry, 15&ndash;25 cm high</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+      <div class="callout warn">
+        <b class="t">Rule 1: no 5 V on an FPGA pin</b>
+        <p>MAX 10 pins tolerate 3.3 V. Header pin 11 (5 V) feeds only the HC-SR04's VCC. Its Echo output is 5 V, so it always goes through the divider. Never connect Echo straight to pin 3, not even for a second.</p>
+      </div>
+      <div class="callout amber">
+        <b class="t">Rule 2: wire with the USB unplugged</b>
+        <p>Change wiring only with the board unpowered. Then plug in and look before touching anything.</p>
+      </div>
+      <div class="callout">
+        <b class="t">Tools</b>
+        <p>Multimeter (DC volts and ohms), the wiring card (<code>wiring_card.png</code> on your phone), Chrome or Edge, Quartus 25.1std.</p>
+      </div>
+    </div>
+  </div>
+  <p><b>Header orientation.</b> JP1 is the 2 &times; 20 header. Pin 1 is marked on the board (a square pad or a small triangle). With pin 1 at the top left, odd pins run down the left column and even pins down the right. Pins 1&ndash;10 are GPIO_0&ndash;9, pin 11 is 5 V, pin 12 is GND, pin 29 is 3.3 V and pin 30 is GND.</p>
+</section>
+
+<section id="e1">
+  <article class="ex">
+    <header><span class="no">E1</span><h3>Load the corrected build</h3><span class="time">10 min</span></header>
+    <div class="body">
+      <p>This build fixes the tour flicker and the decision display. Your board still holds the old one.</p>
+      <ol class="steps">
+        <li><span>Double-click <code>stage4\de10lite\compile.bat</code> (or open <code>lanex.qpf</code> in Quartus, Ctrl+L). About 7 minutes.</span><span class="expect">0 errors; every slack positive (about +4.4 ns).</span></li>
+        <li><span>Double-click <code>program_sram.bat</code>.</span><span class="expect">all LEDs, segments and lamps on for 1 s, then the banner, then <span class="hx">Id.56dE</span> and LEDR9.</span></li>
+        <li><span>SW9 up. Watch one full tour (about 17 s).</span><span class="expect">each test shows <span class="hx">tESt01</span> for 0.5 s, then its result for 0.9 s (for example <span class="hx">CHArGE</span> with LEDR4), then the next. No blinking between them. It ends on <span class="hx">PASS12</span> with LEDR9.</span></li>
+        <li><span>SW9 down.</span><span class="expect"><span class="hx">PASS12</span> changes straight to <span class="hx">Id.56dE</span>, then the idle tag name.</span></li>
+        <li><span>SW8 up, SW3 up (tag CAr), press and release KEY1.</span><span class="expect">a running dash while pressed; then <span class="hx">CHArGE</span> for 1.5 s, <span class="hx">2.50</span> for 2.5 s, then <span class="hx">CAr</span>. LEDR4 stays on: that is the chip's &ldquo;last vehicle was charged&rdquo; lamp.</span></li>
+      </ol>
+      <label class="check"><input type="checkbox" id="c-e1"> E1 done: steady tour, PASS12, manual car as described</label>
+    </div>
+  </article>
+</section>
+
+<section id="e2">
+  <article class="ex">
+    <header><span class="no">E2</span><h3>Every control, still with no wires</h3><span class="time">15 min</span></header>
+    <div class="body">
+      <p>SW8 stays up (manual: KEY1 is the vehicle). Set the switches, then press and release KEY1 once per row. Wait 3 s between two vehicles with the same tag, or the second is refused as tailgating (that is a real rule, tested in row 9).</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>#</th><th>SW5:SW3 (tag)</th><th>Other switches</th><th>Display</th><th>LEDR</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td class="mono">001 CAr</td><td>&ndash;</td><td><span class="hx">CHArGE</span> &rarr; <span class="hx">2.50</span></td><td>4</td></tr>
+            <tr><td>2</td><td class="mono">011 CAb</td><td>&ndash;</td><td><span class="hx">CHArGE</span> &rarr; <span class="hx">1.30</span></td><td>4</td></tr>
+            <tr><td>3</td><td class="mono">010 LorrY</td><td>&ndash;</td><td><span class="hx">CLASS</span> &rarr; <span class="hx">2.50</span></td><td>4, 5</td></tr>
+            <tr><td>4</td><td class="mono">001 CAr</td><td>SW2:SW1 = 10 (lorry)</td><td><span class="hx">CLASS</span> &rarr; <span class="hx">7.50</span></td><td>4, 5</td></tr>
+            <tr><td>5</td><td class="mono">100 StOLEn</td><td>SW2:SW1 = 00</td><td><span class="hx">StOLEn</span>, blinking</td><td>5, 6</td></tr>
+            <tr><td>6</td><td class="mono">101 CLOnE</td><td>&ndash;</td><td><span class="hx">CLOnE</span>, blinking</td><td>5, 6</td></tr>
+            <tr><td>7</td><td class="mono">110 bAd</td><td>&ndash;</td><td><span class="hx">no tAG</span></td><td>5</td></tr>
+            <tr><td>8</td><td class="mono">000 nonE</td><td>SW2:SW1 = 11 (motorcycle)</td><td><span class="hx">FrEE</span></td><td>none</td></tr>
+            <tr><td>9</td><td class="mono">001 CAr</td><td>SW2:SW1 = 00; press KEY1 twice within 3 s</td><td>2nd: <span class="hx">no tAG</span></td><td>5</td></tr>
+            <tr><td>10</td><td class="mono">001 CAr</td><td>SW0 up (lane closed)</td><td>idle: <span class="hx">CLOSEd</span>; vehicle: <span class="hx">CLOSEd</span></td><td>7</td></tr>
+            <tr><td>11</td><td class="mono">any</td><td>SW0 down, SW8 down; press KEY1</td><td><span class="hx">Id.56dE</span> for 2 s</td><td>9</td></tr>
+            <tr><td>12</td><td class="mono">any</td><td>hold KEY0 (&gt; 20 ms)</td><td>lamp test, banner, <span class="hx">Id.56dE</span></td><td>all, then 9</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>LEDR8 lights a moment after each decision: the record arrived with a valid signature.</p>
+      <label class="check"><input type="checkbox" id="c-e2"> E2 done: all 12 rows as expected</label>
+    </div>
+  </article>
+</section>
+
+<section id="e3">
+  <article class="ex">
+    <header><span class="no">E3</span><h3>Power check and the breadboard rail</h3><span class="time">10 min</span></header>
+    <div class="body">
+      <ol class="steps">
+        <li><span>Board powered, nothing on the header. Multimeter on DC volts: black probe on pin 30, red on pin 29.</span><span class="expect">3.3 V (3.2&ndash;3.4).</span></li>
+        <li><span>Black on pin 12, red on pin 11.</span><span class="expect">about 5 V. This proves you hold the header the right way round.</span></li>
+        <li><span>Unplug the USB. Jumper header pin 30 (GND) to the breadboard's blue (&minus;) rail.</span></li>
+      </ol>
+      <label class="check"><input type="checkbox" id="c-e3"> E3 done: 3.3 V on pin 29, 5 V on pin 11, GND rail fitted</label>
+    </div>
+  </article>
+</section>
+
+<section id="e4">
+  <article class="ex">
+    <header><span class="no">E4</span><h3>Wire the ultrasonic sensor and its divider</h3><span class="time">20 min</span></header>
+    <div class="body">
+      <div class="figure narrow">
+        <svg viewBox="0 0 760 330" role="img" aria-label="HC-SR04 wiring with the 1 k and 2 k divider">
+          <text class="t-disp ink" x="20" y="30" font-size="17">DE10-Lite header JP1</text>
+          <text class="t-disp ink" x="740" y="30" font-size="17" text-anchor="end">HC-SR04 (pins along its edge)</text>
+          <g class="t-mono" font-size="12">
+            <rect x="20" y="60" width="150" height="30" rx="4" fill="var(--w-5v)"/><text x="95" y="80" text-anchor="middle" fill="#fff">pin 11 &middot; 5 V</text>
+            <rect x="20" y="115" width="150" height="30" rx="4" fill="var(--w-trig)"/><text x="95" y="135" text-anchor="middle" fill="#fff">pin 4 &middot; Trig out</text>
+            <rect x="20" y="170" width="150" height="30" rx="4" fill="var(--w-echo)"/><text x="95" y="190" text-anchor="middle" fill="#fff">pin 3 &middot; Echo in</text>
+            <rect x="20" y="270" width="150" height="30" rx="4" fill="var(--w-gnd)"/><text x="95" y="290" text-anchor="middle" fill="var(--paper)">pin 12 &middot; GND</text>
+          </g>
+          <rect class="sheet" x="590" y="45" width="150" height="270" rx="8"/>
+          <g class="t-mono ink" font-size="12.5">
+            <text x="610" y="80">VCC</text><text x="610" y="135">Trig</text><text x="610" y="190">Echo</text><text x="610" y="290">GND</text>
+          </g>
+          <g fill="none" stroke-width="3">
+            <path d="M170 75 H600" stroke="var(--w-5v)"/>
+            <path d="M170 130 H600" stroke="var(--w-trig)"/>
+            <path d="M170 185 H300" stroke="var(--w-echo)"/>
+            <path d="M380 185 H600" stroke="var(--w-echo)"/>
+            <path d="M170 285 H600" stroke="var(--w-gnd)"/>
+            <path d="M250 185 V218" stroke="var(--w-echo)" stroke-width="2"/>
+            <path d="M250 262 V285" stroke="var(--w-gnd)" stroke-width="2"/>
+          </g>
+          <rect x="300" y="176" width="80" height="18" rx="4" fill="var(--amber-soft)" stroke="var(--amber)"/>
+          <text class="t-mono ink" x="340" y="189" font-size="11.5" text-anchor="middle">1 k&Omega;</text>
+          <rect x="241" y="218" width="18" height="44" rx="4" fill="var(--amber-soft)" stroke="var(--amber)"/>
+          <text class="t-mono ink" x="268" y="245" font-size="11.5">2 k&Omega;</text>
+          <circle cx="250" cy="185" r="5" fill="var(--w-echo)"/><circle cx="250" cy="285" r="5" fill="var(--w-gnd)"/>
+          <text class="muted" x="400" y="170" font-size="11.5">sensor side: 5 V pulses</text>
+          <text class="muted" x="182" y="170" font-size="11.5">3.3 V here</text>
+          <text class="muted" x="300" y="245" font-size="11.5">(on the breadboard; its bottom end on the GND rail)</text>
+        </svg>
+      </div>
+      <ol class="steps">
+        <li><span>USB unplugged. Put the 1 k&Omega; and 2 k&Omega; resistors on the breadboard so they share one row (the midpoint). The 2 k&Omega;'s other end goes to the GND rail.</span></li>
+        <li><span>Measure on ohms before connecting anything else: midpoint to rail = 2 k&Omega;; across the 1 k&Omega; = 1 k&Omega;.</span><span class="expect">about 2.0 k&Omega; and 1.0 k&Omega; (two 1 k&Omega; in series read 2.0 k&Omega; too).</span></li>
+        <li><span>Midpoint row &rarr; header pin 3. The 1 k&Omega;'s free end &rarr; HC-SR04 <b>Echo</b>.</span></li>
+        <li><span>HC-SR04 <b>Trig</b> &rarr; header pin 4 (direct: the FPGA's 3.3 V is enough to trigger it).</span></li>
+        <li><span>HC-SR04 <b>VCC</b> &rarr; pin 11 (5 V). HC-SR04 <b>GND</b> &rarr; pin 12.</span></li>
+        <li><span>Check every wire against the card once more, then plug the USB in.</span><span class="expect">the board boots as usual. If <span class="hx">no Id</span> appears or the board resets, unplug at once and recheck pins 11 and 12.</span></li>
+      </ol>
+      <label class="check"><input type="checkbox" id="c-e4"> E4 done: divider measured, sensor wired, board boots</label>
+    </div>
+  </article>
+</section>
+
+<section id="e5">
+  <article class="ex">
+    <header><span class="no">E5</span><h3>Mount the sensor, learn the floor, measure your toys</h3><span class="time">20 min</span></header>
+    <div class="body">
+      <ol class="steps">
+        <li><span>Tape the sensor to the gantry 15&ndash;25 cm above the table, looking straight down at the lane, both &ldquo;eyes&rdquo; level.</span></li>
+        <li><span>With the lane empty, press KEY0 (hold it a moment). The board learns the floor from its first readings. SW8 down (sensor mode), SW2:SW1 = 00.</span><span class="expect">LEDR0 off.</span></li>
+        <li><span>Hold your hand flat 5 cm under the sensor.</span><span class="expect">LEDR0 on; take it away: off.</span></li>
+        <li><span>Set the tag to nonE (SW5:SW3 = 000) so no fare is involved. Place the toy car under the sensor and hold it there.</span><span class="expect">LEDR2 on and the display shows its height, for example <span class="hx">h 4.0</span> (4.0 cm). Write it down.</span></li>
+        <li><span>Same with the lorry.</span><span class="expect">its height, and LEDR1 (tall) if it is 6.0 cm or more.</span></li>
+        <li><span>If the car reads 6.0 or more, or the lorry less than 6.0: open <code>lanex.qsf</code>, set <code>set_parameter -name TALL_MM</code> to a value halfway between the two heights in mm (car 45 mm, lorry 80 mm &rarr; 62), and repeat E1 steps 1&ndash;2.</span></li>
+      </ol>
+      <table style="max-width:420px">
+        <tbody>
+          <tr><td>Car height</td><td><input id="h-car" style="width:7em" placeholder="__ cm"></td></tr>
+          <tr><td>Lorry height</td><td><input id="h-lorry" style="width:7em" placeholder="__ cm"></td></tr>
+          <tr><td>TALL_MM used</td><td><input id="h-tall" style="width:7em" placeholder="60"></td></tr>
+        </tbody>
+      </table>
+      <label class="check"><input type="checkbox" id="c-e5"> E5 done: hand, car and lorry read correctly; lorry lights LEDR1, car does not</label>
+    </div>
+  </article>
+</section>
+
+<section id="e6">
+  <article class="ex">
+    <header><span class="no">E6</span><h3>Vehicles through the lane</h3><span class="time">20 min</span></header>
+    <div class="body">
+      <p>Push each toy steadily under the sensor at about one toy-length per second. Wait 3 s between pushes of the same tag.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Tag</th><th>Toy car</th><th>Toy lorry</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">001 CAr</td><td><span class="hx">CHArGE</span> <span class="hx">2.50</span> &middot; LEDR4</td><td><span class="hx">CLASS</span> <span class="hx">7.50</span> &middot; LEDR4, 5</td></tr>
+            <tr><td class="mono">010 LorrY</td><td><span class="hx">CLASS</span> <span class="hx">2.50</span> &middot; LEDR4, 5</td><td><span class="hx">CHArGE</span> <span class="hx">7.50</span> &middot; LEDR4</td></tr>
+            <tr><td class="mono">011 CAb</td><td><span class="hx">CHArGE</span> <span class="hx">1.30</span> &middot; LEDR4</td><td><span class="hx">CLASS</span> <span class="hx">7.50</span> &middot; LEDR4, 5</td></tr>
+            <tr><td class="mono">100 StOLEn</td><td colspan="2"><span class="hx">StOLEn</span> blinking &middot; LEDR5, 6 (any vehicle)</td></tr>
+            <tr><td class="mono">101 CLOnE</td><td colspan="2"><span class="hx">CLOnE</span> blinking &middot; LEDR5, 6</td></tr>
+            <tr><td class="mono">000 / 110 / 111</td><td colspan="2"><span class="hx">no tAG</span> &middot; LEDR5 (no tag, damaged tag, the next lane's tag)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <label class="check"><input type="checkbox" id="c-e6"> E6 done: every row for both toys</label>
+    </div>
+  </article>
+</section>
+
+<section id="e7">
+  <article class="ex">
+    <header><span class="no">E7</span><h3>Lamps and buzzer (optional)</h3><span class="time">20 min</span></header>
+    <div class="body">
+      <div class="grid2">
+        <div class="figure narrow" style="padding:10px">
+          <svg viewBox="0 0 420 200" role="img" aria-label="LED wiring">
+            <text class="t-disp ink" x="10" y="24" font-size="17">One lamp</text>
+            <rect x="10" y="80" width="90" height="28" rx="4" fill="var(--w-green)"/><text class="t-mono" x="55" y="99" font-size="11.5" text-anchor="middle" fill="#fff">pin 5</text>
+            <path d="M100 94 H150" stroke="var(--ink)" stroke-width="2.5" fill="none"/>
+            <rect x="150" y="85" width="56" height="18" rx="4" fill="var(--amber-soft)" stroke="var(--amber)"/><text class="t-mono ink" x="178" y="98" font-size="11" text-anchor="middle">330 &Omega;</text>
+            <path d="M206 94 H250" stroke="var(--ink)" stroke-width="2.5" fill="none"/>
+            <path d="M250 80 V108 L278 94 Z" fill="var(--w-green)"/><path d="M280 80 V108" stroke="var(--ink)" stroke-width="2.5"/>
+            <text class="ink" x="232" y="70" font-size="11">long leg</text><text class="ink" x="282" y="70" font-size="11">short leg</text>
+            <path d="M280 94 H330 V150" stroke="var(--ink)" stroke-width="2.5" fill="none"/>
+            <path d="M315 150 H345 M320 157 H340 M326 164 H334" stroke="var(--ink)" stroke-width="2.5"/>
+            <text class="ink" x="350" y="158" font-size="11.5">GND rail</text>
+            <text class="muted" x="10" y="190" font-size="11.5">Green 5, white 6 (100 &Omega;), red 7, yellow 9.</text>
+          </svg>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+          <ol class="steps">
+            <li><span>USB unplugged. Wire each LED: header pin &rarr; resistor &rarr; long leg; short leg &rarr; GND rail.</span></li>
+            <li><span>Buzzer module: VCC &rarr; pin 29 (3.3 V), GND &rarr; rail, I/O (or IN) &rarr; pin 8.</span></li>
+            <li><span>Plug in.</span><span class="expect">every lamp on for the 1 s lamp test, with a short beep.</span></li>
+            <li><span>If the buzzer sounds all the time afterwards, flip SW6 up (your module is low-level trigger). SW7 mutes it.</span></li>
+            <li><span>Push a car with CAr, then with StOLEn.</span><span class="expect">green + one chirp; then red, a white flash and three beeps.</span></li>
+          </ol>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="c-e7"> E7 done: lamp test, charge and alarm patterns</label>
+    </div>
+  </article>
+</section>
+
+<section id="e8">
+  <article class="ex">
+    <header><span class="no">E8</span><h3>The laptop dashboard</h3><span class="time">20 min</span></header>
+    <div class="body">
+      <ol class="steps">
+        <li><span>Set the adapter's jumper to 3.3 V. USB unplugged from the board. Wire adapter <b>TXD &rarr; pin 1</b>, <b>RXD &rarr; pin 2</b>, <b>GND &rarr; pin 12</b>. Leave its VCC/5V pin unconnected.</span></li>
+        <li><span>Plug the adapter into the laptop. Device Manager &rarr; Ports (COM &amp; LPT).</span><span class="expect">a new COM port (CP210x, CH340 or USB Serial). If it has a yellow mark, install the driver from 08_quartus_setup.md &sect;8.</span></li>
+        <li><span>Power the board. Open <code>stage4\de10lite\lanex_live.html</code> in Chrome or Edge &rarr; <b>Connect board</b> &rarr; choose that COM port.</span><span class="expect">&ldquo;Connected &middot; 115,200 bps&rdquo;.</span></li>
+        <li><span>Click <b>Fingerprint the ROM now</b>.</span><span class="expect">the board shows <span class="hx">Id.56dE</span>; the page shows 56DE in green, &ldquo;Matches this build&rdquo;.</span></li>
+        <li><span>Push a car (tag CAr).</span><span class="expect">a &ldquo;Charged&rdquo; card, RM 2.50, CRC &#10003;, then &ldquo;Signed &#10003; Chaskey-12&rdquo;.</span></li>
+        <li><span>Choose <b>Taxi</b> &rarr; <b>Report stolen</b>. Set the tag to CAb, wait 3 s, push a car.</span><span class="expect"><span class="hx">StOLEn</span> on the board and a red card. Then <b>Clear</b> and push again after 3 s: charged RM 1.30.</span></li>
+        <li><span><b>Close lane</b>.</span><span class="expect">board idle shows <span class="hx">CLOSEd</span>, LEDR7. <b>Open lane</b> to undo.</span></li>
+        <li><span><b>Ask for statistics</b>.</span><span class="expect">a Statistics row with the vehicle count.</span></li>
+      </ol>
+      <label class="check"><input type="checkbox" id="c-e8"> E8 done: connect, identify, signed records, stolen/clear, close/open, statistics</label>
+    </div>
+  </article>
+</section>
+
+<section id="e9">
+  <article class="ex">
+    <header><span class="no">E9</span><h3>Recovery drills</h3><span class="time">15 min</span></header>
+    <div class="body">
+      <p>Each of these ends in a working lane by itself. The simulation tested every one of them, many times over; here you confirm it on the real board.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Do</th><th>The board</th></tr></thead>
+          <tbody>
+            <tr><td>SW9 up, then down in the middle of the tour</td><td>Restarts the chip: <span class="hx">Id.56dE</span>, then the lane</td></tr>
+            <tr><td>Hold KEY0 during the tour, SW9 still up</td><td>Cold boot, then the tour starts again from test 1</td></tr>
+            <tr><td>Pull the sensor's Echo wire while a toy is under it</td><td>After about 1 s the vehicle counts as gone and is decided; LEDR0 off. Plug back: readings resume</td></tr>
+            <tr><td>Leave a toy parked under the sensor for 30 s</td><td>Keeps showing its height; decided when it leaves</td></tr>
+            <tr><td>Power up with a toy under the sensor, then remove it</td><td>No phantom vehicle: the floor is relearnt once the lane is empty</td></tr>
+            <tr><td>Flip SW8 while a toy is under the sensor</td><td>The vehicle is decided at once; manual mode takes over</td></tr>
+            <tr><td>Flip SW0 (closed) while a toy is under the sensor</td><td>That vehicle: <span class="hx">CLOSEd</span></td></tr>
+            <tr><td>Unplug the USB-UART while connected</td><td>Board unaffected; the page says Disconnected; Connect again</td></tr>
+            <tr><td>Click buttons during the tour</td><td>The tour still ends <span class="hx">PASS12</span> (laptop frames are dropped in tour mode)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <b class="t">The watchdog you will probably never see</b>
+        <p>If the chip ever failed to answer within 1.5 s after a vehicle left, the board would restart it by itself (a warm boot: <span class="hx">Id.56dE</span>, or <span class="hx">no Id</span> if it still does not answer). It is tested in simulation by silencing the chip on purpose; the real chip has never needed it.</p>
+      </div>
+      <label class="check"><input type="checkbox" id="c-e9"> E9 done: every drill recovered</label>
+    </div>
+  </article>
+</section>
+
+<section id="e10">
+  <article class="ex">
+    <header><span class="no">E10</span><h3>Make it a standalone box</h3><span class="time">5 min</span></header>
+    <div class="body">
+      <ol class="steps">
+        <li><span>Double-click <code>program_flash.bat</code> (writes and verifies <code>lanex.pof</code> in the internal flash).</span><span class="expect">&ldquo;Done&rdquo;, no error.</span></li>
+        <li><span>Unplug the USB, wait 5 s, power the board from a power bank.</span><span class="expect">lamp test, banner, <span class="hx">Id.56dE</span>: the demo runs with no laptop.</span></li>
+        <li><span>Run E1 step 3 (tour) and one car and one lorry.</span></li>
+      </ol>
+      <label class="check"><input type="checkbox" id="c-e10"> E10 done: boots from flash on a power bank</label>
+    </div>
+  </article>
+</section>
+
+<!-- =================================================================== REFERENCE -->
+<section class="part" id="ref">
+  <span class="eyebrow">Reference</span>
+  <h2>What the board shows, and when</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Situation</th><th>Display</th><th>For how long</th></tr></thead>
+      <tbody>
+        <tr><td>Power-up or KEY0</td><td>All lit, then <span class="hx">LAnE rISC-U bEAt tHE toLL</span> scrolling, then <span class="hx">Id.56dE</span></td><td>1 s + 6 s + 2.5 s</td></tr>
+        <tr><td>Idle</td><td>The tag the next vehicle carries (<span class="hx">CAr</span>&hellip;), or <span class="hx">CLOSEd</span></td><td>until something happens</td></tr>
+        <tr><td>A vehicle under the sensor</td><td>Its height, <span class="hx">h 4.0</span> (manual mode: a running dash)</td><td>while it is there</td></tr>
+        <tr><td>A decision with a fare</td><td>The word, then the fare</td><td>1.5 s, then 2.5 s</td></tr>
+        <tr><td>An alarm (stolen, clone)</td><td>The word, blinking</td><td>4 s</td></tr>
+        <tr><td>Identity (KEY1 or laptop)</td><td><span class="hx">Id.56dE</span></td><td>2 s</td></tr>
+        <tr><td>A frame from the laptop refused</td><td><span class="hx">Err  n</span> (1 = CRC, 7 = key locked)</td><td>2 s</td></tr>
+        <tr><td>Tour mode</td><td><span class="hx">tESt01</span> &rarr; result &rarr; &hellip; &rarr; <span class="hx">PASS12</span> or <span class="hx">FAIL nn</span></td><td>0.5 s + 0.9 s per test</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Symptom</th><th>Check</th></tr></thead>
+      <tbody>
+        <tr><td>LEDR0 never lights</td><td>5 V on the sensor VCC (pin 11), Trig on pin 4, Echo through 1 k&Omega; to pin 3, 2 k&Omega; from pin 3 to GND, common GND</td></tr>
+        <tr><td>Vehicles appear on their own</td><td>Something was under the sensor at power-up: empty the lane, hold KEY0. A sloped or soft surface under the sensor can scatter the echo: use a flat card as the lane floor</td></tr>
+        <tr><td>Lorry read as a car, or the reverse</td><td><code>TALL_MM</code> in <code>lanex.qsf</code> (E5 step 6)</td></tr>
+        <tr><td>Buzzer always on</td><td>SW6 up</td></tr>
+        <tr><td>Dashboard silent</td><td>TXD/RXD swapped, no common GND, or another program holds the COM port</td></tr>
+        <tr><td><span class="hx">no Id</span></td><td>Hold KEY0. If it stays, recompile and reprogram</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</div>
+
+<script>
+  (function () {
+    var ids = ["c-e1","c-e2","c-e3","c-e4","c-e5","c-e6","c-e7","c-e8","c-e9","c-e10","h-car","h-lorry","h-tall"];
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var key = "lanex-lab-" + id;
+      try {
+        var v = localStorage.getItem(key);
+        if (v !== null) { if (el.type === "checkbox") el.checked = v === "1"; else el.value = v; }
+      } catch (e) {}
+      el.addEventListener(el.type === "checkbox" ? "change" : "input", function () {
+        try { localStorage.setItem(key, el.type === "checkbox" ? (el.checked ? "1" : "0") : el.value); } catch (e) {}
+      });
+    });
+  })();
+</script>
+
+</body>
+</html>

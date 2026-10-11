@@ -34,7 +34,7 @@ CONTROLS = [
     ("SW7", "Mute the buzzer"),
     ("SW8", "Manual: KEY1 is the vehicle (no sensor needed)"),
     ("SW9", "Tour: replay the 12 AWS tests &rarr; PASS12"),
-    ("KEY0", "Reset (lamp test, banner, Id.56dE); the sensor relearns the floor"),
+    ("KEY0", "Hold: reset (lamp test, banner, Id.56dE); the sensor relearns the floor"),
     ("KEY1", "Manual vehicle (SW8 up), else: fingerprint the ROM"),
 ]
 

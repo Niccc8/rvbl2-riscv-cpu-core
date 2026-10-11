@@ -95,11 +95,11 @@ pull-ups on the inputs and the flash settings — from Terasic's schematic and p
    high performance effort, which buys timing margin. (Or double-click
    `stage4\de10lite\compile.bat`.)
 3. Check, in the Compilation Report:
-   - **Flow Summary:** device 10M50DAF484C7G; about **14,700 logic elements (30 %)**, 66,048
+   - **Flow Summary:** device 10M50DAF484C7G; about **14,900 logic elements (30 %)**, 66,048
      memory bits, 1 PLL.
    - **Timing Analyzer:** no red "Timing requirements not met"; every slack positive. **Slow
      1200mV 85C Model → Fmax Summary:** the core clock (`u_pll|…|clk[0]`) **≥ 31.25 MHz**.
-     Measured on this laptop: **36.35 MHz, setup slack +4.491 ns, hold +0.326 ns**.
+     Measured on this laptop: **36.22 MHz, setup slack +4.388 ns, hold +0.328 ns**.
    - If a slack is ever negative: in `lanex.qsf` change `set_parameter -name CORE_HZ 31250000`
      to `25000000` and compile again (the PLL and every UART divider follow).
 4. (Optional) **Tools → Pin Planner** to see the assignments: `MAX10_CLK1_50` on PIN_P11, `KEY[0]`
