@@ -5,6 +5,8 @@ a lorry). The board's switches choose the tag the vehicle carries. **The exact R
 LaneX firmware that passed all 12 tests on the AWS F2** decide: a charge, a camera flash, or an
 alarm. A laptop can watch every record live and verify it. Plan and rationale:
 `docs/stage4/07_max10_prototype.md`. Installing Quartus: `docs/stage4/08_quartus_setup.md`.
+**The printed gantry** that holds the sensor over the lane (one A1 plate, files ready for the SD card):
+`gantry/README.md`.
 
 ## What is here
 
