@@ -60,31 +60,38 @@ COIN_D, COIN_STACK = 24.0, 18.0     # ballast cups: any Malaysian coin (50 sen i
 FOOT_W = 36.0         # left footing width
 PLATE = 6.0           # footing plate thickness
 TRAY_FLOOR = 2.4
-TRAY_X1 = 228.0       # tray outer edge
+TRAY_X1 = 232.0       # tray outer edge
 
-# HC-SR04 (datasheet 45 x 20 x 15 mm; transducers 16 mm on ~26 mm centres; crystal between them)
+# HC-SR04: datasheet 45 x 20 x 15 mm; checked against the fit-test photos (12 Oct 2026):
+#  - transducers 16 mm on ~26 mm centres, ~10 mm from the board's back edge
+#  - the crystal lies ACROSS (11-12 mm long, 4.7 wide, ~4 tall) at the edge opposite the header
+#  - two SOIC chips on the back run to within ~0.5 mm of the board's ends (~2 mm tall)
+#  - the 4-pin header is on the back at the edge; its pins stand straight up (8.5 mm), the jumper
+#    plugs on top of them (14 mm). Some boards bend them flat instead; both are allowed for.
 BOARD_L, BOARD_W, PCB_T = 45.0, 20.0, 1.6
 CAN_D, CAN_H, CAN_PITCH = 16.0, 12.0, 26.0
-CAN_SLOT_R = 8.6      # 0.6 mm radial clearance: accepts pitch 25.4 .. 26.6
-XTAL_SLOT = 6.4       # HC-49S crystal is 4.7 mm wide
-BACK_PARTS = 2.8      # tallest part on the back (right-angle header body)
+CAN_SLOT_R = 8.8      # 0.8 mm radial play: accepts pitch 25.4 .. 26.6 and 16.2 mm cans
+XTAL_SLOT = 15.0      # the crystal (up to 12.2 long) travels through this, front to back
+HEADROOM = 5.5        # clear height above the board's back (chips 2 mm, solder tails 1.5 mm)
+ROOF = 1.2            # pod roof under the beam
 
 # pod: derived
-END_CLR = 0.35
-POD_IN = BOARD_L / 2 + END_CLR          # 22.85: inner end-wall face
+END_CLR = 0.6
+POD_IN = BOARD_L / 2 + END_CLR          # 23.1: inner end-wall face
 POD_WALL = 2.6
-POD_OUT = POD_IN + POD_WALL             # 25.45
+POD_OUT = POD_IN + POD_WALL             # 25.7
 POD_BACK = 2.4
-YB0 = POD_BACK + 0.3                    # board's leading (back) edge when home
-POD_Y = YB0 + BOARD_W                   # 22.7: the open front, flush with the header edge
-CAN_Y = YB0 + BOARD_W / 2               # transducer centres along Y
-Z_PCB_BACK = ZB - (BACK_PARTS + 2.2)    # 195.0
-Z_PCB_FRONT = Z_PCB_BACK - PCB_T        # 193.4: the floor's top
+YB0 = POD_BACK + 1.2                    # board's back edge when home (the transducers stop it)
+CAN_Y = YB0 + BOARD_W / 2               # transducer centres along Y (home)
+POD_Y = YB0 + BOARD_W                   # 23.6: the open front, at the header edge
+Z_PCB_BACK = ZB - ROOF - HEADROOM       # the board's back face when home
+Z_PCB_FRONT = Z_PCB_BACK - PCB_T        # = the floor's top
+CAV_TOP = Z_PCB_BACK + HEADROOM
 FLOOR = 4.0
-LIFT = 0.8                              # headroom so the board can ride over the detent
-LIP_IN = 1.2                            # ledge over the board's ends
 DETENT = 0.5                            # detent height
+DETENT_GAP = 0.7                        # free travel before the detent (board width and transducer-position tolerance)
 SKIRT_Z = Z_PCB_FRONT - FLOOR - 4.4
+HDR_NOTCH = 7.5                         # half-width of the open notch over the header and its plugs
 
 
 # ----------------------------------------------------------------------------- helpers
@@ -223,8 +230,8 @@ def frame():
     right = arc_path((XC, -6), (XC, CH_Z), (0, CH_Z), CH_R)
     left = [(-x, z) for x, z in right]
     path = right + left[::-1]
-    drop = [(0, ZB - 1), (0, CH_Z)]
-    entry = rect(-6, 6, ZB - 1, ZB + 9)              # no lips where the wires come up from the pod
+    drop = [(0, ZB + 4.0), (0, CH_Z)]
+    entry = rect(-6, 6, ZB + 0.6, ZB + 9)            # no lips where the wires come up from the pod
     body = body - channel(path, T) - channel(drop, T, open_extra=entry)
     # tenons (chamfered tips), added after the channel so it never cuts them
     for sx in (-1, 1):
@@ -247,28 +254,34 @@ def tenon(xc):
 
 
 def pod():
-    """The sensor pod under the beam centre: open at the front (+Y); the board slides in face down,
-    transducers through U-slots that stop it at home, held by gravity and a detent."""
-    block = box(-POD_OUT, POD_OUT, 0, POD_Y, SKIRT_Z, ZB + 0.5)
-    cav_a = box(-POD_IN, POD_IN, POD_BACK, POD_Y + 1, Z_PCB_FRONT, Z_PCB_BACK + LIFT)              # the board
-    cav_b = box(-POD_IN + LIP_IN, POD_IN - LIP_IN, POD_BACK, POD_Y + 1, Z_PCB_BACK + LIFT - 0.01, ZB - 0.6)  # back parts
-    cav_c = box(-POD_IN, POD_IN, POD_BACK, POD_Y + 1, SKIRT_Z - 1, Z_PCB_FRONT - FLOOR)          # under the floor
+    """The sensor pod under the beam centre, open at the front (+Y). The board slides in face down;
+    its transducers run in U-slots that stop it at home; gravity and a small detent hold it. The
+    pocket is one full-width box (no ledges), the crystal has a full-depth slot, and the header's
+    upright pins and plugs rise through an open notch in front of the beam."""
+    block_ = box(-POD_OUT, POD_OUT, 0, POD_Y, SKIRT_Z, ZB + 0.5)
+    cav = box(-POD_IN, POD_IN, POD_BACK, POD_Y + 1, Z_PCB_FRONT, CAV_TOP)
+    # 45-degree lead-in on the roof's front edge
+    lead = M.hull_points(np.array([(x, y, z) for x in (-POD_IN, POD_IN)
+                                   for (y, z) in ((POD_Y - 1.5, CAV_TOP - 0.01), (POD_Y + 0.5, CAV_TOP - 0.01),
+                                                  (POD_Y + 0.5, CAV_TOP + 2.0))], float))
+    under = box(-POD_IN, POD_IN, POD_BACK, POD_Y + 1, SKIRT_Z - 1, Z_PCB_FRONT - FLOOR)   # below the floor
+    notch = box(-HDR_NOTCH, HDR_NOTCH, POD_Y - 4.5, POD_Y + 1, CAV_TOP - 0.01, ZB + 1)     # over the header
     slots = []
     for cx in (-CAN_PITCH / 2, CAN_PITCH / 2):
         slots.append(CS.circle(CAN_SLOT_R).translate((cx, CAN_Y)) + rect(cx - CAN_SLOT_R, cx + CAN_SLOT_R, CAN_Y, POD_Y + 5))
-    slots.append(rect(-XTAL_SLOT / 2, XTAL_SLOT / 2, POD_BACK + 1.6, POD_Y + 5))
+    slots.append(rect(-XTAL_SLOT / 2, XTAL_SLOT / 2, POD_BACK - 0.01, POD_Y + 5))
     slot = xy_prism(CS.batch_boolean(slots, _ADD), Z_PCB_FRONT - FLOOR - 1, Z_PCB_FRONT + 0.01)
-    body = block - cav_a - cav_b - cav_c - slot
+    body = block_ - cav - lead - under - notch - slot
     # toes in front of the end strips, carrying the detent bumps
     for sx in (-1, 1):
         x0, x1 = sorted((sx * (CAN_PITCH / 2 + CAN_SLOT_R + 0.3), sx * POD_OUT))
-        toe = box(x0, x1, POD_Y - 0.01, POD_Y + 2.0, Z_PCB_FRONT - FLOOR, Z_PCB_FRONT)
-        bump = poly([(POD_Y + 0.1, 0), (POD_Y + 0.1 + DETENT, DETENT), (POD_Y + 0.9, DETENT), (POD_Y + 1.9, 0)])
+        g0 = POD_Y + DETENT_GAP                        # the bump starts here: boards up to 20.6 mm wide clear it
+        toe = box(x0, x1, POD_Y - 0.01, g0 + 2.0, Z_PCB_FRONT - FLOOR, Z_PCB_FRONT)
+        bump = poly([(g0, 0), (g0 + DETENT, DETENT), (g0 + 0.8, DETENT), (g0 + 1.8, 0)])
         bump = yz_prism(bump, max(x0, -POD_IN), min(x1, POD_IN)).translate((0, 0, Z_PCB_FRONT - 0.01))
         body = body + toe + bump
-        # end walls continue to the toes' front so the bumps sit on solid floor
         body = body + box(sx * POD_IN if sx > 0 else -POD_OUT, POD_OUT if sx > 0 else -POD_IN,
-                          POD_Y - 0.01, POD_Y + 2.0, Z_PCB_FRONT - FLOOR, Z_PCB_FRONT + 4.0)
+                          POD_Y - 0.01, g0 + 2.0, Z_PCB_FRONT - FLOOR, Z_PCB_FRONT + 4.0)
     return body
 
 
@@ -278,7 +291,7 @@ def boss(xc, base_z):
     Returns (solid, cut): apply the cut after the boss is joined to its plate."""
     b = xy_prism(rounded_rect(xc - BOSS / 2, xc + BOSS / 2, -6, 20, 3), -H_BOSS, 0)
     ribs = []
-    for y0, y1 in ((20, 46), (-6, -32)):
+    for y0, y1 in ((20, 38), (-6, -32)):
         ribs.append(yz_prism(poly([(y0, -0.01), (y1, base_z), (y0, base_z)]), xc - 1.6, xc + 1.6))
     solid = union([b] + ribs)
     kx = (TENON_W - TENON_TIP_W) / 2 / TENON_L          # taper per side, per mm of depth (X)
@@ -320,14 +333,19 @@ def footing():
     return (plate + solid + raised + union(cups)) - cut
 
 
-# Places in the tray (use coordinates x0, x1, y0, y1), each about 1 mm per side larger than the part:
-#   DE10-Lite        97.5 x 80 mm (Altera's figure)          -> 100 x 82
-#   400-point breadboard 82.5 x 54.5 (clones to 83.5 x 55.5) -> 85 x 57
-#   Cytron UC00C     39.8 x 21.2                             -> 41.8 x 23.2 (open at both ends: USB and header)
-# Corner guards only, so every edge stays open for cables whichever way a board is turned.
-DE10 = (140.0, 222.0, -88.0, 12.0)
-BREAD = (138.0, 223.0, 18.0, 75.0)
-UC00C = (108.0, 131.2, 52.0, 93.8)
+# Places in the tray (use coordinates). Each part's outline, from its datasheet/photos, and why the
+# guards are where they are:
+#  DE10-Lite 97.5 x 80 mm on four brass standoffs (manual, Fig. 1-3). The VGA D-SUB and the USB-B
+#    shells overhang its two SHORT edges and come down past the board's edge, so only low side rails
+#    (2.5 mm) along its long edges, 1.5 mm clear: nothing near the short edges. Turn it so the USB-B
+#    end is at the open back edge of the tray (y -93), where its cable can plug in.
+#  400-point half breadboard 82.5 x 54.5 x 8.5 (clones to 83.5 x 55.5, joining tabs up to ~1.8 mm):
+#    an 88 x 60 place with corner guards.
+#  Cytron UC00C 39.8 x 21.2 x 5.6: side rails only; both ends stay open for the micro-USB plug and the
+#    jumper plugs. Put its USB end at the tray's front edge (y +107).
+DE10_PCB = (140.0, 220.0, -90.0, 7.5)      # the board's outline (x0, x1, y0, y1)
+BREAD = (138.0, 226.0, 26.0, 86.0)         # the breadboard's place
+UC00C = (107.5, 131.5, 58.0, 103.0)        # the converter's place
 
 
 def corners(zone, height, leg, wall=2.0):
@@ -341,34 +359,71 @@ def corners(zone, height, leg, wall=2.0):
     return xy_prism(CS.batch_boolean(parts, _ADD), -H_BOSS + TRAY_FLOOR - 0.01, -H_BOSS + TRAY_FLOOR + height)
 
 
+def side_rails(x0, x1, spans, height, gap=1.5, wall=2.0):
+    """Short rails outside the long edges x0 / x1, over the given y spans."""
+    parts = []
+    for ya, yb in spans:
+        parts.append(rect(x0 - gap - wall, x0 - gap, ya, yb))
+        parts.append(rect(x1 + gap, x1 + gap + wall, ya, yb))
+    return xy_prism(CS.batch_boolean(parts, _ADD), -H_BOSS + TRAY_FLOOR - 0.01, -H_BOSS + TRAY_FLOOR + height)
+
+
 def tray():
     x0 = XC - BOSS / 2 - 2
-    floor = xy_prism(rounded_rect(x0, TRAY_X1, FOOT_Y0, FOOT_Y1, 8), -H_BOSS, -H_BOSS + TRAY_FLOOR)
+    floor = xy_prism(rounded_rect(x0, TRAY_X1, FOOT_Y0, FOOT_Y1, 4), -H_BOSS, -H_BOSS + TRAY_FLOOR)
     lbl = text_cs("RVBL-2 inside", 6.0).rotate(90)
     bb = lbl.bounds()
     lbl = lbl.translate((116 - (bb[0] + bb[2]) / 2, -74 - bb[1]))
     raised = xy_prism(lbl, -H_BOSS + TRAY_FLOOR - 0.01, -H_BOSS + TRAY_FLOOR + 0.6)
     solid, cut = boss(XC, -H_BOSS + TRAY_FLOOR)
-    return union([floor, solid, corners(DE10, 12, 16), corners(BREAD, 4, 10), corners(UC00C, 4, 7), raised]) - cut
+    x0d, x1d, y0d, y1d = DE10_PCB
+    de10 = side_rails(x0d, x1d, ((y0d + 4, y0d + 20), (y1d - 20, y1d - 4)), 2.5)
+    ux0, ux1, uy0, uy1 = UC00C
+    uc = side_rails(ux0, ux1, ((uy0 + 8, uy1 - 8),), 3.0, gap=0.0)
+    return union([floor, solid, de10, corners(BREAD, 4, 8), uc, raised]) - cut
 
 
 # ----------------------------------------------------------------------------- the sensor model (for checks)
-def hcsr04(dx=0.0, dy=0.0, dz=0.0, pitch=CAN_PITCH, board_l=BOARD_L, with_plugs=True):
-    """HC-SR04 at home in the pod, offset by (dx, dy, dz). Front face down."""
-    y0 = YB0
-    pcb = box(-board_l / 2, board_l / 2, y0, y0 + BOARD_W, Z_PCB_FRONT, Z_PCB_BACK)
-    cans = union([M.cylinder(CAN_H, CAN_D / 2).translate((cx, y0 + BOARD_W / 2, Z_PCB_FRONT - CAN_H))
-                  for cx in (-pitch / 2, pitch / 2)])
-    xtal = box(-2.35, 2.35, y0 + 4.5, y0 + 15.5, Z_PCB_FRONT - 4.0, Z_PCB_FRONT)
-    chips = box(-15, 15, y0 + 3, y0 + 15, Z_PCB_BACK, Z_PCB_BACK + 1.8)
-    hdr = box(-5.1, 5.1, y0 + BOARD_W - 2.5, y0 + BOARD_W + 0.0, Z_PCB_BACK, Z_PCB_BACK + BACK_PARTS)
-    pins = union([box(x - 0.32, x + 0.32, y0 + BOARD_W - 1.3, y0 + BOARD_W + 8.5, Z_PCB_BACK + 1.0, Z_PCB_BACK + 1.64)
-                  for x in (-3.81, -1.27, 1.27, 3.81)])
-    parts = [pcb, cans, xtal, chips, hdr, pins]
-    if with_plugs:
-        parts.append(union([box(x - 1.27, x + 1.27, y0 + BOARD_W + 2.0, y0 + BOARD_W + 16.0, Z_PCB_BACK + 0.05, Z_PCB_BACK + 2.59)
-                            for x in (-3.81, -1.27, 1.27, 3.81)]))
+def hcsr04(dx=0.0, dy=0.0, dz=0.0, pitch=CAN_PITCH, board_l=BOARD_L, board_w=BOARD_W, can_from_back=10.0,
+           can_d=CAN_D, xtal_l=11.8, header="upright", with_plugs=True):
+    """HC-SR04 at home in the pod (its transducers at CAN_Y), offset by (dx, dy, dz). Front face down.
+    header: "upright" (pins straight up from the back, as on Nicholas's board) or "bent" (flat, as in
+    the datasheet drawing)."""
+    lead = CAN_Y - can_from_back                     # the board's back edge
+    trail = lead + board_w                           # the header edge
+    zf, zb = Z_PCB_FRONT, Z_PCB_BACK
+    pcb = box(-board_l / 2, board_l / 2, lead, trail, zf, zb)
+    cans = union([M.cylinder(CAN_H, can_d / 2).translate((cx, CAN_Y, zf - CAN_H)) for cx in (-pitch / 2, pitch / 2)])
+    xtal = box(-xtal_l / 2, xtal_l / 2, lead + 0.4, lead + 5.2, zf - 4.0, zf)
+    chips = []
+    for sx in (-1, 1):
+        a, b = sx * (board_l / 2 - 0.3), sx * (board_l / 2 - 10.8)
+        chips.append(box(min(a, b), max(a, b), lead + 4.0, lead + 11.0, zb, zb + 2.0))
+    tails = union([M.cylinder(1.5, 8.6).translate((cx, CAN_Y, zb)) for cx in (-pitch / 2, pitch / 2)])
+    body = box(-5.1, 5.1, trail - 2.5, trail, zb, zb + 2.5)
+    xs = (-3.81, -1.27, 1.27, 3.81)
+    if header == "upright":
+        pins = union([box(x - 0.32, x + 0.32, trail - 1.59, trail - 0.95, zb, zb + 8.5) for x in xs])
+        plugs = union([box(x - 1.27, x + 1.27, trail - 2.54, trail, zb + 2.6, zb + 16.6) for x in xs])
+    else:
+        pins = union([box(x - 0.32, x + 0.32, trail - 1.59, trail + 8.5, zb + 0.95, zb + 1.59) for x in xs])
+        plugs = union([box(x - 1.27, x + 1.27, trail + 2.0, trail + 16.0, zb + 0.0, zb + 2.54) for x in xs])
+    parts = [pcb, cans, xtal, union(chips), tails, body, pins] + ([plugs] if with_plugs else [])
     return union(parts).translate((dx, dy, dz))
+
+
+# the tolerance corners every pod check runs over
+SENSOR_VARIANTS = [
+    ("nominal, upright header", {}),
+    ("nominal, bent header", {"header": "bent"}),
+    ("pitch 25.4", {"pitch": 25.4}), ("pitch 26.6", {"pitch": 26.6}),
+    ("board 45.5 x 20.5", {"board_l": 45.5, "board_w": 20.5}),
+    ("board 44.5 x 19.5", {"board_l": 44.5, "board_w": 19.5}),
+    ("transducers 9.6 from the back edge", {"can_from_back": 9.6}),
+    ("transducers 10.4 from the back edge", {"can_from_back": 10.4}),
+    ("16.2 mm transducers", {"can_d": 16.2}),
+    ("12.2 mm crystal", {"xtal_l": 12.2}),
+]
 
 
 # ----------------------------------------------------------------------------- placement on the A1 plate
@@ -459,20 +514,21 @@ def run_checks(fr, ft, tr, plate_parts):
     def check(name, ok, detail):
         res.append((name, bool(ok), detail))
 
-    # 1. fit at home, nominal and the tolerance corners
-    for label, kw in (("nominal", {}), ("pitch 25.4", {"pitch": 25.4}), ("pitch 26.6", {"pitch": 26.6}),
-                      ("board 45.4 long", {"board_l": 45.4}), ("board 44.6 long", {"board_l": 44.6})):
+    # 1-2. every variant: fits at home, and slides in from 40 mm out (lifted over the detent) touching nothing
+    for label, kw in SENSOR_VARIANTS:
         v = vol(fr ^ hcsr04(**kw))
-        check("sensor fits at home (%s)" % label, v < 1e-3, "%.4f mm3 overlap" % v)
-    # 2. insertion: slide in from 40 mm out, lifted by the detent height (LIFT headroom)
-    worst = 0.0
-    for s in np.arange(0.0, 40.0, 0.5):
-        worst = max(worst, vol(fr ^ hcsr04(dy=s, dz=DETENT + 0.05)))
-    check("slides in from the front, lifted %.2f mm over the detent" % (DETENT + 0.05), worst < 1e-3, "worst %.4f mm3" % worst)
-    # 3. the detent: resting (not lifted), pulled 1 mm out, the board's trailing edge meets the bumps
-    v = vol(fr ^ hcsr04(dy=1.0, with_plugs=False))
-    check("detent stops it sliding out (1 mm pull, resting)", v > 0.01, "%.3f mm3 interference" % v)
-    # 4. the board can't drop: its ends rest on ledges (overlap when lowered 0.3 mm)
+        worst = max(vol(fr ^ hcsr04(dy=s_, dz=DETENT + 0.05, **kw)) for s_ in np.arange(0.0, 40.0, 0.5))
+        check("sensor (%s): fits at home and slides in" % label, v < 1e-3 and worst < 1e-3,
+              "home %.4f mm3, worst on the way in %.4f mm3" % (v, worst))
+    # clearances that matter, nominal board at home
+    gaps = {"ends": POD_IN - BOARD_L / 2, "transducer slots (radial)": CAN_SLOT_R - CAN_D / 2,
+            "crystal slot (each side, 11.8 crystal)": (XTAL_SLOT - 11.8) / 2,
+            "above the back chips": CAV_TOP - (Z_PCB_BACK + 2.0), "back edge to back wall": YB0 - POD_BACK}
+    check("pod clearances", min(gaps.values()) >= 0.6, ", ".join("%s %.1f" % kv for kv in gaps.items()) + " mm")
+    # 3. the detent: resting (not lifted), pulled 1 mm out, the board's header edge meets the bumps
+    v = vol(fr ^ hcsr04(dy=1.5, with_plugs=False))
+    check("detent stops it sliding out (1.5 mm pull, resting)", v > 0.01, "%.3f mm3 interference" % v)
+    # 4. the board can't drop: it rests on the floor (overlap when lowered 0.3 mm)
     v = vol(fr ^ hcsr04(dz=-0.3, with_plugs=False))
     check("board rests on the floor (cannot drop)", v > 0.1, "%.2f mm3 when lowered 0.3" % v)
     # 5. acoustic cone: +/-15 deg (the datasheet's 30-degree beam) and a wider 22.5 deg, from each transducer
@@ -503,25 +559,35 @@ def run_checks(fr, ft, tr, plate_parts):
           "locks at %.2f mm above full seat; tolerance band of the print: 0..3 mm is fine" % hi)
     v = vol(fr.translate((0, 0, hi + 0.01)) ^ base)
     check("nothing else touches as the tenons go in", v < 1e-3, "%.4f mm3" % v)
-    # 6b. the electronics, at their largest expected size, sit in their places touching nothing
+    # 6b. the electronics at their real outlines, overhanging connectors and cable plugs included
     fl = -H_BOSS + TRAY_FLOOR
-    comps = {"DE10-Lite 97.5 x 80 on 10 mm standoffs": (DE10, 80.0, 97.5, 12.0),
-             "400-point breadboard 83.5 x 55.5 (clone max)": (BREAD, 83.5, 55.5, 9.0),
-             "UC00C 39.8 x 21.2": (UC00C, 21.2, 39.8, 6.0)}
-    placed = {}
-    for name, ((x0, x1, y0, y1), wx, wy, h) in comps.items():
-        if (x1 - x0) < (y1 - y0) and wx > wy:
-            wx, wy = wy, wx
-        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
-        placed[name] = box(cx - wx / 2, cx + wx / 2, cy - wy / 2, cy + wy / 2, fl + 0.01, fl + h)
-        v = vol(placed[name] ^ (tr + fr))
-        check("%s fits its place in the tray" % name, v < 1e-3,
-              "%.3f mm3; clearance %.2f x %.2f mm per side" % (v, ((x1 - x0) - wx) / 2, ((y1 - y0) - wy) / 2))
-    names = list(placed)
+    x0, x1, y0, y1 = DE10_PCB
+    zp = fl + 6.0                                  # lowest plausible standoff height
+    de10 = union([box(x0, x1, y0, y1, zp, zp + 1.6),
+                  union([M.cylinder(zp - fl, 3.2).translate((x, y, fl)) for x in (x0 + 4, x1 - 4) for y in (y0 + 4, y1 - 4)]),
+                  box(x0 + 2, x1 - 2, y0 + 2, y1 - 2, zp - 3.0, zp),                 # pin tails under the board
+                  box(x0, x1, y1 - 2, y1 + 7.0, zp - 3.0, zp + 13.0),                 # VGA shell, anywhere along that edge
+                  box(x0, x1, y0 - 4.0, y0 + 2, zp - 2.5, zp + 11.0),                 # USB-B shell
+                  box(x0, x1, y0 - 40.0, y0 - 4.0, zp - 2.5, zp + 11.0)])             # its cable plug (over the open edge)
+    bx0, bx1, by0, by1 = BREAD
+    bc = ((bx0 + bx1) / 2, (by0 + by1) / 2)
+    bread = box(bc[0] - 43.5, bc[0] + 43.5, bc[1] - 29.5, bc[1] + 29.5, fl + 0.01, fl + 8.5)  # 83.5 x 55.5 + 1.75 tabs
+    ux0, ux1, uy0, uy1 = UC00C
+    ucx = (ux0 + ux1) / 2
+    uc00c = union([box(ucx - 10.6, ucx + 10.6, uy0 + 1.0, uy0 + 40.8, fl + 0.01, fl + 5.6),
+                   box(ucx - 6.0, ucx + 6.0, uy0 + 40.8, uy0 + 64.0, fl + 1.0, fl + 9.0),     # micro-USB plug (front)
+                   box(ucx - 8.0, ucx + 8.0, uy0 - 16.0, uy0 + 1.0, fl + 1.5, fl + 8.0)])     # jumper plugs (back)
+    parts_e = {"DE10-Lite with its VGA and USB-B shells and the USB cable": de10,
+               "400-point breadboard at clone maximum, with tabs": bread,
+               "UC00C with both plugs": uc00c}
+    for name, mm in parts_e.items():
+        v = vol(mm ^ (tr + fr + ft))
+        check("%s: touches nothing" % name, v < 1e-3, "%.3f mm3" % v)
+    names = list(parts_e)
     for i in range(len(names)):
         for j in range(i + 1, len(names)):
-            gp = placed[names[i]].min_gap(placed[names[j]], 20.0)
-            check("%s / %s do not touch" % (names[i].split(" ")[0], names[j].split(" ")[0]), gp > 1.0, "gap %.1f mm" % gp)
+            gp = parts_e[names[i]].min_gap(parts_e[names[j]], 30.0)
+            check("%s / %s apart" % (names[i].split(" ")[0], names[j].split(" ")[0]), gp >= 2.0, "gap %.1f mm" % gp)
     # 7. bed fit and spacing
     allbb = [p.bounding_box() for _, p in plate_parts]
     x0 = min(b[0] for b in allbb); y0 = min(b[1] for b in allbb)
@@ -570,8 +636,8 @@ def main():
     pf = place_frame(fr)
     bbf = pf.bounding_box()
     ftr, trr = ft.rotate((0, 0, 90)), tr.rotate((0, 0, 90))
-    pft = place_flat(ftr, 28.0, 80.0)
-    ptr = place_flat(trr, 28.0, 80.0 + (ftr.bounding_box()[4] - ftr.bounding_box()[1]) + 6.0)
+    pft = place_flat(ftr, 28.0, 76.0)
+    ptr = place_flat(trr, 28.0, 76.0 + (ftr.bounding_box()[4] - ftr.bounding_box()[1]) + 6.0)
     plate = [("frame", pf), ("footing", pft), ("tray", ptr)]
     write_3mf(os.path.join(OUT, "lanex_gantry_plate.3mf"), plate)
     for name, m in plate:

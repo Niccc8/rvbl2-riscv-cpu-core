@@ -10,8 +10,8 @@ roadside cabinet, and holds the DE10-Lite, the breadboard and the USB-UART in th
 
 | File (`print/`) | What | A1 time | PLA |
 | --- | --- | --- | --- |
-| `LaneX_gantry_FIT_TEST_A1.gcode.3mf` | **Print this first.** The sensor pod, one post foot with its tenon, one socket | 1 h 15 min | 26 g |
-| `LaneX_gantry_A1.gcode.3mf` | The whole gantry: frame, left footing, cabinet tray, one plate | 7 h 27 min | 212 g |
+| `LaneX_gantry_A1.gcode.3mf` | **The whole gantry**: frame, left footing, cabinet tray, one plate | 7 h 21 min | 211 g |
+| `LaneX_gantry_FIT_TEST_A1.gcode.3mf` | Optional: the (revised) sensor pod, one post foot, one socket | 1 h 14 min | 26 g |
 
 Both are sliced with **your own Bambu Studio settings** (taken from your traffic-light job): Bambu
 Lab A1, 0.4 mm nozzle, 0.20 mm Standard, Generic PLA, **Textured PEI plate**. Changes from those
@@ -25,15 +25,35 @@ If the printer refuses the file (it was sliced in OrcaSlicer 2.4.2, the open-sou
 Studio): open `LaneX_gantry_BambuStudio_project.3mf` in Bambu Studio, choose your A1 / 0.20 mm
 Standard / Generic PLA, Slice, then Export plate sliced file. The STL files are there too.
 
-## The fit test (5 minutes with the pieces)
+## What the first fit test (12 Oct) changed
 
-1. **The sensor:** plug the four jumpers onto its pins first. Hold it face down (the two silver
-   cans pointing down, the pins towards you) and slide it into the pod from the front. The cans run
-   in the two U-slots; push until they stop at the end of the slots. The board clicks over a small
-   bump at the front edge. It should sit flat and not slide out when you tilt the pod.
-2. **The joint:** push the post foot's tenon into the socket and press down. It should wedge tight
-   with no wobble at all, about 1 mm before the post's shoulder touches the socket top. That small
-   gap is by design: it's what makes the joint play-free.
+The tenon and socket fitted. The sensor pod did not, because this HC-SR04 differs from its
+datasheet drawing. The design now follows the board itself (measured on the fit-test photos):
+
+| Found | Cause | Now |
+| --- | --- | --- |
+| The crystal (silver oval) was blocked by two tabs in the middle | It lies **across** the board (≈11.5 mm) at the edge opposite the header; the slot was 6.4 mm | A 15 mm slot the full depth of the pod; the middle tabs are gone |
+| The sensor would not push in | A chip on the back runs to within ~0.5 mm of the board's end, under a 1.2 mm ledge with 0.8 mm headroom | No ledges: one full-width pocket, 7.1 mm tall (board 1.6 + 5.5 headroom; chips are 2 mm) |
+| Tight overall | 0.35 mm at the ends, 0.6 mm round the transducers | 0.6 mm at the ends, 0.8 mm round the transducers |
+| The header jammed under the roof | Its pins stand **straight up** from the back, and the plugs on top of them make a 16 mm stack | An open notch over the header: the pins and plugs stand up in front of the beam |
+| A slot in the pod's top | The wire channel above was cut too far down | The channel now stops above the pod |
+
+The checks now model this board (crystal across, chips at the ends, upright or bent header, and
+every part at its tolerance extremes) and slide it in from 40 mm out at each size. Replayed
+against the pod you printed, the same model collides with the middle tabs 19.5 mm from home, as
+yours did. The new pod clears every case.
+
+## Fitting the sensor
+
+1. Plug the four jumpers onto its pins first.
+2. Hold it face down: the two silver cans pointing down, the header edge towards you. Its pins and
+   plugs point up.
+3. Slide it into the pod from the front. The cans run in the two U-slots until they stop at the end;
+   the plugs stand up through the open notch in front of the beam. The board passes a small bump
+   at each end of the opening (a light click) that keeps it from sliding out.
+4. **The joint:** push each tenon into its socket and press down. It wedges tight with no wobble,
+   about 0.7 mm before the post's shoulder touches the socket top. That small gap is deliberate: it's
+   what makes the joint play-free (your fit test confirmed it).
 
 | If | Do |
 | --- | --- |
@@ -47,17 +67,23 @@ Standard / Generic PLA, Slice, then Export plate sliced file. The STL files are 
 2. **Feet:** stand the frame up and push its two tenons into the footing (the side with the coin
    cups) and the tray. Press down firmly on top of each post; the wedges lock.
    To take it apart, rock a footing gently while pulling it down.
-3. **Sensor:** as in the fit test: jumpers on first, then slide it into the pod from the front.
+3. **Sensor:** as above: jumpers on first, then slide it into the pod from the front.
 4. **Wires:** the channel on the front face takes the four jumpers. Press them in with a fingernail
-   and they stay in (the channel is narrower at its mouth). The route: up from the pod into the short
-   channel above it, along the beam, round the corner, down the right post, over the groove in the
-   socket boss, into the tray.
+   and they stay in (the channel is narrower at its mouth). The route: from the plugs, bend the
+   wires back into the short channel just above the pod, then along the beam, round the corner,
+   down the right post, over the groove in the socket boss, into the tray.
    The route is **442 mm** from the sensor plugs to the breadboard, so use **50 cm female-to-male jumpers**
    (female on the sensor's pins, male into the breadboard), or join a 30 cm and a 20 cm. If you join
    them, stagger the joints so they don't sit side by side in the channel.
-5. **Cabinet tray:** the DE10-Lite on its standoffs between the four corner guards, the 400-point
-   breadboard in its frame, the UC00C in its slot (open at both ends for the USB and the header).
-   Every place is about 1 mm per side larger than the part; nothing is clamped.
+5. **Cabinet tray** (each place sized from the part's real outline, connectors included):
+   - **DE10-Lite**, on its four brass standoffs, between the two pairs of low side rails. Turn it so
+     its **USB-B socket faces the tray's back end** (the end with the "RVBL-2 inside" label), where
+     the cable has room. Its VGA and USB-B shells overhang the board's short edges, so nothing in the
+     tray comes near those edges.
+   - **400-point breadboard** in its frame (88 × 60 mm: room for clones and their joining tabs).
+   - **UC00C** between its two rails, **USB end towards the tray's front edge**; both ends stay clear
+     for the micro-USB plug and the jumper plugs.
+   Nothing is clamped; every part has 1–3 mm to spare.
 6. **Ballast (recommended):** the four cups on the left footing each hold about ten coins. Forty
    50-sen coins double the push it takes to tip it over (see below). A pea of Blu-Tack under each
    footing also stops it sliding.
@@ -68,10 +94,10 @@ Standard / Generic PLA, Slice, then Export plate sliced file. The STL files are 
 
 | | |
 | --- | --- |
-| Sensor height | transducer faces **195 mm** above the table (the lab brief's range is 150–250 mm) |
+| Sensor height | transducer faces **194 mm** above the table (the lab brief's range is 150–250 mm) |
 | Lane | **216 mm** clear between the posts; beam underside 214 mm above the table |
-| Footprint | 200 mm along the road × 361 mm across (footing to tray edge) |
-| Print | one plate, 7 h 27 min, 212 g (your old traffic light: four prints, ~330 g) |
+| Footprint | 200 mm along the road × 365 mm across (footing to tray edge) |
+| Print | one plate, 7 h 21 min, 211 g (your old traffic light: four prints, ~330 g) |
 
 ### Why it won't wobble or tip
 
@@ -85,8 +111,8 @@ push at the top of the beam that tips it over:
 
 | | Mass | Push to tip it forward | Leans before tipping |
 | --- | --- | --- | --- |
-| This gantry, empty tray, no coins (worst case) | 221 g | 0.89 N (a 90 g weight) | 51° |
-| This gantry + 40 coins in the cups | 448 g | **1.79 N** (182 g) | 64° |
+| This gantry, empty tray, no coins (worst case) | 220 g | 0.87 N (an 89 g weight) | 50° |
+| This gantry + 40 coins in the cups | 446 g | **1.78 N** (181 g) | 64° |
 | Your previous stand (estimated from its files) | ~300 g | 0.74 N | 36° |
 
 The DE10-Lite and breadboard in the tray add more. Sideways it's even steadier: the posts are
@@ -101,15 +127,19 @@ A wider 45° cone just grazes the bosses' lane-side edges at table level. Those 
 
 ## What the checks prove (`gantry_cad.py`, every run)
 
-- The sensor fits at home, nominal and at the tolerance corners: transducer pitch 25.4 and 26.6 mm,
-  board 44.6 and 45.4 mm long.
-- It slides in from the front without touching anything (swept in 0.5 mm steps); the detent stops it
-  sliding out; the floor holds it.
+- The sensor, modelled as photographed (crystal across, chips to the ends, solder tails, upright or
+  bent header with plugs), fits at home **and** slides in from 40 mm out (0.5 mm steps) without
+  touching anything, in 10 cases: nominal, transducer pitch 25.4 / 26.6, board 45.5 × 20.5 and
+  44.5 × 19.5, transducers 9.6 / 10.4 mm from the back edge, 16.2 mm transducers, a 12.2 mm crystal.
+- Pod clearances: 0.6 mm at the ends, 0.8 mm round the transducers, 1.6 mm each side of the crystal,
+  3.5 mm over the chips, 1.2 mm behind the board. The detent stops a 1.5 mm pull; the floor holds it.
 - Nothing is inside the 30° acoustic cone.
 - The wedge tenons lock with zero play, 0.67 mm before the shoulders land; nothing else touches on
   the way in.
-- The DE10-Lite (97.5 × 80), a 400-point breadboard at clone maximum (83.5 × 55.5) and the UC00C fit
-  their places with 0.75–1.25 mm per side, apart from each other.
+- The DE10-Lite (97.5 × 80, on standoffs as low as 6 mm, with its pin tails, its VGA and USB-B shells
+  overhanging the short edges, and the USB cable plug), a 400-point breadboard at clone maximum
+  with its tabs (87 × 59), and the UC00C with its micro-USB plug and jumper plugs touch nothing in
+  the tray, and stay 8–30 mm apart.
 - Every part, and the fit-test pieces, print with **zero unsupported area** on every 0.2 mm layer;
   everything fits the A1 bed 6 mm from the edges, clear of its front calibration line; each part is
   one closed solid.

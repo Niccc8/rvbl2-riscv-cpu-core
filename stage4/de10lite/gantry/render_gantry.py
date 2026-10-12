@@ -45,25 +45,30 @@ def zup_to_gltf(m):
 
 
 def sensor_parts():
-    y0 = g.YB0
-    pcb = g.box(-g.BOARD_L / 2, g.BOARD_L / 2, y0, y0 + g.BOARD_W, g.Z_PCB_FRONT, g.Z_PCB_BACK)
-    cans = g.union([g.M.cylinder(g.CAN_H, g.CAN_D / 2).translate((cx, y0 + g.BOARD_W / 2, g.Z_PCB_FRONT - g.CAN_H))
+    """The HC-SR04 as photographed: header on the back, pins upright, jumper plugs on top."""
+    lead = g.CAN_Y - 10.0
+    trail = lead + g.BOARD_W
+    zf, zb = g.Z_PCB_FRONT, g.Z_PCB_BACK
+    pcb = g.box(-g.BOARD_L / 2, g.BOARD_L / 2, lead, trail, zf, zb)
+    cans = g.union([g.M.cylinder(g.CAN_H, g.CAN_D / 2).translate((cx, g.CAN_Y, zf - g.CAN_H))
                     for cx in (-g.CAN_PITCH / 2, g.CAN_PITCH / 2)])
-    pins = g.union([g.box(x - 0.32, x + 0.32, y0 + g.BOARD_W - 1.3, y0 + g.BOARD_W + 8.5, g.Z_PCB_BACK + 1.0, g.Z_PCB_BACK + 1.64)
-                    for x in (-3.81, -1.27, 1.27, 3.81)])
-    plugs = g.union([g.box(x - 1.27, x + 1.27, y0 + g.BOARD_W + 2.0, y0 + g.BOARD_W + 16.0, g.Z_PCB_BACK + 0.05, g.Z_PCB_BACK + 2.59)
-                     for x in (-3.81, -1.27, 1.27, 3.81)])
+    xs = (-3.81, -1.27, 1.27, 3.81)
+    pins = g.union([g.box(-5.1, 5.1, trail - 2.5, trail, zb, zb + 2.5)] +
+                   [g.box(x - 0.32, x + 0.32, trail - 1.59, trail - 0.95, zb, zb + 8.5) for x in xs])
+    plugs = g.union([g.box(x - 1.27, x + 1.27, trail - 2.54, trail, zb + 2.6, zb + 16.6) for x in xs])
     return pcb, cans, pins, plugs
 
 
 def wires():
-    """Four jumper wires: out of the plugs, up the drop channel, along the beam, down the right post."""
-    pts = [(0, g.YB0 + g.BOARD_W + 16.0, g.Z_PCB_BACK + 1.3), (0, g.YB0 + g.BOARD_W + 24, g.Z_PCB_BACK + 4),
-           (0, g.T - 3.5, g.ZB + 2), (0, g.T - 3.5, g.CH_Z), (g.XC - g.CH_R, g.T - 3.5, g.CH_Z),
-           (g.XC, g.T - 3.5, g.CH_Z - g.CH_R), (g.XC, g.T - 3.5, 0), (g.XC, 19, -1.5), (g.XC, 19, -9),
-           (g.XC + 2, 30, -10.6), (g.XC + 5, 52, -10.6)]
+    """Four jumper wires: up out of the plugs, back into the drop channel, along the beam, down the right post."""
+    yp = g.POD_Y - 1.27
+    zt = g.Z_PCB_BACK + 16.6
+    pts = [(0, yp, zt), (0, yp, g.ZB + 14), (0, g.T - 3.5, g.ZB + 18), (0, g.T - 3.5, g.CH_Z),
+           (g.XC - g.CH_R, g.T - 3.5, g.CH_Z), (g.XC, g.T - 3.5, g.CH_Z - g.CH_R), (g.XC, g.T - 3.5, 0),
+           (g.XC, 19, -1.5), (g.XC, 19, -g.H_BOSS + g.TRAY_FLOOR + 3), (g.XC + 15, 34, -g.H_BOSS + g.TRAY_FLOOR + 1.0),
+           (g.XC + 30, 40, -g.H_BOSS + g.TRAY_FLOOR + 9.5)]
     out = []
-    for k, dx in enumerate((-1.6, -0.55, 0.55, 1.6)):
+    for dx in (-1.6, -0.55, 0.55, 1.6):
         segs = []
         for (x0, y0, z0), (x1, y1, z1) in zip(pts[:-1], pts[1:]):
             a = np.array([x0 + dx, y0, z0])
@@ -71,21 +76,17 @@ def wires():
             d = b - a
             L = np.linalg.norm(d)
             c = g.M.cylinder(L, 0.6, 0.6, 8)
-            # orient +Z onto d
-            z = np.array([0, 0, 1.0])
             u = d / L
+            z = np.array([0, 0, 1.0])
             ax = np.cross(z, u)
-            s, cth = np.linalg.norm(ax), float(np.dot(z, u))
-            if s > 1e-9:
-                ang = np.degrees(np.arctan2(s, cth))
-                k_ = ax / s
-                # Rodrigues -> 4x3 matrix for transform()
-                K = np.array([[0, -k_[2], k_[1]], [k_[2], 0, -k_[0]], [-k_[1], k_[0], 0]])
-                R = np.eye(3) + np.sin(np.radians(ang)) * K + (1 - np.cos(np.radians(ang))) * K @ K
+            sn, cs = np.linalg.norm(ax), float(np.dot(z, u))
+            if sn > 1e-9:
+                k = ax / sn
+                K = np.array([[0, -k[2], k[1]], [k[2], 0, -k[0]], [-k[1], k[0], 0]])
+                R = np.eye(3) + sn * K + (1 - cs) * K @ K
             else:
-                R = np.eye(3) if cth > 0 else np.diag([1, -1, -1])
-            T = np.hstack([R, a.reshape(3, 1)])
-            segs.append(c.transform(T.tolist()))
+                R = np.eye(3) if cs > 0 else np.diag([1, -1, -1])
+            segs.append(c.transform(np.hstack([R, a.reshape(3, 1)]).tolist()))
             segs.append(g.M.sphere(0.6, 8).translate(tuple(b)))
         out.append(g.union(segs))
     return out
@@ -95,14 +96,15 @@ def assembly():
     fr, ft, tr = g.frame(), g.footing(), g.tray()
     pcb, cans, pins, plugs = sensor_parts()
     base_z = -g.H_BOSS + g.TRAY_FLOOR
-    x0, x1, y0, y1 = g.DE10
-    de10 = g.box(x0 + 1, x1 - 1, y0 + 1, y1 - 1, base_z + 10, base_z + 11.6)            # on its 10 mm standoffs
-    stand = g.union([g.M.cylinder(10, 1.8).translate((x, y, base_z)) for x in (x0 + 5, x1 - 5) for y in (y0 + 5, y1 - 5)])
-    hdr = g.box(x1 - 9, x1 - 4, y0 + 20, y0 + 72, base_z + 11.6, base_z + 20)                # its GPIO header
+    x0, x1, y0, y1 = g.DE10_PCB
+    de10 = g.box(x0, x1, y0, y1, base_z + 10, base_z + 11.6)                                   # on its standoffs
+    stand = g.union([g.M.cylinder(10, 2.6).translate((x, y, base_z)) for x in (x0 + 4, x1 - 4) for y in (y0 + 4, y1 - 4)])
+    hdr = g.box(x1 - 9, x1 - 4, y0 + 20, y0 + 72, base_z + 11.6, base_z + 20)                  # its GPIO header
     bx0, bx1, by0, by1 = g.BREAD
-    bread = g.box(bx0 + 0.4, bx1 - 0.4, by0 + 0.4, by1 - 0.4, base_z, base_z + 8.5)
+    bread = g.box(bx0 + 2.75, bx1 - 2.75, by0 + 2.75, by1 - 2.75, base_z, base_z + 8.5)          # 82.5 x 54.5
     ux0, ux1, uy0, uy1 = g.UC00C
-    uc = g.box(ux0 + 0.4, ux1 - 0.4, uy0 + 0.3, uy1 - 0.3, base_z, base_z + 1.6)
+    ucx = (ux0 + ux1) / 2
+    uc = g.box(ucx - 10.6, ucx + 10.6, uy0 + 2.6, uy0 + 42.4, base_z, base_z + 1.6)
     table = g.box(-150, 240, -95, 110, -g.H_BOSS - 3, -g.H_BOSS)
     m = Model("lanex_gantry")
     for mat, part in ((PLA, fr), (PLA, ft), (PLA, tr), (PCB, pcb), (CAN, cans), (PIN, pins), (PLUG, plugs),
@@ -127,8 +129,8 @@ def plate_view():
     fr, ft, tr = g.frame(), g.footing(), g.tray()
     pf = g.place_frame(fr)
     ftr, trr = ft.rotate((0, 0, 90)), tr.rotate((0, 0, 90))
-    pft = g.place_flat(ftr, 28.0, 80.0)
-    ptr = g.place_flat(trr, 28.0, 80.0 + (ftr.bounding_box()[4] - ftr.bounding_box()[1]) + 6.0)
+    pft = g.place_flat(ftr, 28.0, 76.0)
+    ptr = g.place_flat(trr, 28.0, 76.0 + (ftr.bounding_box()[4] - ftr.bounding_box()[1]) + 6.0)
     bed = g.box(0, 256, 0, 256, -2, 0)
     m = Model("plate")
     for mat, part in ((PLA, pf), (PLA, pft), (PLA, ptr), (PLA_DARK, bed)):
