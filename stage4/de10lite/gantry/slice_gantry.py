@@ -73,7 +73,7 @@ def slice_project(proj, outdir, target):
     if os.path.exists(os.path.join(outdir, target)):
         os.remove(os.path.join(outdir, target))
     r = subprocess.run([ORCA, "--slice", "0", "--arrange", "0", "--export-3mf", target, "--outputdir", outdir, proj],
-                       capture_output=True, text=True, timeout=900)
+                       capture_output=True, text=True, timeout=900, cwd=outdir)   # its log stays in out/
     loose = os.path.join(outdir, "plate_1.gcode")
     if os.path.exists(loose):
         os.remove(loose)
