@@ -11,6 +11,7 @@
 //   U <mm>           the height of what is under the sensor (0: the bare floor)
 //   Y <n>            wait for n more ultrasonic readings
 //   Z <0|1>          the sensor unplugged / plugged in
+//   G <0|1> <seed>   a noisy sensor off / on (see the HC-SR04 model)
 //   W <n>            wait n board milliseconds
 //   M                wait until the board is in lane mode, then 5 ms more
 //   N                wait until the board shows the chip's ID at boot, then 5 ms more
@@ -56,12 +57,29 @@ module tb_board;
     reg        echo = 1'b0;
     wire [47:0] hex_n;
     wire [9:0]  ledr;
-    wire       g, w, r, c, bz;
+    wire       g, w, r, c, bz, bt;
 
     lanex_board #(.CLK_HZ(CLK_HZ), .BAUD(BAUD), .TICK_DIV(TICK_DIV), .SONAR_PERIOD(SONAR_PERIOD)) dut (
         .clk(clk), .rst(rst), .sw(sw), .key1_n(key1_n), .sonar_echo(echo), .sonar_trig(trig),
         .host_rx(host_rx), .host_tx(host_tx), .hex_n(hex_n), .ledr(ledr),
-        .lamp_green(g), .lamp_white(w), .lamp_red(r), .lamp_closed(c), .buzzer(bz));
+        .lamp_green(g), .lamp_white(w), .lamp_red(r), .lamp_closed(c), .buzzer(bz), .buzzer_tone(bt));
+
+    // ---- the passive buzzer's tone: only while the buzzer sounds, and every half period
+    // exactly CLK_HZ/4800 clocks while it does (a beep starts with a full high half) ----
+    localparam integer TONE_HALF = CLK_HZ / 4800;
+    wire    bon = bz ^ dut.swd[6];             // the buzzer sounds (whatever SW6's polarity)
+    reg     bt_q = 1'b0, bon_q = 1'b0;
+    integer tone_run = 0, tone_halves = 0, tone_bad = 0;
+    always @(posedge clk) begin
+        bt_q <= bt; bon_q <= bon;
+        if (bt && !bon) tone_bad <= tone_bad + 1;                         // a tone in silence
+        if (bon && bon_q && bt != bt_q) begin                             // a half period ended
+            tone_halves <= tone_halves + 1;
+            if (tone_run != TONE_HALF) tone_bad <= tone_bad + 1;
+        end
+        if (bon && bon_q && tone_run > TONE_HALF) tone_bad <= tone_bad + 1; // stuck while it sounds
+        tone_run <= (bt != bt_q) ? 1 : tone_run + 1;
+    end
 
     integer cyc = 0;
     always @(posedge clk) cyc <= cyc + 1;
@@ -94,9 +112,26 @@ module tb_board;
     // ---- the ultrasonic sensor: an HC-SR04 ----------------------------------
     // After each trigger it sends its burst, then holds Echo high for the round
     // trip: mm x 2 / 343 m/s. Unplugged, the FPGA's weak pull-up holds Echo high.
+    // Noisy (G 1): what a real one does on a desk, every reading drawn at random -
+    //   +/-3 mm of jitter, always;
+    //   7 %: it misses the nearest echo and hears a farther one (a footing, the
+    //        table's edge), 12-30 mm past the floor - in bursts of 1-3 readings;
+    //   3 %: a stray near echo (a post), 40-60 % of the way down;
+    //   2 %: no echo at all; 2 %: Echo held 38 ms (the HC-SR04's own time-out);
+    //   5 %: 1-3 spikes of 1-40 clocks on the Echo wire before the echo, 3 %: a
+    //        1-25 clock drop-out while it is high (the long wire picks things up).
     integer obj_mm = 0;                        // the height of what is under the sensor
     reg     plugged = 1'b1;
-    integer readings = 0, echo_cyc;
+    integer readings = 0, echo_cyc, d_mm, burst = 0, nspk, q;
+    reg     noisy = 1'b0;
+    reg [31:0] rs = 32'h2545F491;
+    function automatic [31:0] xs(input [31:0] x);  // xorshift32
+        reg [31:0] y;
+        begin y = x ^ (x << 13); y = y ^ (y >> 17); xs = y ^ (y << 5); end
+    endfunction
+    task automatic roll(output integer v, input integer n);   // 0 .. n-1
+        begin rs = xs(rs); v = rs % n; end
+    endtask
     initial begin
         #2;
         forever begin
@@ -104,11 +139,38 @@ module tb_board;
             readings = readings + 1;
             if (plugged) begin
                 echo = 1'b0;
+                d_mm = FLOOR_MM - obj_mm;
+                if (noisy) begin
+                    roll(q, 7); d_mm = d_mm + q - 3;                       // jitter
+                    roll(q, 100);
+                    if (burst > 0) begin burst = burst - 1; roll(q, 19); d_mm = FLOOR_MM + 12 + q; q = 200; end
+                    if (q < 7) begin roll(burst, 3); roll(q, 19); d_mm = FLOOR_MM + 12 + q; end
+                    else if (q < 10) begin roll(q, 21); d_mm = FLOOR_MM * (40 + q) / 100; end
+                    else if (q < 12) d_mm = -1;                             // no echo
+                    else if (q < 14) d_mm = -2;                             // the 38 ms time-out
+                    roll(q, 100);
+                    if (q < 5) begin                                        // spikes before the echo
+                        roll(nspk, 3);
+                        repeat (nspk + 1) begin
+                            roll(q, CLK_HZ / 8000); repeat (q + 1) @(posedge clk);
+                            roll(q, 40); echo = 1'b1; repeat (q + 1) @(posedge clk); echo = 1'b0;
+                        end
+                    end
+                end
                 repeat (CLK_HZ / 2000) @(posedge clk);          // 0.5 ms: the 40 kHz burst
-                echo_cyc = (FLOOR_MM - obj_mm) * 2 * (CLK_HZ / 1000) / 343;
-                echo = 1'b1;
-                repeat (echo_cyc) @(posedge clk);
-                echo = 1'b0;
+                if (d_mm == -2) begin
+                    echo = 1'b1; repeat (CLK_HZ / 1000 * 38) @(posedge clk); echo = 1'b0;
+                end else if (d_mm >= 0) begin
+                    echo_cyc = d_mm * 2 * (CLK_HZ / 1000) / 343;
+                    echo = 1'b1;
+                    roll(q, 100);
+                    if (noisy && q < 3) begin                               // a drop-out while high
+                        roll(q, echo_cyc / 2 + 1); repeat (q + 1) @(posedge clk);
+                        echo = 1'b0; roll(q, 25); repeat (q + 1) @(posedge clk); echo = 1'b1;
+                        repeat (echo_cyc / 2) @(posedge clk);
+                    end else repeat (echo_cyc) @(posedge clk);
+                    echo = 1'b0;
+                end
             end
         end
     end
@@ -141,10 +203,13 @@ module tb_board;
     reg running;
     reg [7:0] cmd;
     // watchdog: no command may take more than 40 board seconds plus 20 M clocks (the
-    // UART and settle times do not shrink with TICK_DIV): a missed event ends the run
+    // UART and settle times do not shrink with TICK_DIV): a missed event ends the run.
+    // Y counts readings, whose period does not shrink either: each reading is progress.
     integer guard = 0;
+    reg     trig_q = 1'b0;
     always @(posedge clk) begin
-        guard <= guard + 1;
+        trig_q <= trig;
+        guard <= (cmd == "Y" && trig_q && !trig) ? 0 : guard + 1;
         if (guard == 40000 * TICK_DIV + 20000000) begin
             $fwrite(lf, "TIMEOUT %0d command '%c'\n", cyc, cmd);
             $fclose(lf);
@@ -172,6 +237,7 @@ module tb_board;
                 "U": begin n = $fscanf(sf, " %d", v); obj_mm = v; end
                 "Y": begin n = $fscanf(sf, " %d", v); k = readings + v; while (readings < k) @(posedge clk); end
                 "Z": begin n = $fscanf(sf, " %d", v); plugged = v[0]; echo = !v[0]; end
+                "G": begin n = $fscanf(sf, " %d %d", v, k); noisy = v[0]; rs = k + 32'h9E3779B9; end
                 "R": begin rst = 1'b1; repeat (100) @(posedge clk); rst = 1'b0; end
                 "F": begin
                          n = $fscanf(sf, " %d", v);
@@ -194,6 +260,7 @@ module tb_board;
                          $fwrite(lf, "D %0d %0s %012x %03x %02x %0d\n", cyc, tag, hex_n, ledr, {bz, c, r, w, g}, dut.dec_ms);
                      end
                 "E": begin
+                         $fwrite(lf, "TONE %0d %0d\n", tone_halves, tone_bad);
                          $fwrite(lf, "END %0d\n", cyc);
                          $fclose(lf);
                          $display("tb_board: done at cycle %0d", cyc);

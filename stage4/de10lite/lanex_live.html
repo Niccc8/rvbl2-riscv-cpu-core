@@ -1025,5 +1025,16 @@ var DEMO = [[900, "4904e90ade56a319"], [450, "4104b7f624626edf"], [3200, "560000
   if (location.hash === "#demo") startDemo();       // lanex_live.html#demo: the demo at once
 })();
 </script>
+<script>
+// This file is the template: its placeholders above do not run. Say so, instead of a dead page.
+if (typeof LiveCore === "undefined" || typeof BOARD === "undefined") {
+  var w = document.createElement("div");
+  w.setAttribute("style", "position:fixed;inset:0;z-index:99;display:grid;place-items:center;padding:24px;" +
+    "background:rgba(10,14,20,.92);color:#fff;font:600 20px/1.5 system-ui,sans-serif;text-align:center");
+  w.innerHTML = "This is the dashboard's template, not the dashboard.<br>" +
+    "Open <code>stage4\\de10lite\\lanex_live.html</code> (one folder up) in Chrome or Edge.";
+  document.body.appendChild(w);
+}
+</script>
 </body>
 </html>

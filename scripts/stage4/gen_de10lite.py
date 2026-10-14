@@ -370,15 +370,16 @@ def header_pin(g):
 
 # What we wire to the header: (GPIO index, direction, signal, connects to, colour)
 WIRES = [
-    (0, "in", "Host link: laptop -> board (FPGA receives)", "USB-UART TXD", "#2563eb"),
-    (1, "out", "Host link: board -> laptop (the chip's records)", "USB-UART RXD", "#16a34a"),
+    (0, "in", "Host link: laptop -> board (FPGA receives)", "USB-UART TXD / TXO", "#2563eb"),
+    (1, "out", "Host link: board -> laptop (the chip's records)", "USB-UART RXD / RXI", "#16a34a"),
     (2, "in", "Ultrasonic Echo (5 V, through the divider)", "HC-SR04 Echo via 1 kΩ; 2 kΩ to GND", "#ea580c"),
     (3, "out", "Ultrasonic Trig", "HC-SR04 Trig", "#d97706"),
     (4, "out", "Green lamp: charged", "green LED + 330 Ω", "#22c55e"),
     (5, "out", "White lamp: camera flash", "white LED + 100 Ω", "#a3a3a3"),
     (6, "out", "Red lamp: alarm", "red LED + 330 Ω", "#dc2626"),
-    (7, "out", "Buzzer", "buzzer module IN/I/O", "#7c3aed"),
+    (7, "out", "Buzzer, a level (active buzzer)", "active buzzer + (e.g. TMB12A05), or a module's I/O", "#7c3aed"),
     (8, "out", "Lane-closed lamp (optional)", "yellow LED + 330 Ω", "#eab308"),
+    (9, "out", "Buzzer, a 2.4 kHz tone (passive buzzer)", "330 Ω, then the passive buzzer", "#a855f7"),
 ]
 PULLUPS = [0, 2]           # inputs that read 'idle' when nothing is plugged in (Echo high = no reading)
 

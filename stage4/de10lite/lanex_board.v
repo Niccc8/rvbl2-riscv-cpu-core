@@ -50,7 +50,8 @@ module lanex_board #(
     output wire        lamp_white,
     output wire        lamp_red,
     output wire        lamp_closed,
-    output wire        buzzer
+    output wire        buzzer,       // a level: an active buzzer (it has its own oscillator)
+    output wire        buzzer_tone   // a 2.4 kHz square wave while it sounds: a passive buzzer
 );
     localparam integer CPB = (CLK_HZ + BAUD / 2) / BAUD;   // the chip UART's own formula
     localparam [2:0] PRESET_CLONE = 3'd5;
@@ -243,45 +244,126 @@ module lanex_board #(
     wire in_banner = (mode == M_BOOT) && (bphase == B_BANNER);
 
     // ------------------------------------------------------------------
-    // The lane: one ultrasonic sensor above the lane, looking down. The
-    // floor is the farthest distance it has measured (two readings that
-    // agree); an object under it is a vehicle when it stands PRESENT_MM
-    // above the floor, and a lorry (class 3) when it reaches TALL_MM - the
-    // way overhead gantry profilers classify by height. In manual mode
-    // (SW8) KEY1 is the vehicle instead.
+    // The lane: one ultrasonic sensor above the lane, looking down. An
+    // HC-SR04 is noisy - it jitters a few mm, now and then misses the floor's
+    // echo and hears a farther one (a footing, the table's edge), hears a post,
+    // or misses altogether - so nothing here trusts a single reading:
+    //  1. each reading is the median of the last three: a lone stray never counts;
+    //  2. the floor is learnt by agreement - 8 filtered readings within
+    //     +/- FLOOR_TOL (0.5 s). Whenever 16 readings (1 s) agree on a FARTHER
+    //     distance it is re-learnt: a floor learnt with a toy underneath heals
+    //     itself. A floor learnt too FAR is the dangerous one (the empty lane
+    //     would stand above it: a phantom vehicle), so the lane is ARMED only
+    //     after 4 filtered readings of the floor itself; until then no vehicle
+    //     can arrive, and 16 readings agreeing on a NEARER distance are the
+    //     floor. Every re-learnt floor disarms the lane. Armed, it is never
+    //     re-learnt nearer on its own (that could swallow a parked toy), except
+    //     by rule 4;
+    //  3. an armed lane: a vehicle arrives when 4 filtered readings in a row (0.25 s) stand
+    //     PRESENT_MM above the floor - even three stray echoes in a row cannot; a lost
+    //     echo (farther than the floor) in between neither counts nor breaks the run -
+    //     and leaves after 8 readings of the floor itself (0.5 s; a reading farther
+    //     than the floor is a lost echo and counts for nothing): in between, nothing changes,
+    //     so nothing near the threshold can make it chatter. Its height (shown,
+    //     and a lorry - class 3 - at TALL_MM, the way overhead gantry profilers
+    //     classify) is the lowest of the last three filtered heights: a stray echo
+    //     can never make a car a lorry. A toy pushed through at a hand's pace is
+    //     under it for 15+ readings;
+    //  4. a 'vehicle' never taller than LOW_MM that stays 30 s is the floor:
+    //     re-learnt (the last guard against a wrong floor).
+    // In manual mode (SW8) KEY1 is the vehicle instead.
     // ------------------------------------------------------------------
+    localparam integer CLEAR_MM = 8, FLOOR_TOL = 6, LOW_MM = 25;
     wire        s_valid, s_ok;
     wire [11:0] s_mm;
     lx_sonar #(.CLK_HZ(CLK_HZ), .PERIOD(SONAR_PERIOD)) u_sonar (
         .clk(clk), .rst(rst), .echo(echo_s), .trig(sonar_trig), .valid(s_valid), .ok(s_ok), .mm(s_mm));
-    reg  [11:0] floor_mm, last_mm, max_mm;
+    reg  [11:0] r1, r2, f_mm;        // the two readings before this one; the filtered reading
+    reg  [1:0]  n_r;                 // how many readings the median has (it needs 2 before the third)
+    reg         f_valid;             // one cycle: f_mm is new
+    reg  [11:0] cand;                // a run of agreeing readings: its running mean ...
+    reg  [4:0]  cand_n;              // ... and its length (16+ is a settled distance)
+    reg  [11:0] floor_mm, max_mm;
     reg         have_floor, occupied;
-    reg  [1:0]  n_occ;               // consecutive readings with something under the sensor
-    reg  [1:0]  n_clear;             // ... and with nothing
-    reg  [4:0]  n_bad;               // ... and with no reading at all (unplugged, nothing echoes)
+    reg         armed;               // the floor itself has been seen since it was learnt
+    reg  [2:0]  n_arm;               // consecutive filtered readings of the floor (4: armed)
+    reg  [14:0] low_ms;              // how long a low, still 'vehicle' has stood there
+    reg  [2:0]  n_occ;               // consecutive filtered readings above PRESENT_MM (4: it has arrived)
+    reg  [3:0]  n_clear;             // ... and below CLEAR_MM (8 = it has left: longer than any burst of strays)
+    reg  [11:0] hf1, hf2;            // the two filtered heights before this one
+    reg  [4:0]  n_bad;               // consecutive no-readings (16 = 1 s: the sensor is gone)
     reg         present, tall;
     reg  [7:0]  clear_ms;
+    wire [11:0] lo2  = (r1 < s_mm) ? r1 : s_mm;
+    wire [11:0] hi2  = (r1 < s_mm) ? s_mm : r1;
+    wire [11:0] med3 = (r2 < lo2) ? lo2 : ((r2 > hi2) ? hi2 : r2);
+    wire        agree = (f_mm <= cand + FLOOR_TOL) && (f_mm + FLOOR_TOL >= cand);
+    wire        farther = (cand >= floor_mm + 12'd4);
+    wire        nearer  = (cand + 12'd4 <= floor_mm);
+    wire        at_floor = (f_mm + CLEAR_MM > floor_mm) && (f_mm <= floor_mm + FLOOR_TOL + 12'd2);
     // P2:P1 = SW2:1 if set (01 van, 10 lorry, 11 motorcycle), else the height
     wire [1:0] code = (swd[2:1] != 2'b00) ? swd[2:1] : (tall ? 2'b10 : 2'b00);
     wire       seen = (chip_pins_in[2:0] == {code, 1'b1});   // the chip has seen this vehicle and its class
     always @(posedge clk) begin
+        f_valid <= 1'b0;
         if (rst) begin
-            floor_mm <= 12'd0; last_mm <= 12'd0; have_floor <= 1'b0;
-        end else if (s_valid && s_ok) begin
-            last_mm <= s_mm;
-            // the floor: the first reading, then any farther one confirmed by the next
-            if (!have_floor) begin floor_mm <= s_mm; have_floor <= 1'b1; end
-            else if (s_mm > floor_mm && (s_mm - last_mm < 12'd10 || last_mm - s_mm < 12'd10) && last_mm > floor_mm)
-                floor_mm <= (s_mm < last_mm) ? s_mm : last_mm;
+            r1 <= 12'd0; r2 <= 12'd0; n_r <= 2'd0; f_mm <= 12'd0; n_bad <= 5'd0;
+            cand <= 12'd0; cand_n <= 5'd0; floor_mm <= 12'd0; have_floor <= 1'b0; low_ms <= 15'd0;
+            armed <= 1'b0; n_arm <= 3'd0;
+        end else begin
+            if (s_valid && !s_ok) begin                    // no reading: one miss changes nothing
+                if (n_bad != 5'd31) n_bad <= n_bad + 5'd1;
+                if (n_bad == 5'd15) begin n_r <= 2'd0; cand_n <= 5'd0; end   // 1 s of none: start afresh
+            end
+            if (s_valid && s_ok) begin                     // 1. the median of three
+                n_bad <= 5'd0;
+                r2 <= r1; r1 <= s_mm;
+                if (n_r == 2'd2) begin f_mm <= med3; f_valid <= 1'b1; end
+                else n_r <= n_r + 2'd1;
+            end
+            if (f_valid) begin                             // 2. runs of agreeing readings
+                if (cand_n != 5'd0 && agree) begin
+                    if (cand_n != 5'd31) cand_n <= cand_n + 5'd1;
+                    cand <= (f_mm >= cand) ? cand + ((f_mm - cand + 12'd2) >> 2)
+                                           : cand - ((cand - f_mm + 12'd2) >> 2);
+                end else begin
+                    cand <= f_mm; cand_n <= 5'd1;
+                end
+            end
+            if (f_valid && have_floor) begin               // the floor itself, 4 in a row: armed
+                if (at_floor) begin
+                    if (n_arm != 3'd4) n_arm <= n_arm + 3'd1;
+                    if (n_arm >= 3'd3) armed <= 1'b1;
+                end else n_arm <= 3'd0;
+            end
+            // every floor below is a new one: the lane is disarmed until it sees it (these come
+            // after the arming above, so they win)
+            if (!have_floor && cand_n >= 5'd8) begin       // the first floor: 8 readings agree
+                floor_mm <= cand; have_floor <= 1'b1; armed <= 1'b0; n_arm <= 3'd0;
+            end else if (have_floor && cand_n >= 5'd16 && farther) begin
+                floor_mm <= cand; armed <= 1'b0; n_arm <= 3'd0;   // 16 agree on a farther floor
+            end else if (have_floor && !armed && !present && cand_n >= 5'd16 && nearer) begin
+                floor_mm <= cand; n_arm <= 3'd0;           // never seen since learnt: it was too far
+            end
+            // 4. a 'vehicle' never taller than LOW_MM, there for 30 s, is the floor itself: once
+            //    the latest readings agree (a stray burst only delays it), they are the floor
+            if (have_floor && present && max_mm < LOW_MM) begin
+                if (tick && low_ms != 15'd32767) low_ms <= low_ms + 15'd1;
+                if (low_ms >= 15'd30000 && cand_n >= 5'd8 && cand < floor_mm) begin
+                    floor_mm <= cand; low_ms <= 15'd0; armed <= 1'b0; n_arm <= 3'd0;
+                end
+            end else low_ms <= 15'd0;
         end
     end
-    wire [11:0] h_now = (have_floor && s_mm < floor_mm) ? floor_mm - s_mm : 12'd0;
-    always @(posedge clk) begin
+    wire [11:0] h_f = (have_floor && f_mm < floor_mm) ? floor_mm - f_mm : 12'd0;
+    wire [11:0] h_lo = (hf1 < hf2) ? hf1 : hf2;
+    wire [11:0] h_min3 = (h_f < h_lo) ? h_f : h_lo;   // the lowest of the last three filtered heights
+    always @(posedge clk) begin                            // 3. arrivals and departures
         if (rst || !lane_mode) begin
             present <= 1'b0; tall <= 1'b0; clear_ms <= 8'd0; occupied <= 1'b0;
-            max_mm <= 12'd0; n_occ <= 2'd0; n_clear <= 2'd0; n_bad <= 5'd0;
+            max_mm <= 12'd0; n_occ <= 3'd0; n_clear <= 4'd0; hf1 <= 12'd0; hf2 <= 12'd0;
         end else if (manual) begin
-            occupied <= 1'b0; n_occ <= 2'd0; n_clear <= 2'd0; n_bad <= 5'd0; tall <= 1'b0;
+            occupied <= 1'b0; n_occ <= 3'd0; n_clear <= 4'd0; tall <= 1'b0;
             if (key1) begin
                 present <= 1'b1; clear_ms <= 8'd0;
             end else if (present && tick) begin
@@ -290,29 +372,32 @@ module lanex_board #(
                 end else clear_ms <= clear_ms + 8'd1;
             end
         end else begin
-            if (s_valid && !s_ok) begin                   // no reading: one miss changes nothing,
-                if (n_bad != 5'd31) n_bad <= n_bad + 5'd1; // 16 in a row (1 s): the sensor is gone
-                if (n_bad == 5'd15) occupied <= 1'b0;
-            end
-            if (s_valid && s_ok) begin                    // a reading
-                n_bad     <= 5'd0;
-                occupied  <= (h_now >= PRESENT_MM);
-                if (h_now >= PRESENT_MM) begin
-                    n_clear <= 2'd0;
-                    if (n_occ != 2'd2) n_occ <= n_occ + 2'd1;
-                    if (n_occ != 2'd0) present <= 1'b1;          // two readings in a row: a vehicle
-                    if (present || n_occ != 2'd0) begin
-                        if (h_now > max_mm) max_mm <= h_now;
-                        if (h_now >= TALL_MM) tall <= 1'b1;      // latched while it is there
-                    end
+            if (s_valid && !s_ok && n_bad == 5'd15) occupied <= 1'b0;
+            if (f_valid) begin
+                occupied <= (armed || present) && (h_min3 >= PRESENT_MM);   // LEDR0: three readings, a real floor
+                hf2 <= hf1; hf1 <= h_f;
+                if (h_f >= PRESENT_MM) begin
+                    n_clear <= 4'd0;
+                    if (n_occ != 3'd4) n_occ <= n_occ + 3'd1;
+                    if (n_occ >= 3'd3 && armed) present <= 1'b1; // four readings in a row: a vehicle
+                    if (h_min3 > max_mm) max_mm <= h_min3;
+                    if (h_min3 >= TALL_MM) tall <= 1'b1;         // latched while it is there
                 end else begin
-                    n_occ <= 2'd0;
-                    if (n_clear != 2'd3) n_clear <= n_clear + 2'd1;
+                    // a reading farther than the floor is a lost echo: it neither ends an
+                    // arrival nor counts towards a departure
+                    if (f_mm <= floor_mm + FLOOR_TOL + 12'd2) n_occ <= 3'd0;
+                    if (h_f < CLEAR_MM) begin
+                        // the floor itself counts towards a departure; a reading FARTHER than
+                        // the floor is a lost echo (an angled roof, a stray), not an empty lane
+                        if (f_mm <= floor_mm + FLOOR_TOL + 12'd2) begin
+                            if (n_clear != 4'd8) n_clear <= n_clear + 4'd1;
+                        end
+                    end else n_clear <= 4'd0;                     // between the thresholds: neither
                 end
             end
-            // three clear readings in a row (or the sensor gone), and the chip has seen it: it has left
-            if (present && (n_clear == 2'd3 || n_bad >= 5'd16) && seen) begin present <= 1'b0; n_clear <= 2'd0; end
-            if (!present && n_occ == 2'd0) begin tall <= 1'b0; max_mm <= 12'd0; end
+            // eight clear readings in a row (or the sensor gone), and the chip has seen it: it has left
+            if (present && (n_clear == 4'd8 || n_bad >= 5'd16) && seen) begin present <= 1'b0; n_clear <= 4'd0; end
+            if (!present && n_occ == 3'd0) begin tall <= 1'b0; max_mm <= 12'd0; end
         end
     end
     wire [3:0] lane_pins = {swd[0], present ? code : 2'b00, present};
@@ -584,6 +669,22 @@ module lanex_board #(
                                           (beep_ms > 10'd100 && beep_ms <= 10'd250)) : 1'b0;
     wire buzz = (lamp_test && phase_ms < 16'd100) || (beep_on && !tour_mode);
     assign buzzer      = (buzz && !swd[7]) ^ swd[6];   // SW7 mutes; SW6 for a low-level-trigger module
+    // A passive buzzer (a bare coil, no oscillator) only clicks on a level: it needs the tone.
+    // 2.4 kHz, the resonance of a 12 mm buzzer; each beep starts a fresh high half, and the
+    // pin rests low, so no current stands in the coil between beeps.
+    localparam integer TONE_HALF = CLK_HZ / 4800;
+    wire       buzz_on = buzz && !swd[7];
+    // not held by rst: the lamp test beeps through a reset, and a held tone would be DC in the coil
+    reg [15:0] tone_cnt = 16'd0;
+    reg        tone_sq = 1'b1;
+    always @(posedge clk) begin
+        if (!buzz_on) begin
+            tone_cnt <= 16'd0; tone_sq <= 1'b1;
+        end else if (tone_cnt == TONE_HALF - 1) begin
+            tone_cnt <= 16'd0; tone_sq <= ~tone_sq;
+        end else tone_cnt <= tone_cnt + 16'd1;
+    end
+    assign buzzer_tone = buzz_on && tone_sq;
     wire tour_lit = tour_mode && tr_show && !tr_done;   // tour: each line's lamps, steady
     wire [3:0] lamps_c = {lamp_test | (tour_mode ? tour_lit && t_lamps[3] : lamps[3]),
                           lamp_test | (tour_mode ? tour_lit && t_lamps[2] : lamps[2] && fresh_ms != 0),
@@ -698,7 +799,9 @@ endmodule
 
 // HC-SR04 ultrasonic ranger: a 12.5 us trigger pulse every PERIOD clocks; the
 // echo stays high for the sound's round trip. mm = cycles x 171.5 m/s / CLK_HZ.
-// No echo within 10 ms, or one longer than 25 ms (over 4 m), is not a reading
+// Echo must hold a level for 1 us before it counts (spikes picked up on the long
+// wire are ignored); no echo within 10 ms, one longer than 25 ms (over 4 m) or
+// shorter than ~118 us (under 2 cm, the HC-SR04's minimum) is not a reading
 // (ok = 0): a missing or unplugged sensor (Echo held high by the pull-up, or
 // low) never reports anything.
 module lx_sonar #(parameter integer CLK_HZ = 31250000, parameter integer PERIOD = CLK_HZ / 16) (
@@ -711,11 +814,22 @@ module lx_sonar #(parameter integer CLK_HZ = 31250000, parameter integer PERIOD 
     localparam integer TRIG_CYC = CLK_HZ / 80000;           // 12.5 us
     localparam integer RISE_MAX = CLK_HZ / 100;             // 10 ms
     localparam integer HIGH_MAX = CLK_HZ / 40;              // 25 ms
+    localparam integer HIGH_MIN = CLK_HZ / 8500;            // ~118 us = 2 cm
+    localparam integer GLITCH   = CLK_HZ / 1000000;         // 1 us
     localparam integer MM_MUL   = (171500 * 1024) / (CLK_HZ / 64);   // mm = cycles x MM_MUL >> 16
     localparam [1:0] S_WAIT = 2'd0, S_TRIG = 2'd1, S_RISE = 2'd2, S_HIGH = 2'd3;
     reg [1:0]  st;
     reg [23:0] per, cnt;
+    reg        ef;                                           // Echo, deglitched
+    reg [7:0]  gcnt;
     wire [33:0] prod = cnt * MM_MUL;
+    always @(posedge clk) begin
+        if (rst) begin
+            ef <= 1'b0; gcnt <= 8'd0;
+        end else if (echo == ef) gcnt <= 8'd0;
+        else if (gcnt >= GLITCH - 1) begin ef <= echo; gcnt <= 8'd0; end
+        else gcnt <= gcnt + 8'd1;
+    end
     always @(posedge clk) begin
         valid <= 1'b0;
         if (rst) begin
@@ -723,16 +837,17 @@ module lx_sonar #(parameter integer CLK_HZ = 31250000, parameter integer PERIOD 
         end else begin
             per <= (per == PERIOD - 1) ? 24'd0 : per + 24'd1;
             case (st)
-                S_WAIT: if (per == 0 && !echo) begin st <= S_TRIG; cnt <= 24'd0; trig <= 1'b1; end
+                S_WAIT: if (per == 0 && !ef) begin st <= S_TRIG; cnt <= 24'd0; trig <= 1'b1; end
                         else if (per == 0) begin valid <= 1'b1; ok <= 1'b0; end   // Echo stuck high
                 S_TRIG: if (cnt == TRIG_CYC) begin trig <= 1'b0; cnt <= 24'd0; st <= S_RISE; end
                         else cnt <= cnt + 24'd1;
-                S_RISE: if (echo) begin cnt <= 24'd0; st <= S_HIGH; end
+                S_RISE: if (ef) begin cnt <= 24'd0; st <= S_HIGH; end
                         else if (cnt == RISE_MAX) begin st <= S_WAIT; valid <= 1'b1; ok <= 1'b0; end
                         else cnt <= cnt + 24'd1;
-                default: if (!echo) begin                   // S_HIGH: the echo has come back
+                default: if (!ef) begin                     // S_HIGH: the echo has come back
                              st <= S_WAIT; valid <= 1'b1;
-                             ok <= 1'b1; mm <= (prod[33:16] > 18'd4095) ? 12'd4095 : prod[27:16];
+                             ok <= (cnt >= HIGH_MIN);
+                             mm <= (prod[33:16] > 18'd4095) ? 12'd4095 : prod[27:16];
                          end else if (cnt == HIGH_MAX) begin st <= S_WAIT; valid <= 1'b1; ok <= 1'b0; end
                          else cnt <= cnt + 24'd1;
             endcase

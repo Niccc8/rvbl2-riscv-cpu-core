@@ -31,8 +31,10 @@ person could see on the displays, LEDs and lamps. Then:
 Scenario families: matrix (every tag preset x vehicle x lane state), host
 (the laptop), tour, edges (vehicle shapes), modes (every mode change and
 mid-vehicle switch change), faults (sensor lost, parked vehicle, a silent chip
-and the watchdog), chaos (seeded random sessions: switches, KEY0/KEY1, the
-sensor, the laptop, the tour, all at random), glitch (real time).
+and the watchdog), noise (a real HC-SR04's noise: minutes of an empty lane with
+no phantom vehicle, toys decided right, the floor healing), chaos (seeded random
+sessions: switches, KEY0/KEY1, the sensor, the laptop, the tour, all at random;
+5 and 6 on the noisy sensor), glitch (real time).
 
 Passes: "full" (a board ms = 3,125 clocks: time runs 10x fast, every check but flicker),
 "stress" (100 clocks: frames outlast vehicles; model comparison only), "real"
@@ -59,7 +61,8 @@ FARES = L.DEFAULT_FARES
 CAR_MM, LORRY_MM = 40, 90         # toy heights above the floor (the board's lorry threshold: 60 mm)
 SW_MUTE, SW_LOWBUZZ = 1 << 7, 1 << 6
 DEC_MS, FARE_FROM = 4000, 2500    # lanex_board.v: a decision's word, then its fare
-ALL = ["matrix", "host", "tour", "edges", "modes", "faults", "chaos1", "chaos2", "chaos3", "chaos4"]
+ALL = ["matrix", "host", "tour", "edges", "modes", "faults", "noise", "chaos1", "chaos2", "chaos3", "chaos4",
+       "chaos5", "chaos6"]
 # pass: (tick, sonar period in clocks, checks: "all" | "model", scenarios)
 PASSES = {
     "full":   (3125, 50000, "snap", ALL),
@@ -93,7 +96,7 @@ class Stim:
     def host(self, b):
         self.add("X", len(b), " ".join("%02x" % x for x in b))
 
-    def drive(self, kind, hold=5):
+    def drive(self, kind, hold=8):
         """A vehicle's shape under the sensor (heights in mm, hold in readings) or on KEY1."""
         a = self.add
         if kind == "car":
@@ -103,7 +106,7 @@ class Stim:
         elif kind == "lorry_body_first":               # reversed in: the tall part first
             a("U", LORRY_MM); a("Y", hold); a("U", 50); a("Y", 2); a("U", 0)
         elif kind == "gappy":                          # a dip (a window, a gap) of 2 readings
-            a("U", CAR_MM); a("Y", 3); a("U", 8); a("Y", 2); a("U", CAR_MM); a("Y", 3); a("U", 0)
+            a("U", CAR_MM); a("Y", 6); a("U", 8); a("Y", 2); a("U", CAR_MM); a("Y", 6); a("U", 0)
         elif kind == "manual":                         # SW8 up: KEY1 is the vehicle
             a("K", 1); a("W", 300); a("K", 0)
         elif kind == "tap":                            # KEY1 pressed for 40 ms
@@ -111,7 +114,7 @@ class Stim:
         else:
             raise ValueError(kind)
 
-    def vehicle(self, kind, intent, hold=5, gap=1600, snaps=True):
+    def vehicle(self, kind, intent, hold=8, gap=1600, snaps=True):
         """One vehicle, its decision awaited; `intent`: the (status, fare) the
         scenario means, or None where either order of events is legal."""
         self.drive(kind, hold)
@@ -302,19 +305,19 @@ def scenario_modes():
     s.snap("idle")
     s.add("W", 3500)
     # mid-vehicle changes
-    s.add("U", CAR_MM); s.add("Y", 3); s.set_sw(preset=1, closed=1); s.add("Y", 2); s.add("U", 0)
+    s.add("U", CAR_MM); s.add("Y", 7); s.set_sw(preset=1, closed=1); s.add("Y", 2); s.add("U", 0)
     s.decided((6, 0))                          # closed when it leaves: LANE CLOSED
     s.set_sw(preset=1); s.add("W", 1500)
-    s.add("U", CAR_MM); s.add("Y", 3); s.set_sw(preset=1, override=3); s.add("Y", 2); s.add("U", 0)
+    s.add("U", CAR_MM); s.add("Y", 7); s.set_sw(preset=1, override=3); s.add("Y", 2); s.add("U", 0)
     s.decided(intended(1, 0))                  # the class it had while there: a motorcycle
     s.set_sw(preset=1); s.add("W", 3500)
-    s.add("U", CAR_MM); s.add("Y", 3); s.set_sw(preset=4); s.add("Y", 2); s.add("U", 0)
+    s.add("U", CAR_MM); s.add("Y", 7); s.set_sw(preset=4); s.add("Y", 2); s.add("U", 0)
     s.decided((0, FARES[1]))                   # the tag was read on arrival: CAr, not StOLEn
     s.set_sw(preset=3); s.add("W", 1500)
-    s.add("U", CAR_MM); s.add("Y", 3); s.set_sw(preset=3, manual=1)
+    s.add("U", CAR_MM); s.add("Y", 7); s.set_sw(preset=3, manual=1)
     s.decided((0, FARES[4]))                   # SW8 up mid-vehicle: it leaves (KEY1 is up)
     s.add("U", 0); s.set_sw(preset=2); s.add("Y", 4)
-    s.add("U", LORRY_MM); s.add("Y", 3); s.add("K", 1); s.add("I"); s.add("K", 0); s.add("Y", 2); s.add("U", 0)
+    s.add("U", LORRY_MM); s.add("Y", 7); s.add("K", 1); s.add("I"); s.add("K", 0); s.add("Y", 2); s.add("U", 0)
     s.decided((0, FARES[3]))                   # KEY1 identify while a lorry is there
     s.add("W", 2500)
     s.host(L.f_key(b"another key 0123"))       # the laptop tries a new key: refused, 'E' 7
@@ -326,7 +329,7 @@ def scenario_modes():
     s.set_sw(preset=3); warm(s)
     s.vehicle("car", (0, FARES[4]))            # ... so the taxi is not stolen
     # KEY0 (reset) in the middle of things
-    s.add("U", CAR_MM); s.add("Y", 3); s.add("R")                  # a vehicle under the sensor
+    s.add("U", CAR_MM); s.add("Y", 8); s.add("R")                  # a vehicle under the sensor
     s.add("W", 1500); s.add("U", 0)            # it is taken away during the boot: the floor is relearnt
     s.host(L.f_identify())                     # (and a laptop frame in the boot: dropped)
     s.add("N"); s.snap("id"); s.add("M")
@@ -343,7 +346,7 @@ def scenario_faults():
     s = Stim("faults")
     boot(s)
     s.set_sw(preset=1)
-    s.add("U", CAR_MM); s.add("Y", 4); s.add("Z", 0)   # the sensor unplugged under a car:
+    s.add("U", CAR_MM); s.add("Y", 8); s.add("Z", 0)   # the sensor unplugged under a car:
     s.decided((0, FARES[1]))                   # 1 s of no readings and the car has left
     s.add("U", 0); s.add("Z", 1); s.add("Y", 4); s.add("W", 3500)
     s.add("Z", 0); s.set_sw(preset=1, manual=1)         # unplugged, idle: manual mode
@@ -355,6 +358,7 @@ def scenario_faults():
     s.set_sw(preset=1)
     s.add("F", 1)                              # the chip falls silent (fault injection)
     s.drive("car")
+    s.add("Y", 10)                             # it has left (8 clear readings), still unheard
     s.add("W", 3200)                           # watchdog (1.5 s): warm boot; no 'I' -> "no Id"
     s.snap("noid")
     s.add("F", 0)
@@ -365,18 +369,55 @@ def scenario_faults():
     return s
 
 
+def scenario_noise():
+    """The real sensor's noise (tb_board.v's noisy HC-SR04, G 1): jitter, the
+    floor's echo missed in bursts (a farther echo heard instead), stray near
+    echoes, misses, the 38 ms time-out, spikes on the wire. The field report
+    (14 Oct): an empty lane showed 1.6 cm vehicles and decided NO TAG over and
+    over. Here an empty lane must stay empty for minutes; toys pushed through at
+    a human pace must be decided right; and the floor must heal after KEY0 with
+    a toy under the sensor and after a low block left standing."""
+    s = Stim("noise")
+    s.add("G", 1, 1014)
+    boot(s)
+    s.set_sw(preset=0)                         # no tag: a phantom would be decided NO TAG
+    s.add("Y", 1500)                           # 94 s of an empty lane (at the real 62.5 ms)
+    s.snap("idle")
+    for preset, kind, phys in ((1, "car", 1), (1, "lorry", 3), (2, "lorry", 3), (0, "car", 1), (4, "car", 1),
+                               (3, "car", 1), (5, "lorry", 3)):
+        s.set_sw(preset=preset)
+        s.vehicle(kind, intended(preset, phys), hold=18)
+        s.add("Y", 200)
+    s.set_sw(preset=1)                         # KEY0 with a toy under the sensor ...
+    s.add("U", CAR_MM); s.add("Y", 6); s.add("R")
+    s.add("W", 2000); s.add("U", 0)            # ... taken away during the boot
+    s.add("N"); s.add("M")
+    s.add("Y", 800)                            # the floor heals; the lane stays empty
+    s.snap("idle")
+    s.vehicle("car", intended(1, 1), hold=18)
+    s.add("Y", 200)
+    s.add("U", 20); s.add("W", 34000)          # a 2 cm block left standing: a vehicle, then the floor
+    s.decided(intended(1, 1), snaps=False)     # (no snapshot: the block is under the sensor but now the floor)
+    s.add("U", 0); s.add("Y", 800)             # taken away: the floor heals again, no phantom
+    s.snap("idle")
+    s.vehicle("car", intended(1, 1), hold=18)
+    return s
+
+
 CHAOS_FRAMES = [L.f_query(), L.f_identify(), L.f_config(1, 1, FARES), L.f_config(1, 0, FARES),
                 L.f_hot_add(D.PRESETS[3][1]), L.f_hot_del(D.PRESETS[3][1]),
                 b"\x00\xff\xa5", bytes([0xA5, 0x51]), bytes([0xA5, 0x52, 0x40]) + bytes(40),
                 bytes(L.f_time(7)[:-1]) + b"\x00"]
 
 
-def scenario_chaos(seed):
+def scenario_chaos(seed, noisy=False):
     """A random session: anything a visitor (or a nervous presenter) can do, in
     any order, then two vehicles that must come out right: one without a
-    reset, one after KEY0."""
+    reset, one after KEY0. noisy: on the noisy sensor."""
     rng = random.Random(seed)
     s = Stim("chaos%d" % seed, tail_intent=True)
+    if noisy:
+        s.add("G", 1, seed)
     boot(s)
     sw, plugged = sw_word(preset=1), True
     s.add("S", "%03x" % sw); s.add("W", 20)
@@ -415,11 +456,16 @@ def scenario_chaos(seed):
     s.add("M")
     s.host(L.f_config(1, 0, FARES)); s.host(L.f_hot_del(D.PRESETS[3][1]))
     s.add("W", 4000)
-    s.vehicle("lorry", (0, FARES[3]))
+    s.add("Y", 24)                             # a sensor just plugged back, a KEY0 just before: the floor
+    # on the noisy sensor these two are pushed at a hand's pace (the design's promise: 15+
+    # readings); a 0.6 s flick under a streak of lost echoes can be missed, and is not promised
+    hold = 18 if noisy else 8
+    s.vehicle("lorry", (0, FARES[3]), hold=hold)
     # recovery 2: KEY0, then a car
     s.add("R"); s.add("N"); s.snap("id"); s.add("M"); s.snap("idle")
+    s.add("Y", 24)                             # the floor learnt and armed (12+ readings; the real boot is ~48)
     s.set_sw(preset=1)
-    s.vehicle("car", (0, FARES[1]))
+    s.vehicle("car", (0, FARES[1]), hold=hold)
     return s
 
 
@@ -457,8 +503,9 @@ def scenario_smoke():
 SCENARIOS = {"matrix": scenario_matrix, "host": scenario_host, "tour": scenario_tour,
              "edges": scenario_edges, "modes": scenario_modes, "faults": scenario_faults,
              "glitch": scenario_glitch, "smoke": scenario_smoke}
-for _k in (1, 2, 3, 4):
-    SCENARIOS["chaos%d" % _k] = (lambda k: (lambda: scenario_chaos(k)))(_k)
+SCENARIOS["noise"] = scenario_noise
+for _k in (1, 2, 3, 4, 5, 6):
+    SCENARIOS["chaos%d" % _k] = (lambda k: (lambda: scenario_chaos(k, noisy=k >= 5)))(_k)
 
 
 # ---------------------------------------------------------------------------
@@ -550,6 +597,10 @@ def check(name, log, rom, level, tick):
     ev = [l.split() for l in open(log) if l.strip() and not l.startswith("#")]
     ck.ok(ev and ev[-1][0] == "END", "the simulation did not reach the end of its stimulus (%s)"
           % (" ".join(ev[-1]) if ev else "empty log"))
+    tone = [p for p in ev if p[0] == "TONE"]
+    if ev and ev[-1][0] == "END":                # the passive buzzer's tone pin (tb_board.v checks it)
+        ck.ok(bool(tone) and tone[-1][2] == "0", "buzzer_tone: %s bad of %s half periods"
+              % ((tone[-1][2], tone[-1][1]) if tone else ("?", "no TONE line")))
     full = level in ("all", "snap")         # "all": also the flicker analysis (real time)
     # the switches and the height under the sensor as the stimulus had them at each snapshot
     at, sw, obj, plugged = [], 0, 0, True

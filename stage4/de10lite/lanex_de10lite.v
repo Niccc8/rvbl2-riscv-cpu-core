@@ -9,7 +9,8 @@
 //     GPIO[1] out  board -> laptop (USB-UART RXD)     GPIO[6] out  red lamp (alarm)
 //     GPIO[2] in   ultrasonic Echo (1k/2k divider)    GPIO[7] out  buzzer
 //     GPIO[3] out  ultrasonic Trig                    GPIO[8] out  lane-closed lamp
-//     GPIO[4] out  green lamp (charged)               GPIO[35:9]   not used (high impedance)
+//     GPIO[4] out  green lamp (charged)               GPIO[9] out  passive buzzer (2.4 kHz tone)
+//                                                     GPIO[35:10]  not used (high impedance)
 // ============================================================================
 `default_nettype none
 
@@ -126,7 +127,7 @@ module lanex_de10lite #(
 
     // ---- the board ---------------------------------------------------------
     wire [47:0] hex_n;
-    wire        host_tx, sonar_trig, lamp_green, lamp_white, lamp_red, lamp_closed, buzzer;
+    wire        host_tx, sonar_trig, lamp_green, lamp_white, lamp_red, lamp_closed, buzzer, buzzer_tone;
     lanex_board #(.CLK_HZ(CORE_HZ), .PRESENT_MM(PRESENT_MM), .TALL_MM(TALL_MM)) u_board (
         .clk         (clk),
         .rst         (rst),
@@ -142,7 +143,8 @@ module lanex_de10lite #(
         .lamp_white  (lamp_white),
         .lamp_red    (lamp_red),
         .lamp_closed (lamp_closed),
-        .buzzer      (buzzer)
+        .buzzer      (buzzer),
+        .buzzer_tone (buzzer_tone)
     );
     assign {HEX5, HEX4, HEX3, HEX2, HEX1, HEX0} = hex_n;
 
@@ -155,7 +157,8 @@ module lanex_de10lite #(
     assign GPIO[6]    = lamp_red;
     assign GPIO[7]    = buzzer;
     assign GPIO[8]    = lamp_closed;
-    assign GPIO[35:9] = {27{1'bz}};
+    assign GPIO[9]    = buzzer_tone;
+    assign GPIO[35:10] = {26{1'bz}};
 endmodule
 
 `default_nettype wire

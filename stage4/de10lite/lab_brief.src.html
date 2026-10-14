@@ -213,7 +213,7 @@
       <tbody>
         <tr><td class="mono">clk_i</td><td>External 30.3 MHz clock</td><td>PLL: 50 MHz &times; 5 / 8 = <b>31.25 MHz</b> (the AWS clock)</td><td>&ndash;</td></tr>
         <tr><td class="mono">rst_i</td><td>Reset pad</td><td>PLL not locked, <b>KEY0 held 20 ms</b>, each tour line, a warm boot</td><td>KEY0</td></tr>
-        <tr><td class="mono">P0 (in)</td><td>Vehicle present</td><td>Ultrasonic: something &ge; 15 mm above the floor for 2 readings; or KEY1 in manual mode (SW8)</td><td>LEDR2</td></tr>
+        <tr><td class="mono">P0 (in)</td><td>Vehicle present</td><td>Ultrasonic: something &ge; 15 mm above the floor for 4 filtered readings (0.25 s), once the lane has seen its floor; or KEY1 in manual mode (SW8)</td><td>LEDR2</td></tr>
         <tr><td class="mono">P2:P1 (in)</td><td>Class code from the classifier</td><td>Height: &ge; 60 mm = lorry (<code>10</code>), else car (<code>00</code>); or SW2:SW1 when set</td><td>LEDR1 (tall)</td></tr>
         <tr><td class="mono">P3 (in)</td><td>Lane-closed switch</td><td>SW0</td><td>SW0</td></tr>
         <tr><td class="mono">P4 (out)</td><td>Charged lamp</td><td>LEDR4 directly; green LED for 4 s; one chirp</td><td>LEDR4, GPIO pin 5</td></tr>
@@ -277,7 +277,7 @@
       <g font-size="12.5">
         <rect class="sheet" x="830" y="196" width="120" height="46" rx="5"/><text class="ink" x="890" y="217" text-anchor="middle">LEDR4&ndash;7</text><text class="muted" x="890" y="233" text-anchor="middle" font-size="11">chip lamps, direct</text>
         <rect class="sheet" x="830" y="262" width="120" height="46" rx="5"/><text class="ink" x="890" y="283" text-anchor="middle">HEX5&ndash;HEX0</text><text class="muted" x="890" y="299" text-anchor="middle" font-size="11">words, fare, height</text>
-        <rect class="sheet" x="830" y="328" width="120" height="58" rx="5"/><text class="ink" x="890" y="349" text-anchor="middle">LEDs, buzzer</text><text class="muted" x="890" y="365" text-anchor="middle" font-size="11">GPIO pins 5&ndash;9,</text><text class="muted" x="890" y="379" text-anchor="middle" font-size="11">LEDR8/9</text>
+        <rect class="sheet" x="830" y="328" width="120" height="58" rx="5"/><text class="ink" x="890" y="349" text-anchor="middle">LEDs, buzzer</text><text class="muted" x="890" y="365" text-anchor="middle" font-size="11">GPIO pins 5&ndash;10,</text><text class="muted" x="890" y="379" text-anchor="middle" font-size="11">LEDR8/9</text>
         <rect class="sheet" x="830" y="420" width="120" height="46" rx="5"/><text class="ink" x="890" y="441" text-anchor="middle">to the laptop</text><text class="muted" x="890" y="457" text-anchor="middle" font-size="11">pin 2, unchanged</text>
       </g>
       <!-- arrows -->
@@ -370,8 +370,8 @@
           <tr><td>Jumpers F&ndash;F and M&ndash;F</td><td>~20</td><td>Header to parts</td></tr>
           <tr><td>LEDs green, red, yellow + 330 &Omega;</td><td>1 each</td><td>Optional lamps</td></tr>
           <tr><td>LED white + 100 &Omega;</td><td>1</td><td>Optional camera flash</td></tr>
-          <tr><td>Active buzzer module (3 pins)</td><td>1</td><td>Optional</td></tr>
-          <tr><td>USB-UART 3.3 V (CP2102/CH340/FT232)</td><td>1</td><td>Laptop dashboard</td></tr>
+          <tr><td>Buzzer: active 2-leg (TMB12A05), passive 2-leg + 330 &Omega;, or a 3-pin module</td><td>1</td><td>Optional (E7 tells them apart)</td></tr>
+          <tr><td>USB-UART: Cytron UC00C (CH340), switch at 3.3 V</td><td>1</td><td>Laptop dashboard</td></tr>
           <tr><td>Toy car; a clearly taller toy lorry</td><td>1 each</td><td>The traffic</td></tr>
           <tr><td>Cardboard, tape, ruler</td><td>&ndash;</td><td>Gantry, 15&ndash;25 cm high</td></tr>
         </tbody>
@@ -512,8 +512,9 @@
     <div class="body">
       <ol class="steps">
         <li><span>Tape the sensor to the gantry 15&ndash;25 cm above the table, looking straight down at the lane, both &ldquo;eyes&rdquo; level.</span></li>
-        <li><span>With the lane empty, press KEY0 (hold it a moment). The board learns the floor from its first readings. SW8 down (sensor mode), SW2:SW1 = 00.</span><span class="expect">LEDR0 off.</span></li>
-        <li><span>Hold your hand flat 5 cm under the sensor.</span><span class="expect">LEDR0 on; take it away: off.</span></li>
+        <li><span>With the lane empty, press KEY0 (hold it a moment). SW8 down (sensor mode), SW2:SW1 = 00. The board learns the floor once 8 readings agree (about half a second), and accepts vehicles only after it has then seen that floor 4 times more: a floor learnt from a stray, too-far echo can never make a phantom vehicle, it is replaced within about a second. If something was under the sensor, just take it away: the floor re-learns itself within about a second. After any KEY0, wait 2 s after the idle display before pushing a toy.</span><span class="expect">LEDR0 off.</span></li>
+        <li><span><b>Stability check.</b> Set the tag to nonE (SW5:SW3 = 000) and leave the lane empty for 2 minutes. Don't touch anything.</span><span class="expect">nothing happens: no LEDR2, no <span class="hx">no tAG</span>, no buzzer. (Before the 15 Oct fix, stray echoes made 1.6 cm &ldquo;vehicles&rdquo; here.)</span></li>
+        <li><span>Hold your hand flat 5 cm under the sensor for a second, then take it away.</span><span class="expect">LEDR0 on after a moment; LEDR2 (a vehicle) after a quarter of a second; half a second after you take it away, LEDR2 off and the decision.</span></li>
         <li><span>Set the tag to nonE (SW5:SW3 = 000) so no fare is involved. Place the toy car under the sensor and hold it there.</span><span class="expect">LEDR2 on and the display shows its height, for example <span class="hx">h 4.0</span> (4.0 cm). Write it down.</span></li>
         <li><span>Same with the lorry.</span><span class="expect">its height, and LEDR1 (tall) if it is 6.0 cm or more.</span></li>
         <li><span>If the car reads 6.0 or more, or the lorry less than 6.0: open <code>lanex.qsf</code>, set <code>set_parameter -name TALL_MM</code> to a value halfway between the two heights in mm (car 45 mm, lorry 80 mm &rarr; 62), and repeat E1 steps 1&ndash;2.</span></li>
@@ -576,13 +577,17 @@
         <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
           <ol class="steps">
             <li><span>USB unplugged. Wire each LED: header pin &rarr; resistor &rarr; long leg; short leg &rarr; GND rail.</span></li>
-            <li><span>Buzzer module: VCC &rarr; pin 29 (3.3 V), GND &rarr; rail, I/O (or IN) &rarr; pin 8.</span></li>
+            <li><span><b>Buzzer: look underneath first.</b> The two 2-leg buzzers look alike from the top.</span>
+              <span>&bull; <b>Sealed</b> (black, smooth; &ldquo;+&rdquo; on top), e.g. TMB12A05: <b>active</b>. Its + (longer) leg &rarr; <b>pin 8</b>, the other leg &rarr; GND rail.</span>
+              <span>&bull; <b>Green board visible</b>, solder blobs: <b>passive</b>. <b>Pin 10 &rarr; 330 &Omega; &rarr;</b> one leg, the other leg &rarr; GND rail. <b>Never</b> without the 330 &Omega;, never on pin 8: it is a bare ~16 &Omega; coil.</span>
+              <span>&bull; A 3-pin module: VCC &rarr; pin 29 (3.3 V), GND &rarr; rail, I/O &rarr; pin 8.</span></li>
             <li><span>Plug in.</span><span class="expect">every lamp on for the 1 s lamp test, with a short beep.</span></li>
-            <li><span>If the buzzer sounds all the time afterwards, flip SW6 up (your module is low-level trigger). SW7 mutes it.</span></li>
+            <li><span>Only a click, no beep: it is passive on pin 8 &mdash; unplug and move it to pin 10 with the 330 &Omega;. Sounds all the time afterwards (module): SW6 up. SW7 mutes either.</span></li>
             <li><span>Push a car with CAr, then with StOLEn.</span><span class="expect">green + one chirp; then red, a white flash and three beeps.</span></li>
           </ol>
         </div>
       </div>
+      <p class="callout" style="margin:10px 0 0">Why two pins: an <b>active</b> buzzer has its own oscillator, so pin 8 just switches it on (a TMB12A05 at 3.3 V draws about 14 mA and gives about 87 dB; the MAX&nbsp;10's limit is 25 mA a pin). A <b>passive</b> one is a bare coil and only clicks on a steady level, so pin 10 plays it a 2.4 kHz tone (its resonance), and the 330 &Omega; keeps the current near 10 mA. Too quiet? Drive either through an NPN transistor (S8050, 2N2222, BC547): emitter to GND, base through 1 k&Omega; to the pin, the buzzer between 5 V (pin 11) and the collector, plus a 1N4148 across a passive one (stripe to 5 V).</p>
       <label class="check"><input type="checkbox" id="c-e7"> E7 done: lamp test, charge and alarm patterns</label>
     </div>
   </article>
@@ -593,9 +598,10 @@
     <header><span class="no">E8</span><h3>The laptop dashboard</h3><span class="time">20 min</span></header>
     <div class="body">
       <ol class="steps">
-        <li><span>Set the adapter's jumper to 3.3 V. USB unplugged from the board. Wire adapter <b>TXD &rarr; pin 1</b>, <b>RXD &rarr; pin 2</b>, <b>GND &rarr; pin 12</b>. Leave its VCC/5V pin unconnected.</span></li>
-        <li><span>Plug the adapter into the laptop. Device Manager &rarr; Ports (COM &amp; LPT).</span><span class="expect">a new COM port (CP210x, CH340 or USB Serial). If it has a yellow mark, install the driver from 08_quartus_setup.md &sect;8.</span></li>
-        <li><span>Power the board. Open <code>stage4\de10lite\lanex_live.html</code> in Chrome or Edge &rarr; <b>Connect board</b> &rarr; choose that COM port.</span><span class="expect">&ldquo;Connected &middot; 115,200 bps&rdquo;.</span></li>
+        <li><span><b>Cytron UC00C</b> (6 holes: DTR, RXI, TXO, VCC, CTS, GND). Slide its switch to <b>3.3 V</b>: the switch sets the signal level as well as VCC, and 5 V signals can damage the FPGA. USB unplugged from the board.</span></li>
+        <li><span>Wire <b>TXO &rarr; pin 1</b> (its output, the FPGA's input), <b>RXI &rarr; pin 2</b>, <b>GND &rarr; pin 12</b>. Leave <b>VCC, DTR and CTS unconnected</b> (the board has its own power). Another adapter: TXD &rarr; pin 1, RXD &rarr; pin 2.</span></li>
+        <li><span>Plug the UC00C into the laptop with a <b>data</b> cable (some USB cables only charge). Device Manager &rarr; Ports (COM &amp; LPT).</span><span class="expect">&ldquo;USB-SERIAL CH340 (COMn)&rdquo;. Nothing new appears: another cable or USB port. A yellow mark: install the CH340 driver (08_quartus_setup.md &sect;8).</span></li>
+        <li><span>Power the board. Open <code>stage4\de10lite\lanex_live.html</code> in Chrome or Edge &mdash; <b>not</b> <code>dashboard\lanex_live.src.html</code>, the template, which does nothing &rarr; <b>Connect board</b> &rarr; choose that COM port.</span><span class="expect">&ldquo;Connected &middot; 115,200 bps&rdquo;. On the UC00C the orange RX LED flickers whenever the board sends a record; the red TX LED when the page sends one.</span></li>
         <li><span>Click <b>Fingerprint the ROM now</b>.</span><span class="expect">the board shows <span class="hx">Id.56dE</span>; the page shows 56DE in green, &ldquo;Matches this build&rdquo;.</span></li>
         <li><span>Push a car (tag CAr).</span><span class="expect">a &ldquo;Charged&rdquo; card, RM 2.50, CRC &#10003;, then &ldquo;Signed &#10003; Chaskey-12&rdquo;.</span></li>
         <li><span>Choose <b>Taxi</b> &rarr; <b>Report stolen</b>. Set the tag to CAb, wait 3 s, push a car.</span><span class="expect"><span class="hx">StOLEn</span> on the board and a red card. Then <b>Clear</b> and push again after 3 s: charged RM 1.30.</span></li>
@@ -675,10 +681,12 @@
       <thead><tr><th>Symptom</th><th>Check</th></tr></thead>
       <tbody>
         <tr><td>LEDR0 never lights</td><td>5 V on the sensor VCC (pin 11), Trig on pin 4, Echo through 1 k&Omega; to pin 3, 2 k&Omega; from pin 3 to GND, common GND</td></tr>
-        <tr><td>Vehicles appear on their own</td><td>Something was under the sensor at power-up: empty the lane, hold KEY0. A sloped or soft surface under the sensor can scatter the echo: use a flat card as the lane floor</td></tr>
+        <tr><td>Vehicles appear on their own</td><td>Fixed 15 Oct (the floor learnt from stray echoes): reload the build. If it still happens: the lane surface is sloped, soft or shiny at an angle (use a flat card as the floor), a cable or the tray is inside the sensor's cone (keep 10 cm clear around the spot under it), or the sensor is not level. KEY0 with the lane empty re-learns everything</td></tr>
         <tr><td>Lorry read as a car, or the reverse</td><td><code>TALL_MM</code> in <code>lanex.qsf</code> (E5 step 6)</td></tr>
-        <tr><td>Buzzer always on</td><td>SW6 up</td></tr>
-        <tr><td>Dashboard silent</td><td>TXD/RXD swapped, no common GND, or another program holds the COM port</td></tr>
+        <tr><td>Buzzer always on</td><td>A 3-pin module: SW6 up</td></tr>
+        <tr><td>Buzzer only clicks</td><td>It is passive: pin 10 through 330 &Omega;, not pin 8 (E7)</td></tr>
+        <tr><td>Connect board / Demo do nothing</td><td>You opened <code>dashboard\lanex_live.src.html</code> (the template). Open <code>stage4\de10lite\lanex_live.html</code> in Chrome or Edge (Firefox has no Web Serial)</td></tr>
+        <tr><td>Dashboard silent</td><td>TXO/RXI swapped (the orange RX LED never flickers), the UC00C switch at 5 V, no common GND (pin 12), or another program (Quartus, a serial monitor) holds the COM port</td></tr>
         <tr><td><span class="hx">no Id</span></td><td>Hold KEY0. If it stays, recompile and reprogram</td></tr>
       </tbody>
     </table>

@@ -4,9 +4,9 @@ table it writes into lanex.qsf, so the card and the FPGA can never disagree."""
 import html
 
 SHORT = {0: "from laptop TXD", 1: "to laptop RXD", 2: "Echo (divider)", 3: "Trig", 4: "green lamp",
-         5: "white lamp", 6: "red lamp", 7: "buzzer", 8: "closed lamp"}
+         5: "white lamp", 6: "red lamp", 7: "active buzzer", 8: "closed lamp", 9: "passive buzzer"}
 POWER = {11: ("5 V", "#b91c1c", "ultrasonic VCC only"), 12: ("GND", "#111827", "ultrasonic GND"),
-         29: ("3.3 V", "#c2410c", "buzzer VCC"), 30: ("GND", "#111827", "ground")}
+         29: ("3.3 V", "#c2410c", "buzzer module VCC"), 30: ("GND", "#111827", "ground")}
 
 PARTS = [
     ("Ultrasonic sensor HC-SR04 (4 pins: VCC Trig Echo GND)", "1",
@@ -16,10 +16,14 @@ PARTS = [
     ("LED + resistor: green, red, yellow (330 &Omega;) and white (100 &Omega;)", "1 each",
      "Long leg (anode) to the resistor, the resistor to the GPIO pin; short leg to GND. "
      "A 3-LED traffic-light module (resistors built in) also works."),
-    ("Active buzzer <b>module</b> (3 pins, with a transistor)", "1",
-     "Not a bare 2-leg buzzer: the FPGA pin cannot drive one. If it sounds while idle, flip SW6."),
-    ("USB-UART adapter, 3.3 V (CP2102, CH340 or FT232)", "1",
-     "Set its jumper to 3.3 V. Do not connect its VCC/5V pin."),
+    ("Buzzer (one of these)", "1",
+     "<b>Active</b>, sealed underneath (TMB12A05): + leg to pin 8, &minus; to GND. "
+     "<b>Passive</b>, green board visible underneath: pin 10 &rarr; 330 &Omega; &rarr; buzzer &rarr; GND, "
+     "<b>never</b> without the 330 &Omega; and never on pin 8. "
+     "A 3-pin module: VCC 29, GND, I/O pin 8; if it sounds while idle, flip SW6."),
+    ("USB-UART 3.3 V: Cytron UC00C (CH340), or CP2102 / FT232", "1",
+     "Slide its switch to <b>3.3 V</b> (it sets the signal level too). TXO/TXD &rarr; pin 1, "
+     "RXI/RXD &rarr; pin 2, GND &rarr; pin 12. VCC, DTR and CTS stay unconnected."),
     ("Mini breadboard (170 points) + female-female and male-female jumpers", "1 + ~20",
      "The divider sits here; pin 30 (GND) is the rail for the LEDs, the buzzer and the divider."),
     ("Toy car, and a toy lorry clearly taller than the car", "1 each",
@@ -30,7 +34,7 @@ CONTROLS = [
     ("SW0", "Lane closed (the chip lights P7)"),
     ("SW2:SW1", "Class: 00 the sensor's height &middot; 01 van &middot; 10 lorry &middot; 11 motorcycle"),
     ("SW5:SW3", "Tag the next vehicle carries"),
-    ("SW6", "Buzzer module is low-level trigger"),
+    ("SW6", "Buzzer module is low-level trigger (pin 8 only)"),
     ("SW7", "Mute the buzzer"),
     ("SW8", "Manual: KEY1 is the vehicle (no sensor needed)"),
     ("SW9", "Tour: replay the 12 AWS tests &rarr; PASS12"),
@@ -98,7 +102,7 @@ def render(wires, header_pin, gpio_pins, presets):
                        "<b>HC-SR04 VCC only</b> (nothing else)" if pin == 11 else
                        ("buzzer module VCC" if pin == 29 else
                         ("HC-SR04 GND and the USB-UART GND" if pin == 12 else
-                         "breadboard &minus; rail &rarr; the 2 k&Omega;, LEDs, buzzer GND"))))
+                         "breadboard &minus; rail &rarr; the 2 k&Omega;, LEDs, buzzer &minus;"))))
 
     tags = "".join("<li><b>%d</b> %s</li>" % (p, html.escape(presets[p][0])) for p in range(8))
     parts = "".join("<tr><td>%s</td><td class='num'>%s</td><td>%s</td></tr>" % p for p in PARTS)

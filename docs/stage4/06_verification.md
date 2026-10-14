@@ -139,6 +139,48 @@ frames; each ends with two vehicles that must be decided right, one without and 
 | `test_live.py` | **29 checks, 0 failed** |
 | Quartus 25.1std.0, final RTL | **0 errors**; 14,936 LEs (30 %), 2,368 registers; setup slack **+4.388 ns** (Fmax 36.22 MHz), hold +0.328 ns at Slow 1200 mV 85 °C |
 
+### 1d, round 3: phantom vehicles on the bench (2026-10-15)
+
+Nicholas, at lab brief E5: with nothing under the sensor the board sometimes showed a height of
+about 1.6 cm, LEDR0 stayed on, LEDR0/LEDR2 flashed, and `no tAG` was decided again and again.
+
+| Cause | Fix (`lanex_board.v`, the lane block's rules 1–4) |
+| --- | --- |
+| The floor was the farthest reading seen (a ratchet). An HC-SR04 now and then misses the floor and hears a farther echo (a footing, the table's edge): one such echo set the floor ~16 mm too far, and the empty lane then stood 16 mm "tall", over the 15 mm threshold | The floor is learnt by **agreement** (8 filtered readings within ±6 mm), re-learnt farther only when 16 agree |
+| A single stray reading could start or end a vehicle | Each reading is the **median of three**; a vehicle arrives after **4** filtered readings over the threshold and leaves after **8** readings of the floor itself; its height (and lorry class) is the lowest of the last three |
+| A floor learnt too far is the dangerous kind (a too-near floor only hides a vehicle for a second) | The lane is **armed** only after it has seen the floor 4 times since learning it; until then no vehicle can arrive, and a steady nearer distance (16 readings) is the floor |
+| A lost echo (farther than the floor) in a vehicle's middle reset its arrival | A farther reading neither counts nor breaks an arrival or a departure |
+| Echo spikes and drop-outs on the wire | Echo deglitched (1 µs), echoes shorter than the minimum range ignored |
+| Something low left standing | Rule 4: a "vehicle" never taller than 25 mm that stays 30 s is the floor |
+
+New checks: `tb_board.v` has a **noisy HC-SR04** (`G 1 seed`): ±3 mm jitter, 7 % lost floor echoes
+heard 12–30 mm farther in bursts of 1–3, 3 % near strays, 2 % no echo, 2 % the 38 ms time-out,
+spikes and drop-outs on Echo. Scenario **noise**: 94 s of an empty lane, seven toys at a hand's
+pace, KEY0 with a toy underneath, a 2 cm block left standing; **chaos 5–6** are random sessions
+on the noisy sensor. The stress pass found two more faults, both fixed: a floor learnt from a
+long-echo streak right after KEY0 (18 mm too far: a vehicle that never left — the arming rule),
+and a fast lorry lost to a lost-echo burst over its cab (the farther-reading rule).
+
+The limit, stated plainly: a vehicle is promised at a hand's pace (15+ readings, ~1 s under the
+sensor). A 0.6 s flick that coincides with a 9-reading streak of lost echoes (the stress pass met
+one) leaves only 3 good readings and is missed; accepting 3 would let three stray echoes make a
+vehicle again. The noisy chaos sessions therefore end with hand-paced vehicles; the clean ones keep
+the 8-reading push. After KEY0 the lane needs ~12 readings (0.75 s) to learn and arm its floor;
+the real boot takes ~3 s, and the stress pass (where the boot is only 6 readings) waits 24.
+
+Also new: **GPIO9 (header pin 10) plays a 2.4 kHz tone** whenever the buzzer sounds, for a passive
+(bare-coil) buzzer; pin 8 stays the level for an active one. `tb_board.v` checks every half period
+of the tone (exactly `CLK_HZ/4800` clocks while it sounds, never a tone in silence).
+
+| Run | Result |
+| --- | --- |
+| Control: the previous design (`f6a601c`) on the noisy sensor, 94 s of an empty lane | **23 phantom vehicles** |
+| Full pass (×10), final RTL | **1,261 checks, 0 failed**: matrix 431, host 51, tour 39, edges 77, modes 189, faults 44, noise 86, chaos 58 + 54 + 51 + 51 + 64 + 65 (every scenario also checks the buzzer tone) |
+| Stress pass (×312) | **286 checks, 0 failed** (model comparison; noise, faults and chaos 5–6 included) |
+| Real-speed pass, flicker analysis | **54 checks, 0 failed**, no short state on any light |
+| `test_live.py` | **29 checks, 0 failed** |
+| Quartus 25.1std.0, final RTL | **0 errors**; 15,442 LEs (31 %), 2,484 registers; setup slack **+4.407 ns**, hold +0.347 ns at Slow 1200 mV 85 °C |
+
 ## 2. What each check proves, and its limits
 
 | # | Check | Proves | Does not prove |

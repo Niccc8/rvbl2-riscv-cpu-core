@@ -1,6 +1,6 @@
 # Stage 4 state (read this first in a new session)
 
-**Updated 2026-10-11.** Branch `stage4` (local, not pushed). Mission: harden LaneX, build the pitch
+**Updated 2026-10-15.** Branch `stage4` (local, not pushed). Mission: harden LaneX, build the pitch
 intelligence, ship a first-try-correct AWS F2 build. **GATE 1 and 2 passed; GATE 3 verdict GO (re-confirmed
 after the 31.25 MHz change: pre-flight GO, full regression green).**
 **AWS build done 2026-10-10: `afi-0732c3cb90c96019a` / `agfi-0c12a9e5d082dcac8`** (0 errors; setup WNS −0.112 ns on
@@ -12,6 +12,16 @@ Verified in simulation (`06` §1d) and compiled in Quartus 25.1std.0 on Nicholas
 met +4.39 ns at 31.25 MHz). **On the board (11 Oct): `Id.56dE` and `PASS12` work**; his flicker report fixed and
 the board hardened (`06` §1d round 2: 1,291 simulated checks). Next: his bench procedure,
 `stage4/de10lite/lab_brief.html` E1–E10 (also published: https://claude.ai/artifact/1geGwAnsMETUvzNhbt8Chj).
+**15 Oct, round 3 (`06` §1d round 3):** at E5 his empty lane made 1.6 cm phantom vehicles (`no tAG`
+over and over): the floor ratchet took a stray far echo as the floor. The lane now filters (median of 3),
+learns the floor by agreement, arms only after seeing it, ignores lost (farther) echoes; a noisy
+HC-SR04 model in `tb_board.v` (`G 1 seed`) reproduces the fault on the old RTL (23 phantoms in 94 s)
+and none on the new. Also: GPIO9 = header pin 10 plays a 2.4 kHz tone for a **passive** buzzer (his
+unmarked one: green board visible underneath); his TMB12A05 is **active** (pin 8). His USB-UART is a
+Cytron UC00C (CH340): switch at 3.3 V, TXO → pin 1, RXI → pin 2, GND → pin 12. The dashboard is
+`stage4/de10lite/lanex_live.html`; `dashboard/lanex_live.src.html` is the template (now says so).
+**Never run `gen_de10lite.py` without `--check`: it rewrites `lanex.qsf`, which his Quartus has edited**;
+write single outputs from `gen_de10lite.outputs()` instead.
 **Grand Final deck built 2026-10-11** (12 min + 10 min Q&A, 17 Oct, KLCC; judges from ChipInventor, UST,
 SkyeChip): `presentation/stage4/LaneX_Final.pptx` (git-ignored; rebuild: `scripts/stage4/pitch/build_all.ps1`),
 native PowerPoint with generated 3D models (`.glb`) and Morph; script `pitch/06_final_script.md` (also the
