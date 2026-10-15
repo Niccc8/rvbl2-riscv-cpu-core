@@ -93,7 +93,7 @@ Stage 4 section is P0.
 | 5 | "How do you know the Touch 'n Go tag class?" | We don't; it is an assumption, isolated in one line, and a deployment takes the class from the account |
 | 6 | "115,200 baud? One lane?" | One controller per lane; a vehicle needs ~2–3 ms of line time against ~1.7 s between cars at peak |
 | 7 | "Is it certified?" | No. Road-side equipment certification is a roadmap item with a partner |
-| 8 | "Malaysia's MLFF keeps slipping." | Answered with sourced dates in `03_market.md` |
+| 8 | "Malaysia's MLFF keeps slipping." | Answered with sourced dates in our market research (kept off the public repository) |
 | 9 | "Who owns the IP?" | Our RTL, firmware and tools are ours; Sky130 is an open PDK; the organisers' tools are credited and not redistributed as ours |
 | 10 | "Does it really work, or only in simulation?" | Every byte is checked against an independent model, on the platform's own netlist; Stage 4 runs it on an AWS F2 FPGA under the organisers' `emu` |
 

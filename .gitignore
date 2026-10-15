@@ -58,3 +58,11 @@ report-stage3/*.log
 report-stage3/*.out
 application/firmware/out/selftest/
 application/firmware/out/emu_demo/
+
+# Stage 4 pitch material: the scripts, Q&A bank, demo-day plan, the deck generator, and the
+# market / event research behind them. Kept local: this repository is public.
+docs/stage4/pitch/
+docs/stage4/research/
+docs/stage4/03_market.md
+docs/stage4/roi_model.py
+scripts/stage4/pitch/

@@ -100,7 +100,8 @@ could be lost the same way. Both now wait until the chip has seen the vehicle's 
 a watchdog now ends any run that waits for an event that never comes.
 
 Not covered until the board: the HC-SR04 on real toys (its readings, the threshold), the USB-UART
-on Windows, Web Serial in the browser, the internal-flash boot.
+on Windows, Web Serial in the browser, the internal-flash boot. (All but the flash boot have since
+been confirmed on the board: round 3.)
 
 ### 1d, round 2: after the first board test (2026-10-11)
 
@@ -179,7 +180,8 @@ of the tone (exactly `CLK_HZ/4800` clocks while it sounds, never a tone in silen
 | Stress pass (×312) | **286 checks, 0 failed** (model comparison; noise, faults and chaos 5–6 included) |
 | Real-speed pass, flicker analysis | **54 checks, 0 failed**, no short state on any light |
 | `test_live.py` | **29 checks, 0 failed** |
-| Quartus 25.1std.0, final RTL | **0 errors**; 15,442 LEs (31 %), 2,484 registers; setup slack **+4.407 ns**, hold +0.347 ns at Slow 1200 mV 85 °C |
+| **On the board** (Nicholas, after round 3) | **the whole desk lane works**: vehicle detection, the four lamps, the buzzer, and the USB-UART link to LaneX Live |
+| Quartus 25.1std.0, final RTL | **0 errors**; 15,372 LEs (31 %), 2,484 registers; setup slack **+4.436 ns** (Fmax 36.28 MHz), hold +0.332 ns at Slow 1200 mV 85 °C |
 
 ## 2. What each check proves, and its limits
 

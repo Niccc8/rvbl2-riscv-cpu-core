@@ -5,6 +5,7 @@ a lorry). The board's switches choose the tag the vehicle carries. **The exact R
 LaneX firmware that passed all 12 tests on the AWS F2** decide: a charge, a camera flash, or an
 alarm. A laptop can watch every record live and verify it. Plan and rationale:
 `docs/stage4/07_max10_prototype.md`. Installing Quartus: `docs/stage4/08_quartus_setup.md`.
+**On the board (15 Oct): the whole desk lane works** - vehicle detection with the HC-SR04, the four lamps, the buzzer, and the USB-UART link to LaneX Live, which verifies every record; before that, `Id.56dE` and `PASS12` (11 Oct).
 **The printed gantry** that holds the sensor over the lane (one A1 plate, files ready for the SD card):
 `gantry/README.md`.
 
@@ -35,7 +36,7 @@ step, is `lab_brief.html`.
 
 | # | Do | You should see |
 | --- | --- | --- |
-| 1 | Quartus: **File → Open Project → `lanex.qpf`**, then **Processing → Start Compilation** (or double-click `compile.bat`). About 7 minutes (the fitter works hard on timing) | 0 errors. Every timing slack positive (the core clock's Fmax ≥ 31.25 MHz; on this laptop: **36.24 MHz**) |
+| 1 | Quartus: **File → Open Project → `lanex.qpf`**, then **Processing → Start Compilation** (or double-click `compile.bat`). About 7 minutes (the fitter works hard on timing) | 0 errors. Every timing slack positive (the core clock's Fmax ≥ 31.25 MHz; on this laptop: **36.28 MHz**) |
 | 2 | **Tools → Programmer**: Hardware Setup = USB-Blaster; Add File `output_files\lanex.sof`; Start (or `program_sram.bat`) | Lamp test (everything lit for 1 s), the banner scrolls, then **`Id.56dE`** and LEDR9: the chip measured its own ROM |
 | 3 | **SW9 up** (nothing wired yet) | Each AWS test: `tESt01` for 0.5 s, then its result and lamps for 0.9 s (about 17 s in all), then **`PASS12`** and LEDR9. **SW9 down** |
 | 4 | **SW8 up**, SW3 up (tag `CAr`), press and release KEY1 | `CHArGE`, then `2.50`; LEDR4 |
@@ -63,7 +64,7 @@ for each toy, then set `TALL_MM` in `lanex.qsf` between them (in mm) and compile
 
 The slowest path is inside the chip core (register file → multiplier → register file, about
 31 ns), the same design that ran at 31.25 MHz on the AWS F2. On this laptop, Quartus Prime Lite
-25.1std.0 meets timing with **+4.41 ns setup slack** (Fmax 36.24 MHz) at the worst corner (Slow
+25.1std.0 meets timing with **+4.44 ns setup slack** (Fmax 36.28 MHz) at the worst corner (Slow
 1200 mV, 85 °C), with the fitter's "high performance effort" (`lanex.qsf`); without it, +0.47 ns.
 If a later compile ever shows a negative slack, change `set_parameter -name CORE_HZ 31250000` in
 `lanex.qsf` to `25000000` and compile again: the PLL and every UART divider follow. The firmware
@@ -73,7 +74,7 @@ does not care: its timing rules are in clock cycles.
 
 | Check | Result |
 | --- | --- |
-| Quartus compile (this laptop, 25.1std.0) | 0 errors; 15,442 LEs (31 %), the 64 Kbit data RAM in M9K blocks, 1 PLL; setup slack +4.41 ns, hold +0.35 ns; `.sof` + `.pof` written |
+| Quartus compile (this laptop, 25.1std.0) | 0 errors; 15,372 LEs (31 %), the 64 Kbit data RAM in M9K blocks, 1 PLL; setup slack +4.44 ns, hold +0.33 ns; `.sof` + `.pof` written |
 | `sim/check_board.py`: the whole board in simulation (Verilator) | **1,601 checks, 0 failed** (`06_verification.md` §1d): every mode change, fault and four random 140-action sessions, each ending in a working lane; a real-speed flicker analysis of every light; and every tag preset × every vehicle height × lane open/closed; the laptop's frames; tour mode; edge cases. **The golden model replays every byte and pin change the chip received and must produce exactly what the chip sent**; every display, LED, lamp and buzzer state checked. Also a stress pass, with time squeezed 31× so that frames outlast vehicles |
 | `dashboard/test_live.py` (QuickJS) | **29 checks, 0 failed**: the dashboard finds every record in the simulated laptop stream, verifies every signature, survives damaged bytes, rejects a forged signature |
 | `scripts/stage4/gen_de10lite.py --check` | the generated files are current; the frame templates replay to the golden model's own frames |

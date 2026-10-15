@@ -64,11 +64,11 @@ has no internal tri-state), and the data RAM is coded as Quartus infers M9K bloc
 
 | Control | Meaning |
 | --- | --- |
-| Ultrasonic sensor | **P0 vehicle present** when something stands ≥ `PRESENT_MM` (15 mm) above the floor for two readings in a row; gone after three clear readings. **Class 3 (lorry)** when it reaches `TALL_MM` (60 mm), latched while it is there. The floor is learnt (the farthest confirmed reading, from power-up) |
+| Ultrasonic sensor | Each reading is the median of the last three. The floor is learnt when 8 filtered readings agree, and the lane is **armed** only once it has seen that floor (a floor learnt from a stray far echo can never make a vehicle). **P0 vehicle present** when something stands ≥ `PRESENT_MM` (15 mm) above the floor for 4 filtered readings in a row (0.25 s); gone after 8 readings of the floor itself (0.5 s); a lost echo (farther than the floor) counts for nothing. **Class 3 (lorry)** when the lowest of its last three heights reaches `TALL_MM` (60 mm), latched while it is there. Rules and their evidence: `06_verification.md` §1d round 3 |
 | SW0 | P3 lane closed |
 | SW2:SW1 | Class override: 00 = the sensor (car/lorry), 01 = van, 10 = lorry, 11 = motorcycle |
 | SW5:SW3 | Tag preset: 0 nonE · 1 **CAr** · 2 **LorrY** · 3 **CAb** (taxi) · 4 **StOLEn** · 5 **CLOnE** · 6 **bAd** (damaged, bad Gen2 CRC) · 7 **FAr** (adjacent lane, weak read) |
-| SW6 / SW7 | Buzzer module is low-level trigger / mute the buzzer |
+| SW6 / SW7 | Buzzer module is low-level trigger (pin 8 only) / mute the buzzer |
 | SW8 | Manual: KEY1 is the vehicle (press = in the zone) — the no-sensor fallback |
 | SW9 | Tour mode: the 12 AWS `./emu` lines, then `PASS12` (or `FAIL` + the first failing line) |
 | KEY0 | Reset, when held 20 ms (a glitch is ignored); the sensor relearns the floor |
@@ -111,7 +111,7 @@ frames) with no board.
 | Ultrasonic sensor **HC-SR04** (VCC, Trig, Echo, GND) | 1 | VCC from header pin 11 (5 V). **Echo is 5 V: through a 1 kΩ + 2 kΩ divider** to pin 3 |
 | Resistors 1 kΩ and 2 kΩ (or 2 × 1 kΩ in series) | 1 each | The Echo divider |
 | LEDs: green, red, yellow (330 Ω), white (100 Ω) | 1 each | Optional: the board's own LEDs show the same |
-| Active buzzer **module** | 1 | Optional. SW6 if it is low-level trigger |
+| Buzzer: active 2-leg (e.g. TMB12A05) on pin 8, passive 2-leg through 330 Ω on pin 10, or a 3-pin module on pin 8 | 1 | Optional. SW6 if a module is low-level trigger |
 | USB-UART 3.3 V | 1 | Plan A |
 | Mini breadboard + jumpers | 1 + ~20 | |
 | Toy car, toy lorry clearly taller | 1 each | |
@@ -125,10 +125,11 @@ frames) with no board.
 | 2 | W10 (GPIO_1) | board → laptop | adapter RXD |
 | 3 | V9 (GPIO_2) | ultrasonic Echo, in, weak pull-up | HC-SR04 Echo **through 1 kΩ**; and 2 kΩ from here to GND |
 | 4 | W9 (GPIO_3) | ultrasonic Trig, out | HC-SR04 Trig |
-| 5–9 | V8, W8, V7, W7, W6 | green, white, red, buzzer, lane closed | LEDs via resistors, buzzer module IN |
+| 5–9 | V8, W8, V7, W7, W6 | green, white, red, buzzer (a level), lane closed | LEDs via resistors; an active buzzer's + or a module's IN |
+| 10 | V5 | buzzer, a 2.4 kHz tone | a passive buzzer through 330 Ω |
 | 11 | — | 5 V | **HC-SR04 VCC only** |
 | 12, 30 | — | GND | HC-SR04 GND, adapter GND, the rail |
-| 29 | — | 3.3 V | buzzer module VCC |
+| 29 | — | 3.3 V | buzzer module VCC (a module only) |
 
 ## 7. Technical design (as built)
 
@@ -173,7 +174,7 @@ sensor, the dashboard, the flash), and the wiring card's bring-up list.
 | **5 V on a MAX 10 pin** (the HC-SR04's Echo) | The 1 kΩ/2 kΩ divider; the wiring card's first rule; measure pin 29 → 30 = 3.3 V first |
 | Ultrasonic misses a sloped toy surface | A missed echo changes nothing (not counted as "clear"); presence needs 2 readings, departure 3; KEY1 manual mode as a fallback |
 | Car/lorry threshold wrong for the toys | The display shows each toy's measured height; `TALL_MM` in `lanex.qsf` |
-| Something under the sensor at power-up | The floor is relearnt upward automatically; KEY0 relearns it |
+| Something under the sensor at power-up | Once it is taken away, 16 readings agreeing on the farther floor re-learn it (about 1 s); KEY0 relearns everything |
 | The sensor stops answering under a vehicle | After 16 readings with no echo (1 s) the vehicle counts as gone and is decided |
 | The chip stops answering | Watchdog: no decision 1.5 s after a vehicle leaves → the board restarts the chip (warm boot) |
 | Flicker between states | Tour results latched and paced; warm boots hold the picture until the chip's identity arrives; a leaving vehicle's height stays until its decision. Checked at real speed in simulation: nothing visible lasts 5–150 ms unless meant to |

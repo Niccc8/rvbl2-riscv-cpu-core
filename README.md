@@ -45,7 +45,8 @@ verified core, and provides the `Transmitter`/`Receiver` that `top.sv` instantia
 | **Full-system simulation** | **the organisers' own `emu.c`, unmodified**, drives their real `top.sv` and our `riscv.sv`: all 12 command lines, the PC readback, and negative lines caught |
 | **On the AWS F2 FPGA** | **PASS on the first build**: the bring-up ladder (reset, PC readback, the chip's own ROM CRC `0x56DE`) and **all 12 `./emu` lines** byte for byte under the organisers' emulator ([console log](docs/stage4/evidence/aws_console_log.txt)) |
 | **Pre-flight gate** | [`scripts/stage4/preflight.sh`](scripts/stage4/preflight.sh): lint with the real `top.sv`, the system simulation, emu's start-up window with an undriven pin read as 0 and as 1, Yosys synthesis for UltraScale+ (DMEM in block RAM, no latch), a timing estimate (> 3× margin), and five deliberately broken builds, each caught |
-| **Docs** | [`docs/stage4/`](docs/stage4/): ground truth `01`, audit `02`, market `03`, plan `04`, runbook `05`, evidence `06`, pitch kit `pitch/` |
+| **On a DE10-Lite (desk lane)** | the same chip and ROM on a MAX 10 with an ultrasonic sensor over a toy lane, four lamps, a buzzer and a live laptop dashboard that re-checks every record's CRC and signature. **Working on the board**; 1,601 simulated board checks, including a noisy-sensor model ([`stage4/de10lite/`](stage4/de10lite/README.md)) |
+| **Docs** | [`docs/stage4/`](docs/stage4/): ground truth `01`, audit `02`, plan `04`, runbook `05`, evidence `06`, desk lane `07`, Quartus setup `08` |
 
 ---
 
@@ -207,10 +208,11 @@ application/                  brief §4-6: LaneX
 tools/rvbl-firmware-builder/  the organisers' Firmware Builder, an unchanged copy
 report-stage3/figures/        the Stage 3 report's figures, and our architecture drawings (SVG, PNG)
 docs/demo/                    the demonstration page, as GitHub Pages serves it
-docs/stage4/                  Stage 4: AWS ground truth, audit, market, FPGA design, runbook,
-                              verification, MAX 10 prototype scope, pitch kit
+docs/stage4/                  Stage 4: AWS ground truth, audit, FPGA design, runbook,
+                              verification, the DE10-Lite desk lane, Quartus setup
 stage4/                       Stage 4: the AWS F2 build file riscv.sv (generated) and its backups,
-                              the system simulator (the organisers' emu.c on their top.sv), stubs
+                              the system simulator (the organisers' emu.c on their top.sv), stubs;
+                              de10lite/: the desk lane on a DE10-Lite, its dashboard and gantry
 scripts/stage4/               Stage 4: the riscv.sv generator and the pre-flight gate
 docs/, scripts/, tests/       specifications and reports; regression drivers; test programs
 report-stage2/figures/        Stage 2: the report's figures (the report itself is on the main branch)
@@ -222,7 +224,7 @@ macros/, synth/               Stage 2: optional SRAM macro, synthesis reports
 ## Honest limitations
 
 - **An FPGA-validated prototype, not a product.** It runs on the AWS F2 (all 12 `./emu` lines
-  pass on the board), but it has not met a real RFID reader, classifier or camera, and the core runs
+  pass on the board) and as a desk lane on a DE10-Lite with a real ultrasonic sensor, but it has not met a real RFID reader, classifier or camera, and the core runs
   from a divided clock (31.25 MHz), not the F2's 250 MHz.
 - **Configuration frames are not authenticated.** Records are (Chaskey-12, a locked key, a
   replay-proof counter); commands that change fares or lists are a roadmap item.

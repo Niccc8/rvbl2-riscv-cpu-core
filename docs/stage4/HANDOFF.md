@@ -9,7 +9,7 @@ PASS on the first build (`06` §1c).** Claim earned: "FPGA-validated prototype".
 **DE10-Lite desk lane (Tier 1) built 2026-10-11** (`stage4/de10lite/`, start at its README): one HC-SR04
 ultrasonic sensor (rescoped from two IR beams: the sensor Nicholas has), USB-UART + LaneX Live dashboard.
 Verified in simulation (`06` §1d) and compiled in Quartus 25.1std.0 on Nicholas's laptop (0 errors, timing
-met +4.39 ns at 31.25 MHz). **On the board (11 Oct): `Id.56dE` and `PASS12` work**; his flicker report fixed and
+met +4.44 ns at 31.25 MHz). **On the board (11 Oct): `Id.56dE` and `PASS12` work**; his flicker report fixed and
 the board hardened (`06` §1d round 2: 1,291 simulated checks). Next: his bench procedure,
 `stage4/de10lite/lab_brief.html` E1–E10 (also published: https://claude.ai/artifact/1geGwAnsMETUvzNhbt8Chj).
 **15 Oct, round 3 (`06` §1d round 3):** at E5 his empty lane made 1.6 cm phantom vehicles (`no tAG`
@@ -22,10 +22,11 @@ Cytron UC00C (CH340): switch at 3.3 V, TXO → pin 1, RXI → pin 2, GND → pin
 `stage4/de10lite/lanex_live.html`; `dashboard/lanex_live.src.html` is the template (now says so).
 **Never run `gen_de10lite.py` without `--check`: it rewrites `lanex.qsf`, which his Quartus has edited**;
 write single outputs from `gen_de10lite.outputs()` instead.
-**Grand Final deck built 2026-10-11** (12 min + 10 min Q&A, 17 Oct, KLCC; judges from ChipInventor, UST,
-SkyeChip): `presentation/stage4/LaneX_Final.pptx` (git-ignored; rebuild: `scripts/stage4/pitch/build_all.ps1`),
-native PowerPoint with generated 3D models (`.glb`) and Morph; script `pitch/06_final_script.md` (also the
-speaker notes), demo day `pitch/07_demo_day.md`. Open items for Nicholas: names, slide 12's photo, rehearsal.
+**On the board (15 Oct): the whole desk lane works** - vehicle detection with the HC-SR04, the four lamps, the buzzer, and the USB-UART link to LaneX Live, which verifies every record (Nicholas, after round 3).
+**Pitch material is local only (git-ignored, never pushed: the repository is public):** the Grand Final
+deck `presentation/stage4/LaneX_Final.pptx` (rebuild: `scripts/stage4/pitch/build_all.ps1`), the script and
+demo-day plan `docs/stage4/pitch/`, the market and event research `docs/stage4/03_market.md`,
+`docs/stage4/research/`, `docs/stage4/roi_model.py`.
 
 ## Where everything is
 
@@ -33,14 +34,14 @@ speaker notes), demo day `pitch/07_demo_day.md`. Open items for Nicholas: names,
 | --- | --- |
 | AWS ground truth (guide PDF, organisers' `top.sv`, `emu.c`) | `01_aws_reference.md` |
 | Audit, its approved scope and outcome | `02_audit.md` (§J outcome) |
-| Market, event, ROI | `03_market.md`, `research/A–D`, `roi_model.py` |
+| Market, event, ROI (local only) | `03_market.md`, `research/A–D`, `roi_model.py` |
 | FPGA design (as built) | `04_fpga_plan.md` |
 | **Runbook for the AWS session** | **`05_RUNBOOK.md`** |
 | Verification evidence | `06_verification.md` |
 | DE10-Lite desk lane (Tier 1) | `07_max10_prototype.md` (as built); **`stage4/de10lite/README.md`** (your steps, demo, troubleshooting) |
-| Quartus Prime Lite install + programming guide | `08_quartus_setup.md` (installed: `C:ltera_lite.1std`, 25.1std.0) |
+| Quartus Prime Lite install + programming guide | `08_quartus_setup.md` (installed: `C:\altera_lite\25.1std`, 25.1std.0) |
 | Desk-lane generator, checks | `scripts/stage4/gen_de10lite.py` (`--check`), `stage4/de10lite/sim/check_board.py`, `stage4/de10lite/dashboard/test_live.py` |
-| Pitch kit | `pitch/01–05` (Stage 4 planning); **final: `pitch/06_final_script.md`, `pitch/07_demo_day.md`, deck generator `scripts/stage4/pitch/`** |
+| Pitch kit (local only) | `pitch/01–05` (Stage 4 planning); **final: `pitch/06_final_script.md`, `pitch/07_demo_day.md`, deck generator `scripts/stage4/pitch/`** |
 | AWS run screenshots + recording (for slides) | `stage4/evidence/` (index in its README; the 270 MB recording and the unredacted screenshot are local only, git-excluded) |
 | Build files | `stage4/riscv.sv` (31.25 MHz, the build), `riscv_15mhz.sv`, `riscv_bufgce_div.sv` (backups) |
 | Generator, gate | `scripts/stage4/gen_riscv_sv.py`, `scripts/stage4/preflight.sh` |
@@ -69,7 +70,7 @@ speaker notes), demo day `pitch/07_demo_day.md`. Open items for Nicholas: names,
 - Commits: author Nicholas only, no co-author line; explicit paths; never push without asking.
 - Tools: Windows — iverilog 12, xPack RISC-V GCC 13.2 (`~/tools`, `python3` shim in `~/tools/bin`);
   WSL Ubuntu-24.04 — Verilator 5.020, Yosys 0.33, gcc. **Quartus Prime Lite 25.1std.0 at
-  `C:ltera_lite.1std`** (compile in a copy under `build/`, never program the board yourself). No Vivado.
+  `C:\altera_lite\25.1std`** (compile in a copy under `build/`, never program the board yourself). No Vivado.
 - Board simulation: Verilator via `check_board.py` (Icarus is ~370x slower). The testbench's stimulus
   waits for events: start waiting before the event can happen (a missed record = TIMEOUT).
 

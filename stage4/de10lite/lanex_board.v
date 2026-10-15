@@ -259,12 +259,11 @@ module lanex_board #(
     //     floor. Every re-learnt floor disarms the lane. Armed, it is never
     //     re-learnt nearer on its own (that could swallow a parked toy), except
     //     by rule 4;
-    //  3. an armed lane: a vehicle arrives when 4 filtered readings in a row (0.25 s) stand
-    //     PRESENT_MM above the floor - even three stray echoes in a row cannot; a lost
-    //     echo (farther than the floor) in between neither counts nor breaks the run -
-    //     and leaves after 8 readings of the floor itself (0.5 s; a reading farther
-    //     than the floor is a lost echo and counts for nothing): in between, nothing changes,
-    //     so nothing near the threshold can make it chatter. Its height (shown,
+    //  3. an armed lane: a vehicle arrives when 4 filtered readings in a row (0.25 s)
+    //     stand PRESENT_MM above the floor - even three stray echoes in a row cannot -
+    //     and leaves after 8 readings of the floor itself (0.5 s). A reading farther
+    //     than the floor is a lost echo: it neither counts nor breaks either run. In
+    //     between, nothing changes, so nothing near the threshold can make it chatter. Its height (shown,
     //     and a lorry - class 3 - at TALL_MM, the way overhead gantry profilers
     //     classify) is the lowest of the last three filtered heights: a stray echo
     //     can never make a car a lorry. A toy pushed through at a hand's pace is
@@ -300,7 +299,8 @@ module lanex_board #(
     wire        agree = (f_mm <= cand + FLOOR_TOL) && (f_mm + FLOOR_TOL >= cand);
     wire        farther = (cand >= floor_mm + 12'd4);
     wire        nearer  = (cand + 12'd4 <= floor_mm);
-    wire        at_floor = (f_mm + CLEAR_MM > floor_mm) && (f_mm <= floor_mm + FLOOR_TOL + 12'd2);
+    wire        beyond  = (f_mm > floor_mm + FLOOR_TOL + 12'd2);          // a lost echo
+    wire        at_floor = (f_mm + CLEAR_MM > floor_mm) && !beyond;
     // P2:P1 = SW2:1 if set (01 van, 10 lorry, 11 motorcycle), else the height
     wire [1:0] code = (swd[2:1] != 2'b00) ? swd[2:1] : (tall ? 2'b10 : 2'b00);
     wire       seen = (chip_pins_in[2:0] == {code, 1'b1});   // the chip has seen this vehicle and its class
@@ -382,16 +382,10 @@ module lanex_board #(
                     if (n_occ >= 3'd3 && armed) present <= 1'b1; // four readings in a row: a vehicle
                     if (h_min3 > max_mm) max_mm <= h_min3;
                     if (h_min3 >= TALL_MM) tall <= 1'b1;         // latched while it is there
-                end else begin
-                    // a reading farther than the floor is a lost echo: it neither ends an
-                    // arrival nor counts towards a departure
-                    if (f_mm <= floor_mm + FLOOR_TOL + 12'd2) n_occ <= 3'd0;
-                    if (h_f < CLEAR_MM) begin
-                        // the floor itself counts towards a departure; a reading FARTHER than
-                        // the floor is a lost echo (an angled roof, a stray), not an empty lane
-                        if (f_mm <= floor_mm + FLOOR_TOL + 12'd2) begin
-                            if (n_clear != 4'd8) n_clear <= n_clear + 4'd1;
-                        end
+                end else if (!beyond) begin                     // (a lost echo changes nothing)
+                    n_occ <= 3'd0;
+                    if (h_f < CLEAR_MM) begin                       // the floor itself
+                        if (n_clear != 4'd8) n_clear <= n_clear + 4'd1;
                     end else n_clear <= 4'd0;                     // between the thresholds: neither
                 end
             end
@@ -420,7 +414,7 @@ module lanex_board #(
         .rx_valid(hrx_valid), .rx_data(hrx_data),
         .valid(h_valid), .data(h_data), .last(h_last), .pop(h_pop), .id_done(h_id_done));
 
-    wire       tr_valid, tr_last, tr_pop, tr_done, tr_in_line, tr_show, tr_checked, tr_pass;
+    wire       tr_valid, tr_last, tr_pop, tr_done, tr_show, tr_checked, tr_pass;
     wire [7:0] tr_data;
     wire [3:0] tr_pins, tr_line, tr_npass, tr_first_fail, tr_lines;
     lx_tour_n u_tn (.n(tr_lines));
@@ -429,7 +423,7 @@ module lanex_board #(
         .window(window), .nbytes(nbytes), .lamps(lamps),
         .chip_rst_req(tr_rst_req), .pins(tr_pins),
         .valid(tr_valid), .data(tr_data), .last(tr_last), .pop(tr_pop),
-        .line(tr_line), .in_line(tr_in_line), .done(tr_done), .npass(tr_npass),
+        .line(tr_line), .done(tr_done), .npass(tr_npass),
         .first_fail(tr_first_fail), .show(tr_show), .checked(tr_checked), .pass_now(tr_pass));
 
     // The host's rule after an identify (PROTOCOL.md section 7): the chip measures its
@@ -1093,7 +1087,6 @@ module lx_tour #(
     output wire        last,
     input  wire        pop,
     output reg  [3:0]  line,
-    output wire        in_line,
     output reg         done,
     output reg  [3:0]  npass,
     output reg  [3:0]  first_fail,
@@ -1114,7 +1107,6 @@ module lx_tour #(
     assign valid    = (st == T_RUN) && !op[9];
     assign data     = op[7:0];
     assign last     = op[8];
-    assign in_line  = !done;
     assign show     = (st == T_SHOW) || done;
     assign pass_now = (nbytes == 4'd8) && (window == exp[63:0]) && (!exp[68] || lamps == exp[67:64]);
     always @(posedge clk) begin
